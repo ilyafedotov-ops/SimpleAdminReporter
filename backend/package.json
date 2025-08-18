@@ -1,6 +1,6 @@
 {
   "name": "ad-reporting-backend",
-  "version": "1.0.0",
+  "version": "1.0.0-beta",
   "description": "Backend API for AD/Azure AD/O365 Reporting Application",
   "main": "dist/app.js",
   "scripts": {
