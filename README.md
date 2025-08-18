@@ -549,6 +549,64 @@ docker stats $(docker-compose ps -q)
 - **Caching Strategy**: Redis cluster for high availability
 - **CDN Integration**: Static asset delivery optimization
 
+## 🚀 CI/CD Pipeline
+
+This project supports **dual CI/CD platforms** demonstrating platform flexibility and comprehensive DevOps practices:
+
+### GitLab CI/CD (Primary)
+**Configuration**: `.gitlab-ci.yml` + `.gitlab/ci/` templates and scripts
+
+**Pipeline Stages**:
+1. **Validate** - Commit linting, branch naming conventions
+2. **Build** - Frontend/backend compilation with ESLint (parallel execution)
+3. **Test** - Unit & integration tests with coverage (60% line, 50% branch minimum)
+4. **E2E** - End-to-end testing with Playwright and backend integration
+5. **Security** - Dependency audits, Dockerfile scanning, secrets detection (Gitleaks)
+6. **Report** - Code quality metrics, artifact monitoring, pipeline summaries
+
+**Key Features**:
+- ✅ **Modular Architecture**: Reusable templates and scripts
+- ✅ **Security-First**: Gitleaks, Hadolint, npm audit integration
+- ✅ **Performance Optimized**: FastZip compression, artifact size monitoring
+- ✅ **Warning Tolerance**: Continues on ESLint warnings while tracking technical debt
+- ✅ **Alpine Linux Compatible**: POSIX-compliant scripts for CI environments
+
+### GitHub Actions (Secondary)
+**Configuration**: `.github/workflows/ci.yml`
+
+**Equivalent Pipeline**:
+- Validates commits and builds both frontend/backend
+- Runs comprehensive test suites with PostgreSQL/Redis services
+- Performs security scanning with Gitleaks integration
+- Supports environment-based deployments (staging/production)
+- Includes Playwright E2E testing for main branch
+
+### Platform Comparison
+| Feature | GitLab CI/CD | GitHub Actions |
+|---------|-------------|----------------|
+| **Complexity** | Advanced (enterprise-grade) | Simplified (GitHub-optimized) |
+| **Security** | SARIF reports, custom scanners | Native security features |
+| **Artifacts** | Size-optimized, compressed | Standard artifact handling |
+| **Environments** | Multi-environment deployment | Branch-based deployments |
+| **Integration** | GitLab registry, pages | GitHub packages, pages |
+
+### Running Locally
+```bash
+# GitLab Runner (if available)
+gitlab-runner exec docker validate:commits
+gitlab-runner exec docker build:backend
+
+# GitHub Actions (with act)
+act --container-architecture linux/amd64
+act -j build-backend
+```
+
+**Best Practice**: Keep both configurations as they demonstrate:
+- **Platform Expertise**: Multi-platform DevOps knowledge
+- **Migration Capability**: Easy transition between CI/CD platforms  
+- **Architecture Reference**: Comprehensive pipeline design patterns
+- **Team Flexibility**: Supports organizations using either platform
+
 ## 📚 Documentation
 
 ### 📊 Executive Presentation

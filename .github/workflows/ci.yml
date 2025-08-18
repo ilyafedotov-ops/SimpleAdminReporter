@@ -1,0 +1,356 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: 20
+  POSTGRES_DB: reporting_test
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/reporting_test
+  REDIS_URL: redis://localhost:6379
+  VITE_API_URL: /api
+  VITE_USE_COOKIE_AUTH: true
+
+jobs:
+  # Validation Stage
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Validate commit messages
+        run: |
+          npm install -g @commitlint/cli @commitlint/config-conventional
+          echo "${{ github.event.head_commit.message }}" | commitlint --config commitlint.config.js
+
+  # Build Stage
+  build-backend:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci --prefer-offline
+      
+      - name: Lint and type check
+        run: |
+          cd backend
+          npm run lint -- --max-warnings 100
+          npm run typecheck
+      
+      - name: Build
+        run: |
+          cd backend
+          npm run build
+          # Remove source maps and type definitions to reduce artifact size
+          find dist -name "*.map" -delete 2>/dev/null || true
+          find dist -name "*.d.ts" -delete 2>/dev/null || true
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: |
+            backend/dist/
+            !backend/dist/**/*.map
+            !backend/dist/**/*.d.ts
+            !backend/dist/**/*.test.js
+          retention-days: 7
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci --prefer-offline
+      
+      - name: Lint
+        run: |
+          cd frontend
+          npm run lint -- --max-warnings 400
+      
+      - name: Build
+        run: |
+          cd frontend
+          npm run build
+          # Remove source maps to reduce artifact size
+          find build -name "*.map" -delete 2>/dev/null || true
+          find build -name "*.txt" -delete 2>/dev/null || true
+        env:
+          VITE_API_URL: ${{ env.VITE_API_URL }}
+          VITE_USE_COOKIE_AUTH: ${{ env.VITE_USE_COOKIE_AUTH }}
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: |
+            frontend/build/
+            !frontend/build/**/*.map
+            !frontend/build/**/*.txt
+            !frontend/build/static/media/*.map
+          retention-days: 7
+
+  # Test Stage
+  test-backend:
+    runs-on: ubuntu-latest
+    needs: build-backend
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: reporting_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+          path: backend/
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci --prefer-offline
+      
+      - name: Run tests with coverage
+        run: |
+          cd backend
+          npm run test:coverage
+          # Remove large coverage files to reduce artifact size
+          rm -rf coverage/lcov-report coverage/tmp 2>/dev/null || true
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_URL: ${{ env.REDIS_URL }}
+          JWT_SECRET: test-jwt-secret
+          NODE_ENV: test
+      
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage/
+          retention-days: 7
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    needs: build-frontend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/
+      
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci --prefer-offline
+      
+      - name: Run tests with coverage
+        run: |
+          cd frontend
+          npm run test:coverage -- --run
+          # Remove large coverage files to reduce artifact size
+          rm -rf coverage/html coverage/tmp 2>/dev/null || true
+        env:
+          VITE_API_URL: ${{ env.VITE_API_URL }}
+          VITE_USE_COOKIE_AUTH: ${{ env.VITE_USE_COOKIE_AUTH }}
+          VITE_AZURE_CLIENT_ID: test-client-id
+          VITE_AZURE_TENANT_ID: test-tenant-id
+      
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
+
+  # Security Stage
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for secret scanning
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Security audit - Dependencies
+        run: |
+          cd backend
+          npm ci --prefer-offline
+          npm audit --audit-level=high
+          cd ../frontend
+          npm ci --prefer-offline
+          npm audit --audit-level=high
+      
+      - name: Run Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  # E2E Tests (Optional - can be resource intensive)
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: reporting_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install Playwright
+        run: |
+          cd frontend
+          npm ci --prefer-offline
+          npx playwright install --with-deps chromium
+      
+      - name: Run E2E tests
+        run: |
+          cd frontend
+          npm run test:e2e:ci
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_URL: ${{ env.REDIS_URL }}
+          JWT_SECRET: test-jwt-secret
+          NODE_ENV: test
+          CI: true
+        timeout-minutes: 30
+      
+      - name: Upload E2E results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+  # Deployment placeholder (customize based on your infrastructure)
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [security-scan]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          echo "Add your deployment scripts here"
+          # Example: SSH to server, docker-compose pull, restart services
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [security-scan, e2e-tests]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "🚀 Deploying to production environment..."
+          echo "Add your production deployment scripts here"
+          # Example: Blue-green deployment, health checks, rollback capability
