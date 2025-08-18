@@ -1,0 +1,206 @@
+# Pre-commit hooks configuration for SimpleAdminReporter
+# Prevents secrets from being committed to git repository
+
+repos:
+  # Gitleaks - Secret detection
+  - repo: https://github.com/zricethezav/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: Detect secrets with Gitleaks
+        description: Detect hardcoded secrets using Gitleaks
+        entry: gitleaks detect --config .gitleaks.toml --verbose --redact --no-git
+        language: golang
+        stages: [commit]
+        
+  # Built-in hooks for basic security
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: detect-private-key
+        name: Detect private keys
+        description: Detect presence of private keys
+      - id: check-added-large-files
+        name: Check for large files
+        description: Prevent large files from being committed
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        description: Check for files that contain merge conflict strings
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+        description: Trims trailing whitespace
+      - id: end-of-file-fixer
+        name: Fix end of files
+        description: Makes sure files end in a newline and only a newline
+      - id: mixed-line-ending
+        name: Mixed line ending
+        description: Replaces mixed line endings automatically with the most frequent line ending
+        
+  # TypeScript/JavaScript linting
+  - repo: local
+    hooks:
+      - id: backend-lint
+        name: Backend ESLint
+        entry: npm run lint
+        language: system
+        files: '^backend/.*\.(ts|js)$'
+        pass_filenames: false
+        
+      - id: frontend-lint  
+        name: Frontend ESLint
+        entry: npm run lint
+        language: system
+        files: '^frontend/.*\.(ts|tsx|js|jsx)$'
+        pass_filenames: false
+        
+  # Security-specific checks
+  - repo: local
+    hooks:
+      - id: check-test-credentials
+        name: Check test credential patterns
+        entry: python3
+        language: system
+        pass_filenames: false
+        files: '.*\.(ts|js|tsx|jsx)$'
+        args:
+          - -c
+          - |
+            import re
+            import sys
+            import os
+            
+            def check_file(filepath):
+                with open(filepath, 'r') as f:
+                    content = f.read()
+                
+                # Patterns that should be avoided
+                dangerous_patterns = [
+                    r"password:\s*['\"][^'\"]{8,}['\"]",  # Long hardcoded passwords
+                    r"secret:\s*['\"][^'\"]{16,}['\"]",   # Long hardcoded secrets  
+                    r"key:\s*['\"][^'\"]{20,}['\"]",      # Long hardcoded keys
+                    r"token:\s*['\"]ey[A-Za-z0-9_-]+['\"]" # Real JWT tokens
+                ]
+                
+                # Allowed patterns (test fixtures)
+                allowed_patterns = [
+                    r"testCredentials\.",
+                    r"MockCredentialGenerator\.",
+                    r"jest\.fn\(\)",
+                    r"process\.env\.",
+                    r"TEST_"
+                ]
+                
+                violations = []
+                for pattern in dangerous_patterns:
+                    matches = re.finditer(pattern, content, re.IGNORECASE)
+                    for match in matches:
+                        # Check if this match is in an allowed context
+                        line_start = content.rfind('\n', 0, match.start()) + 1
+                        line_end = content.find('\n', match.end())
+                        if line_end == -1:
+                            line_end = len(content)
+                        line_content = content[line_start:line_end]
+                        
+                        # Skip if line contains allowed patterns
+                        is_allowed = any(re.search(allowed, line_content, re.IGNORECASE) for allowed in allowed_patterns)
+                        if not is_allowed:
+                            line_num = content[:match.start()].count('\n') + 1
+                            violations.append(f"Line {line_num}: {match.group()}")
+                
+                return violations
+            
+            # Get all staged files
+            os.system("git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(ts|js|tsx|jsx)$' > /tmp/staged_files.txt")
+            
+            total_violations = 0
+            try:
+                with open('/tmp/staged_files.txt', 'r') as f:
+                    staged_files = f.read().strip().split('\n')
+                
+                for filepath in staged_files:
+                    if filepath and os.path.exists(filepath):
+                        violations = check_file(filepath)
+                        if violations:
+                            print(f"❌ {filepath}:")
+                            for violation in violations:
+                                print(f"  {violation}")
+                            total_violations += len(violations)
+                        else:
+                            print(f"✅ {filepath}: No credential violations")
+                
+                if total_violations > 0:
+                    print(f"\n❌ Found {total_violations} potential credential violations.")
+                    print("Please use testCredentials fixture or environment variables instead.")
+                    sys.exit(1)
+                else:
+                    print("✅ No credential violations found in staged files.")
+                    
+            except FileNotFoundError:
+                print("✅ No JavaScript/TypeScript files staged for commit.")
+
+      - id: check-env-files
+        name: Check .env files for production secrets
+        entry: python3
+        language: system  
+        files: '\.env$'
+        pass_filenames: false
+        args:
+          - -c
+          - |
+            import re
+            import sys
+            import os
+            
+            def check_env_file(filepath):
+                with open(filepath, 'r') as f:
+                    content = f.read()
+                
+                # Production-like patterns that shouldn't be in repo
+                production_patterns = [
+                    r"PASSWORD=(?!.*test)(?!.*placeholder)(?!.*example)[A-Za-z0-9!@#$%^&*]{12,}",
+                    r"SECRET=(?!.*test)(?!.*placeholder)[A-Za-z0-9+/]{32,}",
+                    r"KEY=(?!.*test)(?!.*example)[A-Za-z0-9+/=]{32,}"
+                ]
+                
+                violations = []
+                for pattern in production_patterns:
+                    matches = re.finditer(pattern, content)
+                    for match in matches:
+                        line_num = content[:match.start()].count('\n') + 1
+                        violations.append(f"Line {line_num}: {match.group()}")
+                
+                return violations
+            
+            # Check staged .env files
+            os.system("git diff --cached --name-only --diff-filter=ACM | grep '\\.env$' > /tmp/staged_env_files.txt")
+            
+            total_violations = 0
+            try:
+                with open('/tmp/staged_env_files.txt', 'r') as f:
+                    staged_files = f.read().strip().split('\n')
+                
+                for filepath in staged_files:
+                    if filepath and os.path.exists(filepath):
+                        violations = check_env_file(filepath)
+                        if violations:
+                            print(f"❌ {filepath}:")
+                            for violation in violations:
+                                print(f"  {violation}")
+                            total_violations += len(violations)
+                        else:
+                            print(f"✅ {filepath}: No production secrets detected")
+                
+                if total_violations > 0:
+                    print(f"\n❌ Found {total_violations} potential production secrets in .env files.")
+                    print("Please use placeholder values or environment variables instead.")
+                    sys.exit(1)
+                else:
+                    print("✅ No production secrets found in .env files.")
+                    
+            except FileNotFoundError:
+                print("✅ No .env files staged for commit.")
+
+# Configuration for pre-commit
+default_stages: [commit]
+fail_fast: false

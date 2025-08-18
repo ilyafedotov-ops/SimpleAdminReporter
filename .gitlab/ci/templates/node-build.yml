@@ -1,0 +1,15 @@
+.node_build_template:
+  image: node:${NODE_VERSION}-alpine
+  variables:
+    COMPONENT: ""
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-${COMPONENT}-node
+    paths:
+      - .npm/
+      - ${COMPONENT}/node_modules/
+  before_script:
+    - cd ${COMPONENT}
+    - npm ci --prefer-offline
+  artifacts:
+    expire_in: 1 week
+    when: on_success

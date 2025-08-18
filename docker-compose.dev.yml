@@ -1,0 +1,124 @@
+#version: '3.8'
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: reporting-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - reporting-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: reporting-frontend-dev
+    ports:
+      - "5173:5173"
+    environment:
+      - REACT_APP_API_URL=/api
+      - VITE_API_URL=http://localhost:5000/api
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+      - ./frontend/index.html:/app/index.html:ro
+    networks:
+      - reporting-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: reporting-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/reporting}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-reporting}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD}}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - AD_SERVER=${AD_SERVER}
+      - AD_DOMAIN=${AD_DOMAIN}
+      - AD_BASE_DN=${AD_BASE_DN}
+      - AD_USERNAME=${AD_USERNAME}
+      - AD_PASSWORD=${AD_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - CREDENTIAL_ENCRYPTION_KEY=${CREDENTIAL_ENCRYPTION_KEY}
+      - CREDENTIAL_ENCRYPTION_SALT=${CREDENTIAL_ENCRYPTION_SALT}
+    volumes:
+      - ./backend/src:/app/src:ro
+      - ./backend/package.json:/app/package.json:ro
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - reporting-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: reporting-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=reporting
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - reporting-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: reporting-redis
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    command: >
+      sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          redis-server --requirepass $$REDIS_PASSWORD
+        else
+          redis-server
+        fi
+      "
+    volumes:
+      - redis_data:/data
+    networks:
+      - reporting-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  reporting-network:
+    driver: bridge

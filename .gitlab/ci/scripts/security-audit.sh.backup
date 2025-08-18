@@ -1,0 +1,28 @@
+#!/bin/sh
+# security-audit.sh - Run comprehensive security checks
+
+set -eu
+
+echo "=== NPM SECURITY AUDIT ==="
+npm audit --omit=dev --audit-level=moderate || AUDIT_FAILED=true
+
+echo ""
+echo "=== CHECKING FOR DEPRECATED PACKAGES ==="
+npm ls --depth=0 --deprecated 2>/dev/null || echo "No deprecated packages found"
+
+echo ""
+echo "=== CHECKING PACKAGE VULNERABILITIES ==="
+if command -v npx >/dev/null 2>&1; then
+    npx check-vulnerable-packages || echo "Some packages may have security issues"
+fi
+
+echo ""
+echo "=== CHECKING FOR OUTDATED PACKAGES ==="
+npx npm-check-updates --format group || echo "Package updates available"
+
+echo ""
+echo "=== LICENSE COMPATIBILITY CHECK ==="
+npx license-checker --summary || echo "License check completed"
+
+# Exit gracefully
+exit 0

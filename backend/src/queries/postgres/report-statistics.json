@@ -1,0 +1,104 @@
+{
+  "id": "pg_report_statistics",
+  "name": "Report Execution Statistics",
+  "description": "Get statistics about report executions over a specified time period",
+  "version": "1.0.0",
+  "dataSource": "postgres",
+  "sql": "SELECT rh.template_id as report_id, rt.name as report_name, rt.category, COUNT(*) as execution_count, AVG(rh.execution_time_ms) as avg_execution_time, MAX(rh.execution_time_ms) as max_execution_time, SUM(CASE WHEN rh.status = 'completed' THEN 1 ELSE 0 END) as success_count, SUM(CASE WHEN rh.status = 'failed' THEN 1 ELSE 0 END) as error_count, SUM(rh.row_count) as total_rows FROM report_history rh LEFT JOIN report_templates rt ON rh.template_id = rt.id WHERE rh.generated_at >= $1 AND rh.generated_at <= $2 AND ($3::text IS NULL OR rt.category = $3) GROUP BY rh.template_id, rt.name, rt.category ORDER BY execution_count DESC LIMIT $4",
+  "parameters": [
+    {
+      "name": "start_date",
+      "type": "date",
+      "required": true,
+      "description": "Start date for the statistics period"
+    },
+    {
+      "name": "end_date",
+      "type": "date",
+      "required": true,
+      "description": "End date for the statistics period"
+    },
+    {
+      "name": "category",
+      "type": "string",
+      "required": false,
+      "description": "Filter by report category (ad, azure, o365)",
+      "validation": {
+        "enum": ["ad", "azure", "o365"]
+      }
+    },
+    {
+      "name": "limit",
+      "type": "number",
+      "required": false,
+      "default": 50,
+      "description": "Maximum number of reports to return",
+      "validation": {
+        "min": 1,
+        "max": 200
+      }
+    }
+  ],
+  "resultMapping": {
+    "fieldMappings": {
+      "report_id": {
+        "targetField": "reportId",
+        "type": "string"
+      },
+      "report_name": {
+        "targetField": "reportName",
+        "type": "string"
+      },
+      "category": {
+        "targetField": "category",
+        "type": "string"
+      },
+      "execution_count": {
+        "targetField": "executionCount",
+        "type": "number"
+      },
+      "avg_execution_time": {
+        "targetField": "averageExecutionTime",
+        "type": "number",
+        "transform": "msToSeconds"
+      },
+      "max_execution_time": {
+        "targetField": "maxExecutionTime",
+        "type": "number",
+        "transform": "msToSeconds"
+      },
+      "success_count": {
+        "targetField": "successCount",
+        "type": "number"
+      },
+      "error_count": {
+        "targetField": "errorCount",
+        "type": "number"
+      },
+      "total_rows": {
+        "targetField": "totalRows",
+        "type": "number"
+      }
+    },
+    "postProcess": {
+      "sort": [
+        {
+          "field": "executionCount",
+          "direction": "desc"
+        }
+      ]
+    }
+  },
+  "access": {
+    "requiresAuth": true
+  },
+  "constraints": {
+    "maxResults": 200,
+    "timeoutMs": 45000
+  },
+  "cache": {
+    "enabled": true,
+    "ttlSeconds": 600,
+    "keyTemplate": "pg_report_stats:{{start_date}}:{{end_date}}:{{category}}:{{limit}}"
+  }
+}

@@ -1,0 +1,41 @@
+
+# ==================== docker-compose.ci.yml ====================
+# Docker Compose configuration for CI/CD testing
+#version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=reporting_test
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-test:
+    build:
+      context: ./backend
+      target: test
+    environment:
+      - NODE_ENV=test
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/reporting_test
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=test-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: npm run test:ci

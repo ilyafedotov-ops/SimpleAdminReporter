@@ -1,0 +1,100 @@
+# Docker Compose override for staging environment
+#version: '3.8'
+
+services:
+  frontend:
+    image: ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_SHA:-latest}
+    environment:
+      - REACT_APP_API_URL=http://${STAGING_HOST}/api
+      - REACT_APP_ENVIRONMENT=staging
+      - REACT_APP_VERSION=${CI_COMMIT_SHA:-dev}
+    restart: unless-stopped
+
+  backend:
+    image: ${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHA:-latest}
+    environment:
+      - NODE_ENV=staging
+      - LOG_LEVEL=debug
+      - ENABLE_SWAGGER=true
+      - DATABASE_URL=${DATABASE_URL}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-reporting_staging}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD}}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_staging}
+      - JWT_SECRET=${JWT_SECRET}
+      - AD_SERVER=${AD_SERVER}
+      - AD_BASE_DN=${AD_BASE_DN}
+      - AD_USERNAME=${AD_USERNAME}
+      - AD_PASSWORD=${AD_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - CREDENTIAL_ENCRYPTION_KEY=${CREDENTIAL_ENCRYPTION_KEY}
+      - CREDENTIAL_ENCRYPTION_SALT=${CREDENTIAL_ENCRYPTION_SALT}
+    volumes:
+      - staging-logs:/app/logs
+      - staging-reports:/app/reports
+      - staging-uploads:/app/uploads
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  nginx:
+    image: ${CI_REGISTRY_IMAGE}/nginx:${CI_COMMIT_SHA:-latest}
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=reporting_staging
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - staging-postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_staging}
+    volumes:
+      - staging-redis-data:/data
+    restart: unless-stopped
+
+  # Monitoring removed - use health service endpoint at /health instead
+
+volumes:
+  staging-postgres-data:
+  staging-redis-data:
+  staging-logs:
+  staging-reports:
+  staging-uploads:
+
+networks:
+  default:
+    name: staging-reporting-network

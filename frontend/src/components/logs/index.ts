@@ -1,0 +1,1 @@
+export { LogsErrorBoundary, withLogsErrorBoundary } from './LogsErrorBoundary';

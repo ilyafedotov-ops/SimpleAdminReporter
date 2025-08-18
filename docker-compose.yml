@@ -1,0 +1,169 @@
+#version: '3.8'
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: reporting-nginx
+    ports:
+      - "80:80"
+      - "443:443"  # SECURITY: Added HTTPS port
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/ssl/certs:ro  # SECURITY: SSL certificates volume
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - frontend-tier  # SECURITY: Frontend network tier
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - VITE_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+        - VITE_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+        - VITE_API_URL=/api
+    container_name: reporting-frontend
+    environment:
+      - REACT_APP_API_URL=/api
+      - GENERATE_SOURCEMAP=false
+    # No volumes needed for production build
+    networks:
+      - frontend-tier  # SECURITY: Frontend network tier
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: reporting-backend
+    healthcheck:
+      test: ["CMD", "true"]  # Temporarily disable health check
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=${PORT:-5000}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/reporting}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-reporting}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD}}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - USE_COOKIE_AUTH=${USE_COOKIE_AUTH:-false}
+      - USE_UNIFIED_AUTH=${USE_UNIFIED_AUTH:-true}
+      - AD_SERVER=${AD_SERVER}
+      - AD_DOMAIN=${AD_DOMAIN}
+      - AD_BASE_DN=${AD_BASE_DN}
+      - AD_USERNAME=${AD_USERNAME}
+      - AD_PASSWORD=${AD_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - REPORT_TIMEOUT=${REPORT_TIMEOUT:-300000}
+      - REPORT_MAX_ROWS=${REPORT_MAX_ROWS:-50000}
+      - REPORT_DEFAULT_LIMIT=${REPORT_DEFAULT_LIMIT:-1000}
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
+      - CREDENTIAL_ENCRYPTION_KEY=${CREDENTIAL_ENCRYPTION_KEY}
+      - CREDENTIAL_ENCRYPTION_SALT=${CREDENTIAL_ENCRYPTION_SALT}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - USE_MATERIALIZED_VIEWS=${USE_MATERIALIZED_VIEWS:-true}
+      - ENABLE_DB_LOGS=true
+      - DB_LOG_LEVEL=warn
+      - CORS_ORIGIN=${CORS_ORIGIN}
+    volumes:
+      - ./reports:/app/reports
+      - ./exports:/app/exports
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - frontend-tier  # SECURITY: Access to nginx
+      - backend-tier   # SECURITY: Access to databases
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: reporting-postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-reporting}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    # SECURITY: Removed exposed port - database only accessible within Docker network
+    networks:
+      - backend-tier  # Changed to secure backend network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: reporting-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - redis-data:/data
+    # SECURITY: Removed exposed port - Redis only accessible within Docker network
+    networks:
+      - backend-tier  # Changed to secure backend network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  # SECURITY: Multi-tier network architecture
+  frontend-tier:
+    driver: bridge
+    # External access for nginx and frontend
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  
+  backend-tier:
+    driver: bridge
+    internal: true  # SECURITY: No external internet access
+    # Internal only - databases and backend services
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24

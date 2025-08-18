@@ -1,0 +1,1207 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { Table, Input, DatePicker, Select, Button, Dropdown, Space, Checkbox, InputNumber, Tag } from 'antd';
+import { FilterOutlined, DownloadOutlined, ColumnHeightOutlined, SearchOutlined, ClearOutlined, HolderOutlined, CaretDownOutlined, CheckOutlined } from '@ant-design/icons';
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { FilterValue, SorterResult } from 'antd/es/table/interface';
+import dayjs from 'dayjs';
+import { useAppSelector } from '@/store';
+import { selectTheme } from '@/store/slices/uiSlice';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+
+const { RangePicker } = DatePicker;
+const { Option } = Select;
+
+// Drag and drop types
+interface DragItem {
+  index: number;
+  dataIndex: string;
+}
+
+const ItemType = 'column';
+
+// Draggable column header component
+interface DraggableColumnHeaderProps {
+  column: EnhancedColumn;
+  index: number;
+  moveColumn: (dragIndex: number, hoverIndex: number) => void;
+  children: React.ReactNode;
+}
+
+const DraggableColumnHeader: React.FC<DraggableColumnHeaderProps> = ({ 
+  column, 
+  index, 
+  moveColumn, 
+  children 
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+  
+  const [{ handlerId }, drop] = useDrop<DragItem, unknown, { handlerId: string | symbol | null }>({
+    accept: ItemType,
+    collect(monitor) {
+      return {
+        handlerId: monitor.getHandlerId(),
+      };
+    },
+    hover(item: DragItem, monitor) {
+      if (!ref.current) {
+        return;
+      }
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      
+      if (dragIndex === hoverIndex) {
+        return;
+      }
+      
+      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+      const hoverMiddleX = (hoverBoundingRect.right - hoverBoundingRect.left) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientX = (clientOffset as { x: number }).x - hoverBoundingRect.left;
+      
+      if (dragIndex < hoverIndex && hoverClientX < hoverMiddleX) {
+        return;
+      }
+      
+      if (dragIndex > hoverIndex && hoverClientX > hoverMiddleX) {
+        return;
+      }
+      
+      moveColumn(dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+  });
+  
+  const [{ isDragging }, drag] = useDrag({
+    type: ItemType,
+    item: () => {
+      return { dataIndex: column.dataIndex, index };
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+  
+  drag(drop(ref));
+  
+  return (
+    <div
+      ref={ref}
+      data-handler-id={handlerId}
+      style={{
+        opacity: isDragging ? 0.5 : 1,
+        cursor: 'move',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+      }}
+    >
+      <HolderOutlined style={{ color: '#999', fontSize: '12px' }} />
+      {children}
+    </div>
+  );
+};
+
+// Specific filter value types for each filter type
+type TextFilterValue = string;
+type NumberFilterValue = { min?: number; max?: number };
+type DateFilterValue = string | Date | dayjs.Dayjs;
+type DateRangeFilterValue = [string | Date | dayjs.Dayjs, string | Date | dayjs.Dayjs];
+type SelectFilterValue = string | number;
+type BooleanFilterValue = boolean;
+
+export interface ColumnFilter {
+  type: 'text' | 'number' | 'date' | 'dateRange' | 'select' | 'boolean';
+  value?: TextFilterValue | NumberFilterValue | DateFilterValue | DateRangeFilterValue | SelectFilterValue | BooleanFilterValue;
+  options?: { label: string; value: unknown }[]; // For select type
+}
+
+export interface EnhancedColumn<T = any> extends Omit<ColumnsType<T>[0], 'filters'> {
+  dataIndex: string;
+  filterType?: ColumnFilter['type'];
+  filterOptions?: { label: string; value: unknown }[];
+  enableFilter?: boolean;
+  enableSort?: boolean;
+  sortDirections?: ('ascend' | 'descend')[];
+  render?: (value: unknown, record: T, index: number) => React.ReactNode;
+}
+
+export interface FilterPreset {
+  id: string;
+  name: string;
+  filters: Record<string, ColumnFilter>;
+  isDefault?: boolean;
+}
+
+export interface EnhancedDataTableProps<T extends Record<string, unknown> = Record<string, unknown>> {
+  data: T[];
+  columns: EnhancedColumn<T>[];
+  loading?: boolean;
+  title?: string;
+  description?: string;
+  rowKey?: string | ((record: T) => string);
+  pageSize?: number;
+  showExport?: boolean;
+  showColumnToggle?: boolean;
+  showQuickFilters?: boolean;
+  quickFilters?: Array<{
+    label: string;
+    filters: Record<string, ColumnFilter>;
+  }>;
+  filterPresets?: FilterPreset[];
+  onExport?: (data: T[], format: 'csv' | 'excel' | 'json', visibleColumns?: string[]) => void;
+  onFilterChange?: (filters: Record<string, ColumnFilter>) => void;
+  onRowSelect?: (selectedRows: T[]) => void;
+  enableRowSelection?: boolean;
+  formatCellValue?: (value: unknown, columnKey: string, record: T) => string;
+  extraActions?: React.ReactNode;
+}
+
+export function EnhancedDataTable<T extends Record<string, unknown> = Record<string, unknown>>({
+  data,
+  columns,
+  loading = false,
+  title,
+  description,
+  rowKey = (record: T) => {
+    // If record has id field, use it, otherwise create a hash from record data
+    if ('id' in record && record.id !== undefined && record.id !== null) {
+      return String(record.id);
+    }
+    const values = Object.values(record).map(v => String(v || '')).join('-');
+    return btoa(values).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
+  },
+  pageSize = 50,
+  showExport = true,
+  showColumnToggle = true,
+  showQuickFilters = true,
+  quickFilters = [],
+  filterPresets: _filterPresets = [],
+  onExport,
+  onFilterChange,
+  onRowSelect,
+  enableRowSelection = false,
+  formatCellValue,
+  extraActions,
+}: EnhancedDataTableProps<T>) {
+  const theme = useAppSelector(selectTheme);
+  const darkMode = theme.darkMode;
+  
+  // Column order state
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => 
+    columns.map(col => col.dataIndex)
+  );
+  
+  // Update column order when columns prop changes
+  React.useEffect(() => {
+    const newDataIndexes = columns.map(col => col.dataIndex);
+    setColumnOrder(prev => {
+      // Keep existing order for columns that still exist, add new columns at the end
+      const filtered = prev.filter(dataIndex => newDataIndexes.includes(dataIndex));
+      const missing = newDataIndexes.filter(dataIndex => !filtered.includes(dataIndex));
+      return [...filtered, ...missing];
+    });
+    
+    // Also update visible columns to include all new columns
+    setVisibleColumns(new Set(newDataIndexes));
+  }, [columns]);
+  
+  // Move column function for drag and drop
+  const moveColumn = useCallback((dragIndex: number, hoverIndex: number) => {
+    setColumnOrder(prev => {
+      const newOrder = [...prev];
+      const dragItem = newOrder[dragIndex];
+      newOrder.splice(dragIndex, 1);
+      newOrder.splice(hoverIndex, 0, dragItem);
+      return newOrder;
+    });
+  }, []);
+
+  // State
+  const [columnFilters, setColumnFilters] = useState<Record<string, ColumnFilter>>({});
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
+    new Set(columns.map(col => col.dataIndex))
+  );
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const [sortConfig, setSortConfig] = useState<{ 
+    field: string; 
+    order: 'ascend' | 'descend' | null;
+    method?: 'default' | 'length' | 'caseSensitive' | 'dayOfWeek' | 'month' | 'absolute';
+  }>({
+    field: '',
+    order: null,
+    method: 'default'
+  });
+  const [pagination, setPagination] = useState<TablePaginationConfig>({
+    current: 1,
+    pageSize,
+    showSizeChanger: true,
+    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} records`,
+    pageSizeOptions: ['20', '50', '100', '500'],
+  });
+
+  // Detect column types automatically if not specified
+  const enhancedColumns = useMemo(() => {
+    // First enhance all columns
+    const enhanced = columns.map(col => {
+      let enhancedCol = { ...col };
+      
+      // Auto-detect filter type if not specified
+      if (!col.filterType && col.enableFilter !== false && data.length > 0) {
+        const sampleValue = data[0][col.dataIndex];
+        if (typeof sampleValue === 'boolean') {
+          enhancedCol = { ...enhancedCol, filterType: 'boolean' as const };
+        } else if (typeof sampleValue === 'number') {
+          enhancedCol = { ...enhancedCol, filterType: 'number' as const };
+        } else if (typeof sampleValue === 'string') {
+          // Check if it's a date string
+          if (/^\d{4}-\d{2}-\d{2}/.test(sampleValue)) {
+            enhancedCol = { ...enhancedCol, filterType: 'dateRange' as const };
+          } else {
+            // Check if there are limited unique values (good for select)
+            const uniqueValues = new Set(data.map(row => row[col.dataIndex]));
+            if (uniqueValues.size <= 10) {
+              enhancedCol = {
+                ...enhancedCol,
+                filterType: 'select' as const,
+                filterOptions: Array.from(uniqueValues)
+                  .filter(v => v != null)
+                  .map(v => ({ label: String(v), value: v }))
+              };
+            } else {
+              enhancedCol = { ...enhancedCol, filterType: 'text' as const };
+            }
+          }
+        } else {
+          enhancedCol = { ...enhancedCol, filterType: 'text' as const };
+        }
+      }
+      
+      // Enable sorting by default unless explicitly disabled
+      if (enhancedCol.enableSort === undefined) {
+        enhancedCol.enableSort = true;
+      }
+      
+      return enhancedCol;
+    });
+    
+    // Create a map for quick lookup
+    const enhancedMap = new Map(enhanced.map(col => [col.dataIndex, col]));
+    
+    // Sort columns by the column order
+    return columnOrder
+      .filter(dataIndex => enhancedMap.has(dataIndex))
+      .map(dataIndex => enhancedMap.get(dataIndex)!);
+  }, [columns, data, columnOrder]);
+
+  // Filter and sort data
+  const filteredAndSortedData = useMemo(() => {
+    let filtered = [...data];
+
+    // Apply column filters
+    Object.entries(columnFilters).forEach(([dataIndex, filter]) => {
+      if (filter.value !== undefined && filter.value !== null && filter.value !== '') {
+        filtered = filtered.filter(row => {
+          const value = row[dataIndex];
+          
+          switch (filter.type) {
+            case 'text':
+              return String(value || '').toLowerCase().includes(String(filter.value).toLowerCase());
+            
+            case 'number': {
+              const numValue = Number(value);
+              const filterNum = filter.value as NumberFilterValue;
+              if (filterNum.min !== undefined && numValue < filterNum.min) return false;
+              if (filterNum.max !== undefined && numValue > filterNum.max) return false;
+              return true;
+            }
+            
+            case 'date': {
+              const dateValue = dayjs(value as string | number | Date | dayjs.Dayjs);
+              const filterDate = dayjs(filter.value as DateFilterValue);
+              return dateValue.isSame(filterDate, 'day');
+            }
+            
+            case 'dateRange': {
+              const rangeValue = filter.value as DateRangeFilterValue | undefined;
+              if (!rangeValue || rangeValue.length !== 2) return true;
+              const date = dayjs(value as string | number | Date | dayjs.Dayjs);
+              return date.isAfter(dayjs(rangeValue[0])) && date.isBefore(dayjs(rangeValue[1]));
+            }
+            
+            case 'select':
+              return value === filter.value;
+            
+            case 'boolean':
+              return Boolean(value) === filter.value;
+            
+            default:
+              return true;
+          }
+        });
+      }
+    });
+
+    // Apply global search
+    if (searchText) {
+      filtered = filtered.filter(row =>
+        Object.values(row as Record<string, unknown>).some(value =>
+          String(value || '').toLowerCase().includes(searchText.toLowerCase())
+        )
+      );
+    }
+
+    // Apply sorting
+    if (sortConfig.field && sortConfig.order) {
+      const column = enhancedColumns.find(col => col.dataIndex === sortConfig.field);
+      filtered.sort((a, b) => {
+        const aValue = a[sortConfig.field];
+        const bValue = b[sortConfig.field];
+        
+        // Handle null/undefined
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return sortConfig.order === 'ascend' ? -1 : 1;
+        if (bValue == null) return sortConfig.order === 'ascend' ? 1 : -1;
+        
+        let compareResult = 0;
+        
+        // Apply different sort methods based on sortConfig.method
+        switch (sortConfig.method) {
+          case 'length':
+            // Sort by string length
+            compareResult = String(aValue).length - String(bValue).length;
+            break;
+            
+          case 'caseSensitive':
+            // Case-sensitive string comparison
+            compareResult = String(aValue).localeCompare(String(bValue));
+            break;
+            
+          case 'dayOfWeek':
+            // Sort by day of week (Sunday = 0, Saturday = 6)
+            if ((column?.filterType === 'date' || column?.filterType === 'dateRange')) {
+              const dateA = new Date(aValue as string | number | Date);
+              const dateB = new Date(bValue as string | number | Date);
+              if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
+                compareResult = dateA.getDay() - dateB.getDay();
+              }
+            }
+            break;
+            
+          case 'month':
+            // Sort by month (January = 0, December = 11)
+            if ((column?.filterType === 'date' || column?.filterType === 'dateRange')) {
+              const dateA = new Date(aValue as string | number | Date);
+              const dateB = new Date(bValue as string | number | Date);
+              if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
+                compareResult = dateA.getMonth() - dateB.getMonth();
+              }
+            }
+            break;
+            
+          case 'absolute':
+            // Sort by absolute value for numbers
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+              compareResult = Math.abs(aValue) - Math.abs(bValue);
+            }
+            break;
+            
+          default:
+            // Default sorting behavior
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+              compareResult = aValue - bValue;
+            } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+              compareResult = Number(aValue) - Number(bValue);
+            } else if ((column?.filterType === 'date' || column?.filterType === 'dateRange')) {
+              const dateA = new Date(aValue as string | number | Date).getTime();
+              const dateB = new Date(bValue as string | number | Date).getTime();
+              if (!isNaN(dateA) && !isNaN(dateB)) {
+                compareResult = dateA - dateB;
+              } else {
+                compareResult = String(aValue).localeCompare(String(bValue), undefined, { numeric: true });
+              }
+            } else {
+              // Default to string comparison with numeric awareness
+              compareResult = String(aValue).localeCompare(String(bValue), undefined, { numeric: true });
+            }
+        }
+        
+        return sortConfig.order === 'ascend' ? compareResult : -compareResult;
+      });
+    }
+
+    return filtered;
+  }, [data, columnFilters, searchText, sortConfig, enhancedColumns]);
+
+  // Generate table columns with filters
+  const tableColumns = useMemo(() => {
+    return enhancedColumns
+      .filter(col => visibleColumns.has(col.dataIndex))
+      .map((col, index) => {
+        const column = { ...col } as any;
+        
+        // Add draggable header with sort dropdown
+        const originalTitle = column.title;
+        
+        // Create sort menu items based on column type
+        const sortMenuItems: any[] = [];
+        
+        // Determine column data type
+        const isDateColumn = col.filterType === 'date' || col.filterType === 'dateRange';
+        const isNumberColumn = col.filterType === 'number';
+        const isTextColumn = !isDateColumn && !isNumberColumn;
+        
+        if (isTextColumn) {
+          // Text sorting options
+          sortMenuItems.push(
+            {
+              key: 'az',
+              label: 'Sort A → Z',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'ascend' && sortConfig.method === 'default' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'ascend', method: 'default' })
+            },
+            {
+              key: 'za',
+              label: 'Sort Z → A',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'descend' && sortConfig.method === 'default' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'descend', method: 'default' })
+            },
+            {
+              type: 'divider' as const,
+              key: 'divider1'
+            },
+            {
+              key: 'length-asc',
+              label: 'Sort by Length (Short → Long)',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'ascend' && sortConfig.method === 'length' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'ascend', method: 'length' })
+            },
+            {
+              key: 'length-desc',
+              label: 'Sort by Length (Long → Short)',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'descend' && sortConfig.method === 'length' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'descend', method: 'length' })
+            },
+            {
+              type: 'divider' as const,
+              key: 'divider2'
+            },
+            {
+              key: 'case-sensitive',
+              label: 'Sort Case Sensitive',
+              icon: sortConfig.field === col.dataIndex && sortConfig.method === 'caseSensitive' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'ascend', method: 'caseSensitive' })
+            }
+          );
+        } else if (isDateColumn) {
+          // Date sorting options
+          sortMenuItems.push(
+            {
+              key: 'newest',
+              label: 'Sort Newest First',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'descend' && sortConfig.method === 'default' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'descend', method: 'default' })
+            },
+            {
+              key: 'oldest',
+              label: 'Sort Oldest First',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'ascend' && sortConfig.method === 'default' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'ascend', method: 'default' })
+            },
+            {
+              type: 'divider' as const,
+              key: 'divider1'
+            },
+            {
+              key: 'dayofweek',
+              label: 'Sort by Day of Week',
+              icon: sortConfig.field === col.dataIndex && sortConfig.method === 'dayOfWeek' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'ascend', method: 'dayOfWeek' })
+            },
+            {
+              key: 'month',
+              label: 'Sort by Month',
+              icon: sortConfig.field === col.dataIndex && sortConfig.method === 'month' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'ascend', method: 'month' })
+            }
+          );
+        } else if (isNumberColumn) {
+          // Number sorting options
+          sortMenuItems.push(
+            {
+              key: 'smallest',
+              label: 'Sort Smallest → Largest',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'ascend' && sortConfig.method === 'default' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'ascend', method: 'default' })
+            },
+            {
+              key: 'largest',
+              label: 'Sort Largest → Smallest',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'descend' && sortConfig.method === 'default' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'descend', method: 'default' })
+            },
+            {
+              type: 'divider' as const,
+              key: 'divider1'
+            },
+            {
+              key: 'absolute-asc',
+              label: 'Sort by Absolute Value (Small → Large)',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'ascend' && sortConfig.method === 'absolute' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'ascend', method: 'absolute' })
+            },
+            {
+              key: 'absolute-desc',
+              label: 'Sort by Absolute Value (Large → Small)',
+              icon: sortConfig.field === col.dataIndex && sortConfig.order === 'descend' && sortConfig.method === 'absolute' ? <CheckOutlined /> : null,
+              onClick: () => setSortConfig({ field: col.dataIndex, order: 'descend', method: 'absolute' })
+            }
+          );
+        }
+        
+        // Add clear sort option at the end
+        sortMenuItems.push(
+          {
+            type: 'divider' as const,
+            key: 'divider-clear'
+          },
+          {
+            key: 'clear',
+            label: 'Clear Sort',
+            disabled: sortConfig.field !== col.dataIndex,
+            onClick: () => setSortConfig({ field: '', order: null, method: 'default' })
+          }
+        );
+        
+        column.title = (
+          <DraggableColumnHeader
+            column={col}
+            index={index}
+            moveColumn={moveColumn}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+              <span style={{ flex: 1 }}>{originalTitle}</span>
+              {col.enableSort !== false && (
+                <Dropdown
+                  menu={{ items: sortMenuItems }}
+                  trigger={['click']}
+                  placement="bottomRight"
+                >
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CaretDownOutlined />}
+                    style={{
+                      padding: '2px 6px',
+                      height: '24px',
+                      color: sortConfig.field === col.dataIndex ? '#1890ff' : undefined,
+                      backgroundColor: sortConfig.field === col.dataIndex ? 'rgba(24, 144, 255, 0.1)' : undefined
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </Dropdown>
+              )}
+            </div>
+          </DraggableColumnHeader>
+        );
+
+        // Add filter dropdown
+        if (col.enableFilter !== false) {
+          column.filterDropdown = ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: {
+            setSelectedKeys: (keys: React.Key[]) => void;
+            selectedKeys: React.Key[];
+            confirm: () => void;
+            clearFilters: () => void;
+          }) => {
+
+            const handleConfirm = (value: unknown) => {
+              setSelectedKeys(value ? [value as React.Key] : []);
+              confirm();
+              setColumnFilters(prev => ({
+                ...prev,
+                [col.dataIndex]: {
+                  type: col.filterType || 'text',
+                  value: value as TextFilterValue | NumberFilterValue | DateFilterValue | DateRangeFilterValue | SelectFilterValue | BooleanFilterValue,
+                  options: col.filterOptions
+                }
+              }));
+            };
+
+            const handleReset = () => {
+              clearFilters();
+              setColumnFilters(prev => {
+                const newFilters = { ...prev };
+                delete newFilters[col.dataIndex];
+                return newFilters;
+              });
+            };
+
+            return (
+              <div style={{ padding: 8, minWidth: 200 }}>
+                {col.filterType === 'text' && (
+                  <Input
+                    placeholder={`Search ${col.title}`}
+                    defaultValue={selectedKeys[0] as string | number | readonly string[] | undefined}
+                    onChange={e => {
+                      if (e.type === 'click') {
+                        handleConfirm(e.target.value);
+                      }
+                    }}
+                    onPressEnter={(e) => handleConfirm((e.target as HTMLInputElement).value)}
+                    style={{ marginBottom: 8, display: 'block' }}
+                  />
+                )}
+
+                {col.filterType === 'number' && (
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <InputNumber
+                      placeholder="Min"
+                      defaultValue={(selectedKeys[0] as NumberFilterValue)?.min}
+                      onChange={min => {
+                        const current = (selectedKeys[0] as NumberFilterValue) || {};
+                        handleConfirm({ ...current, min });
+                      }}
+                      style={{ width: '100%' }}
+                    />
+                    <InputNumber
+                      placeholder="Max"
+                      defaultValue={(selectedKeys[0] as NumberFilterValue)?.max}
+                      onChange={max => {
+                        const current = (selectedKeys[0] as NumberFilterValue) || {};
+                        handleConfirm({ ...current, max });
+                      }}
+                      style={{ width: '100%' }}
+                    />
+                  </Space>
+                )}
+
+                {col.filterType === 'dateRange' && (
+                  <RangePicker
+                    defaultValue={(selectedKeys[0] as unknown) as [dayjs.Dayjs, dayjs.Dayjs] | undefined}
+                    onChange={dates => handleConfirm(dates as DateRangeFilterValue)}
+                    style={{ marginBottom: 8 }}
+                  />
+                )}
+
+                {col.filterType === 'date' && (
+                  <DatePicker
+                    defaultValue={(selectedKeys[0] as unknown) as dayjs.Dayjs | undefined}
+                    onChange={date => handleConfirm(date)}
+                    style={{ marginBottom: 8, width: '100%' }}
+                  />
+                )}
+
+                {col.filterType === 'select' && (
+                  <Select
+                    defaultValue={selectedKeys[0] as string | number | undefined}
+                    onChange={value => handleConfirm(value)}
+                    style={{ marginBottom: 8, width: '100%' }}
+                    allowClear
+                  >
+                    {col.filterOptions?.map(option => (
+                      <Option key={option.value as React.Key} value={option.value}>
+                        {option.label}
+                      </Option>
+                    ))}
+                  </Select>
+                )}
+
+                {col.filterType === 'boolean' && (
+                  <Select
+                    defaultValue={(selectedKeys[0] as unknown) as boolean | undefined}
+                    onChange={value => handleConfirm(value)}
+                    style={{ marginBottom: 8, width: '100%' }}
+                    allowClear
+                  >
+                    <Option value={true}>Yes</Option>
+                    <Option value={false}>No</Option>
+                  </Select>
+                )}
+
+                <Space>
+                  <Button
+                    type="primary"
+                    onClick={() => confirm()}
+                    icon={<SearchOutlined />}
+                    size="small"
+                    style={{ width: 90 }}
+                  >
+                    Filter
+                  </Button>
+                  <Button
+                    onClick={handleReset}
+                    size="small"
+                    style={{ width: 90 }}
+                  >
+                    Reset
+                  </Button>
+                </Space>
+              </div>
+            );
+          };
+
+          column.filterIcon = (filtered: boolean) => (
+            <FilterOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
+          );
+        }
+
+        // Disable Ant Design's built-in sorting - we'll use our own
+        column.sorter = false;
+
+        // Add default render if not provided
+        if (!column.render && formatCellValue) {
+          column.render = (value: unknown, record: any) => formatCellValue(value, col.dataIndex, record);
+        }
+
+        return column;
+      });
+  }, [enhancedColumns, visibleColumns, formatCellValue, moveColumn, sortConfig.field, sortConfig.method, sortConfig.order]);
+
+  // Handle table changes
+  const handleTableChange = (
+    newPagination: TablePaginationConfig,
+    _filters: Record<string, FilterValue | null>,
+    _sorter: SorterResult<T> | SorterResult<T>[]
+  ) => {
+    setPagination(newPagination);
+  };
+
+  // Apply quick filter
+  const applyQuickFilter = (filters: Record<string, ColumnFilter>) => {
+    setColumnFilters(filters);
+    if (onFilterChange) {
+      onFilterChange(filters);
+    }
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setColumnFilters({});
+    setSearchText('');
+    setSortConfig({ field: '', order: null, method: 'default' });
+    if (onFilterChange) {
+      onFilterChange({});
+    }
+  };
+
+  // Export data
+  const handleExport = (format: 'csv' | 'excel' | 'json') => {
+    if (onExport) {
+      // Pass visible columns as array
+      const visibleColumnsArray = Array.from(visibleColumns);
+      onExport(filteredAndSortedData, format, visibleColumnsArray);
+    } else {
+      // Default export implementation
+      if (format === 'csv') {
+        const headers = enhancedColumns
+          .filter(col => visibleColumns.has(col.dataIndex))
+          .map(col => col.title);
+        const rows = filteredAndSortedData.map(row =>
+          enhancedColumns
+            .filter(col => visibleColumns.has(col.dataIndex))
+            .map(col => {
+              const value = row[col.dataIndex];
+              return formatCellValue ? formatCellValue(value, col.dataIndex, row) : String(value || '');
+            })
+        );
+        const csv = [
+          headers.join(','),
+          ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `export_${new Date().toISOString()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    }
+  };
+
+  // Row selection config
+  const rowSelection = enableRowSelection ? {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys: React.Key[], selectedRows: T[]) => {
+      setSelectedRowKeys(newSelectedRowKeys);
+      if (onRowSelect) {
+        onRowSelect(selectedRows);
+      }
+    },
+  } : undefined;
+
+  // Column visibility menu items
+  const columnMenuItems = enhancedColumns.map(col => ({
+    key: col.dataIndex,
+    label: (
+      <Checkbox
+        checked={visibleColumns.has(col.dataIndex)}
+        onChange={e => {
+          const newVisible = new Set(visibleColumns);
+          if (e.target.checked) {
+            newVisible.add(col.dataIndex);
+          } else {
+            newVisible.delete(col.dataIndex);
+          }
+          setVisibleColumns(newVisible);
+        }}
+      >
+        {typeof col.title === 'string' ? col.title : col.dataIndex}
+      </Checkbox>
+    ),
+  }));
+
+  const activeFilterCount = Object.keys(columnFilters).length;
+
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <div className={`enhanced-data-table ${darkMode ? 'dark' : 'light'}`} style={{ background: 'transparent' }}>
+      {/* Header */}
+      {(title || description) && (
+        <div className="table-header">
+          {title && <h3>{title}</h3>}
+          {description && <p>{description}</p>}
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="table-toolbar">
+        <div className="toolbar-left">
+          {/* Global Search */}
+          <Input
+            placeholder="Search all columns..."
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            style={{ width: 300 }}
+            allowClear
+          />
+
+          {/* Quick Filters */}
+          {showQuickFilters && quickFilters.length > 0 && (
+            <Space>
+              {quickFilters.map((filter, index) => (
+                <Button
+                  key={index}
+                  onClick={() => applyQuickFilter(filter.filters)}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+            </Space>
+          )}
+
+          {/* Clear Filters */}
+          {(activeFilterCount > 0 || searchText) && (
+            <Button
+              icon={<ClearOutlined />}
+              onClick={clearAllFilters}
+              danger
+            >
+              Clear Filters ({activeFilterCount})
+            </Button>
+          )}
+        </div>
+
+        <div className="toolbar-right">
+          {/* Column Toggle */}
+          {showColumnToggle && (
+            <Dropdown
+              menu={{ items: columnMenuItems }}
+              trigger={['click']}
+            >
+              <button
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 20px',
+                  borderRadius: '12px',
+                  background: darkMode ? 'rgba(55, 65, 81, 0.8)' : '#e5e7eb',
+                  color: darkMode ? '#d1d5db' : '#4b5563',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  border: darkMode ? '1px solid rgba(75, 85, 99, 0.3)' : '1px solid rgba(107, 114, 128, 0.2)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <ColumnHeightOutlined style={{ fontSize: '16px' }} />
+                Columns
+              </button>
+            </Dropdown>
+          )}
+
+          {/* Extra Actions */}
+          {extraActions}
+
+          {/* Export */}
+          {showExport && (
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'csv',
+                    label: 'Export as CSV',
+                    onClick: () => handleExport('csv'),
+                  },
+                  {
+                    key: 'excel',
+                    label: 'Export as Excel',
+                    onClick: () => handleExport('excel'),
+                  },
+                  {
+                    key: 'json',
+                    label: 'Export as JSON',
+                    onClick: () => handleExport('json'),
+                  },
+                ],
+              }}
+              trigger={['click']}
+            >
+              <button
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 20px',
+                  borderRadius: '12px',
+                  background: '#4a5568',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#2d3748';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#4a5568';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <DownloadOutlined style={{ fontSize: '16px' }} />
+                Export
+              </button>
+            </Dropdown>
+          )}
+        </div>
+      </div>
+
+      {/* Active Filters Display */}
+      {activeFilterCount > 0 && (
+        <div className="active-filters">
+          <span>Active Filters:</span>
+          {Object.entries(columnFilters).map(([dataIndex, filter]) => {
+            const column = enhancedColumns.find(col => col.dataIndex === dataIndex);
+            return (
+              <Tag
+                key={dataIndex}
+                closable
+                onClose={() => {
+                  setColumnFilters(prev => {
+                    const newFilters = { ...prev };
+                    delete newFilters[dataIndex];
+                    return newFilters;
+                  });
+                }}
+              >
+                {typeof column?.title === 'string' ? column.title : column?.dataIndex}: {
+                  filter.type === 'dateRange' && filter.value
+                    ? `${dayjs((filter.value as DateRangeFilterValue)[0]).format('YYYY-MM-DD')} - ${dayjs((filter.value as DateRangeFilterValue)[1]).format('YYYY-MM-DD')}`
+                    : filter.type === 'number' && filter.value
+                    ? `${(filter.value as NumberFilterValue).min || 'Min'} - ${(filter.value as NumberFilterValue).max || 'Max'}`
+                    : String(filter.value)
+                }
+              </Tag>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Table */}
+      <Table
+        columns={tableColumns}
+        dataSource={filteredAndSortedData}
+        loading={loading}
+        rowKey={rowKey}
+        pagination={{
+          ...pagination,
+          total: filteredAndSortedData.length,
+        }}
+        onChange={handleTableChange}
+        rowSelection={rowSelection}
+        scroll={{ x: 'max-content' }}
+        className="enhanced-table"
+      />
+
+      <style>{`
+        .enhanced-data-table {
+          padding: 24px;
+        }
+
+        .table-header {
+          margin-bottom: 24px;
+        }
+
+        .table-header h3 {
+          margin: 0 0 8px 0;
+          font-size: 20px;
+          font-weight: 600;
+          color: ${darkMode ? '#ffffff' : '#1a1a2e'};
+        }
+
+        .table-header p {
+          margin: 0;
+          color: ${darkMode ? '#a0a0a0' : '#6b7280'};
+        }
+
+        .table-toolbar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .toolbar-left,
+        .toolbar-right {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        .active-filters {
+          margin-bottom: 16px;
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        .active-filters > span {
+          font-weight: 500;
+          color: ${darkMode ? '#a0a0a0' : '#6b7280'};
+        }
+
+        /* Table Styles */
+        .enhanced-table .ant-table {
+          background: transparent;
+        }
+
+        .enhanced-table .ant-table-thead > tr > th {
+          background: ${darkMode ? 'rgba(31, 41, 55, 0.5)' : '#f3f4f6'};
+          border-bottom: ${darkMode ? '1px solid rgba(75, 85, 99, 0.5)' : '2px solid rgba(107, 114, 128, 0.2)'};
+          color: ${darkMode ? '#d1d5db' : '#4b5563'};
+          font-weight: 600;
+        }
+        
+        /* Column Sort Button Styling */
+        .enhanced-table th .ant-btn-text {
+          transition: all 0.2s ease;
+        }
+        
+        .enhanced-table th .ant-btn-text:hover {
+          background: ${darkMode ? 'rgba(75, 85, 99, 0.5)' : 'rgba(0, 0, 0, 0.04)'};
+        }
+        
+        /* Sort dropdown menu styling */
+        .ant-dropdown-menu-item .anticon-check {
+          color: #1890ff;
+          margin-right: 8px;
+        }
+        
+        .ant-dropdown-menu-item-disabled {
+          opacity: 0.5;
+        }
+
+        .enhanced-table .ant-table-tbody > tr > td {
+          border-bottom: 1px solid ${darkMode ? 'rgba(55, 65, 81, 0.5)' : 'rgba(229, 231, 235, 0.5)'};
+          color: ${darkMode ? '#e5e7eb' : '#374151'};
+        }
+
+        .enhanced-table .ant-table-tbody > tr:hover > td {
+          background: ${darkMode ? 'rgba(55, 65, 81, 0.3)' : '#f9fafb'};
+        }
+
+        /* Dark mode overrides */
+        .dark .ant-input,
+        .dark .ant-select-selector,
+        .dark .ant-picker,
+        .dark .ant-input-number {
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+        }
+
+        .dark .ant-btn-default {
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+        }
+
+        .dark .ant-btn-default:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Filter dropdown dark mode */
+        .dark .ant-table-filter-dropdown {
+          background: #1a1a2e;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .dark .ant-table-filter-dropdown .ant-btn-primary {
+          background: #1890ff;
+          border-color: #1890ff;
+        }
+
+        /* Drag and drop styles */
+        .enhanced-table .ant-table-thead > tr > th {
+          user-select: none;
+          transition: all 0.2s ease;
+        }
+        
+        .enhanced-table .ant-table-thead > tr > th:hover {
+          background: ${darkMode ? 'rgba(31, 41, 55, 0.7)' : 'linear-gradient(to right, rgba(107, 114, 128, 0.1), rgba(59, 130, 246, 0.1)'};
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+          .table-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .toolbar-left,
+          .toolbar-right {
+            width: 100%;
+            justify-content: space-between;
+          }
+        }
+      `}</style>
+      </div>
+    </DndProvider>
+  );
+}
+
+export default EnhancedDataTable;

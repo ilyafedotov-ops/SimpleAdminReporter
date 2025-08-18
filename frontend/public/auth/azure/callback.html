@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure AD Authentication Callback</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 400px;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0078d4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            color: #d73a49;
+            margin-top: 20px;
+        }
+        .success {
+            color: #28a745;
+            margin-top: 20px;
+        }
+        .lock-icon {
+            color: #28a745;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Azure AD Authentication</h2>
+        <div id="status">
+            <div class="spinner"></div>
+            <p>Processing authentication...</p>
+            <p class="lock-icon">🔒 Secure PKCE verification</p>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        const error = urlParams.get('error');
+        const errorDescription = urlParams.get('error_description');
+
+        const statusDiv = document.getElementById('status');
+
+        if (error) {
+            // Handle authentication error
+            statusDiv.innerHTML = `
+                <div class="error">
+                    <h3>Authentication Failed</h3>
+                    <p>${errorDescription || error}</p>
+                    <p>This window will close in 5 seconds...</p>
+                </div>
+            `;
+            
+            // Notify parent window
+            if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({
+                    type: 'azure-auth-callback',
+                    error: errorDescription || error
+                }, window.location.origin);
+            }
+            
+            // Close window after delay
+            setTimeout(() => {
+                window.close();
+            }, 5000);
+            
+        } else if (code && state) {
+            // Success - send code and state to parent window
+            statusDiv.innerHTML = `
+                <div class="success">
+                    <h3>✓ Authentication Successful</h3>
+                    <p>Completing secure authentication...</p>
+                    <p class="lock-icon">🔒 PKCE verification in progress</p>
+                </div>
+            `;
+            
+            // Notify parent window
+            if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({
+                    type: 'azure-auth-callback',
+                    code: code,
+                    state: state
+                }, window.location.origin);
+                
+                // Close window after short delay
+                setTimeout(() => {
+                    window.close();
+                }, 1500);
+            } else {
+                statusDiv.innerHTML += '<p class="error">Parent window not found. Please close this window and try again.</p>';
+            }
+            
+        } else {
+            // No code or error - invalid callback
+            statusDiv.innerHTML = `
+                <div class="error">
+                    <h3>Invalid Response</h3>
+                    <p>No authentication code received.</p>
+                    <p>Please close this window and try again.</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

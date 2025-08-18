@@ -1,0 +1,80 @@
+{
+  "id": "pg_users_active",
+  "name": "Active Users Report",
+  "description": "List all active users in the system with their details",
+  "version": "1.0.0",
+  "dataSource": "postgres",
+  "sql": "SELECT id, username, display_name, email, title, department, last_login, created_at FROM users WHERE is_active = true AND auth_source = COALESCE($1, auth_source) ORDER BY last_login DESC NULLS LAST LIMIT $2",
+  "parameters": [
+    {
+      "name": "auth_source",
+      "type": "string",
+      "required": false,
+      "description": "Filter by authentication source (ad, azure, local)",
+      "validation": {
+        "enum": ["ad", "azure", "local"]
+      }
+    },
+    {
+      "name": "limit",
+      "type": "number",
+      "required": false,
+      "default": 100,
+      "description": "Maximum number of users to return",
+      "validation": {
+        "min": 1,
+        "max": 1000
+      }
+    }
+  ],
+  "resultMapping": {
+    "fieldMappings": {
+      "id": {
+        "targetField": "userId",
+        "type": "number"
+      },
+      "username": {
+        "targetField": "username",
+        "type": "string"
+      },
+      "display_name": {
+        "targetField": "displayName",
+        "type": "string"
+      },
+      "email": {
+        "targetField": "email",
+        "type": "string"
+      },
+      "title": {
+        "targetField": "jobTitle",
+        "type": "string"
+      },
+      "department": {
+        "targetField": "department",
+        "type": "string"
+      },
+      "last_login": {
+        "targetField": "lastLogin",
+        "type": "date",
+        "format": "ISO"
+      },
+      "created_at": {
+        "targetField": "createdAt",
+        "type": "date",
+        "format": "ISO"
+      }
+    }
+  },
+  "access": {
+    "requiresAuth": true
+  },
+  "constraints": {
+    "maxResults": 1000,
+    "timeoutMs": 30000
+  },
+  "cache": {
+    "enabled": true,
+    "ttlSeconds": 300,
+    "keyTemplate": "pg_users_active:{{auth_source}}:{{limit}}"
+  }
+}

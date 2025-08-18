@@ -1,0 +1,746 @@
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { 
+  Clock,
+  UserCheck,
+  Cloud,
+  Mail,
+  FileText,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Zap,
+  Star,
+  BarChart3
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAppSelector, useAppDispatch } from '@/store';
+import { setBreadcrumbs, setCurrentPage, selectTheme } from '@/store/slices/uiSlice';
+import { fetchFavoriteReportsAsync } from '@/store/slices/reportsSlice';
+import { ReportExecutionModal } from '@/components/reports/ReportExecutionModal';
+import { reportsService } from '@/services/reportsService';
+import type { QueryDefinition, QueryExecutionResult } from '@/types';
+
+const TemplatesPage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const theme = useAppSelector(selectTheme);
+  
+  // State for templates
+  const [definitions, setDefinitions] = useState<QueryDefinition[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
+  
+  const [parameterModalOpen, setParameterModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedDefinition, setSelectedDefinition] = useState<QueryDefinition | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [favoriteTemplates, setFavoriteTemplates] = useState<Set<string>>(new Set());
+
+  // Animated counter hook
+  const useCounter = (end: number, duration: number = 2000) => {
+    const [count, setCount] = useState(0);
+    
+    useEffect(() => {
+      let startTimestamp: number | null = null;
+      const step = (timestamp: number) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        setCount(Math.floor(progress * end));
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        }
+      };
+      window.requestAnimationFrame(step);
+    }, [end, duration]);
+    
+    return count;
+  };
+
+  // Fetch templates from the correct endpoint
+  const fetchTemplates = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+    try {
+      const response = await reportsService.getReportTemplates();
+      if (response.success && response.data) {
+        setDefinitions(response.data.definitions || []);
+      } else {
+        setError(response.error || 'Failed to load templates');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load templates';
+      setError(message);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Use all definitions as templates
+  const systemDefinitions = useMemo(() => 
+    definitions, 
+    [definitions]
+  );
+
+  // Apply category and search filters
+  const filteredDefinitions = useMemo(() => {
+    let filtered = systemDefinitions;
+    
+    // Category filter
+    if (selectedCategory !== 'All') {
+      const categoryMap: Record<string, string> = {
+        'AD': 'ad',
+        'Azure': 'azure', 
+        'O365': 'o365'
+      };
+      
+      const filterDataSource = categoryMap[selectedCategory];
+      filtered = filtered.filter(def => def.dataSource === filterDataSource);
+    }
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(def => 
+        def.name.toLowerCase().includes(query) ||
+        def.description?.toLowerCase().includes(query) ||
+        def.category?.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [systemDefinitions, selectedCategory, searchQuery]);
+
+  // Execute report using the reports service
+  const handleExecuteReport = async (
+    queryId: string,
+    parameters: Record<string, unknown>,
+    options: { credentialId?: number; format?: string } = {}
+  ): Promise<QueryExecutionResult> => {
+    try {
+      const result = await reportsService.executeReport(
+        queryId, 
+        parameters, 
+        options.credentialId
+      );
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Report execution failed');
+      }
+      
+      return result.data;
+    } catch (error) {
+      console.error('Report execution error:', error);
+      throw error;
+    }
+  };
+
+  const toggleFavorite = async (e: React.MouseEvent, templateId: string) => {
+    e.stopPropagation();
+    
+    try {
+      const isFavorite = favoriteTemplates.has(templateId);
+      
+      // Optimistically update UI
+      setFavoriteTemplates(prev => {
+        const newFavorites = new Set(prev);
+        if (isFavorite) {
+          newFavorites.delete(templateId);
+        } else {
+          newFavorites.add(templateId);
+        }
+        return newFavorites;
+      });
+      
+      // Call API to persist the change
+      if (isFavorite) {
+        await reportsService.removeFromFavorites(templateId, false);
+      } else {
+        await reportsService.addToFavorites(templateId, false);
+      }
+      
+      // Refresh favorites in Redux store for dashboard
+      dispatch(fetchFavoriteReportsAsync());
+    } catch (error) {
+      console.error('Failed to update favorite status:', error);
+      
+      // Revert the optimistic update on error
+      setFavoriteTemplates(prev => {
+        const newFavorites = new Set(prev);
+        if (favoriteTemplates.has(templateId)) {
+          newFavorites.add(templateId);
+        } else {
+          newFavorites.delete(templateId);
+        }
+        return newFavorites;
+      });
+      
+      message.error('Failed to update favorite status');
+    }
+  };
+
+  useEffect(() => {
+    dispatch(setCurrentPage({ page: 'templates', title: 'Report Templates' }));
+    dispatch(setBreadcrumbs([{ title: 'Report Templates' }]));
+  }, [dispatch]);
+
+  useEffect(() => {
+    // Fetch templates on mount
+    fetchTemplates();
+    
+    // Load favorites from API
+    const loadFavorites = async () => {
+      try {
+        const response = await reportsService.getFavoriteReports();
+        if (response.success && response.data) {
+          const favoriteIds = new Set(response.data.map((fav: any) => fav.id));
+          setFavoriteTemplates(favoriteIds);
+        }
+      } catch (error) {
+        console.error('Failed to load favorites:', error);
+      }
+    };
+    loadFavorites();
+  }, [fetchTemplates]);
+
+  // Get icon for data source
+  const getIconForDataSource = (dataSource: string) => {
+    switch (dataSource?.toLowerCase()) {
+      case 'ad': return UserCheck;
+      case 'azure': return Cloud;
+      case 'o365': return Mail;
+      default: return FileText;
+    }
+  };
+
+  // Get color for data source with more vibrant gradients
+  const getColorForDataSource = (dataSource: string) => {
+    switch (dataSource?.toLowerCase()) {
+      case 'ad': return 'from-blue-400 via-blue-500 to-blue-600';
+      case 'azure': return 'from-cyan-400 via-cyan-500 to-cyan-600';
+      case 'o365': return 'from-purple-400 via-purple-500 to-purple-600';
+      default: return 'from-gray-400 via-gray-500 to-gray-600';
+    }
+  };
+
+  // Get category display name
+  const getCategoryDisplayName = (dataSource: string): string => {
+    switch (dataSource) {
+      case 'ad': return 'Active Directory';
+      case 'azure': return 'Azure AD';
+      case 'o365': return 'Office 365';
+      default: return dataSource;
+    }
+  };
+
+  const categories = ['All', 'AD', 'Azure', 'O365'];
+  
+  // Calculate category counts
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      'All': systemDefinitions.length,
+      'AD': systemDefinitions.filter(d => d.dataSource === 'ad').length,
+      'Azure': systemDefinitions.filter(d => d.dataSource === 'azure').length,
+      'O365': systemDefinitions.filter(d => d.dataSource === 'o365').length
+    };
+    return counts;
+  }, [systemDefinitions]);
+
+  // Stats for header
+  const totalRuns = useMemo(() => 
+    systemDefinitions.reduce((sum, def) => sum + (def.executionCount || 0), 0),
+    [systemDefinitions]
+  );
+
+  const avgExecutionTime = useMemo(() => {
+    const defsWithTime = systemDefinitions.filter(d => d.avgExecutionTime);
+    if (defsWithTime.length === 0) return 0;
+    const totalTime = defsWithTime.reduce((sum, def) => sum + (def.avgExecutionTime || 0), 0);
+    return totalTime / defsWithTime.length;
+  }, [systemDefinitions]);
+
+  const handleTemplateSelect = (definition: QueryDefinition) => {
+    setSelectedDefinition(definition);
+    setParameterModalOpen(true);
+  };
+
+  return (
+    <div className={`app ${theme} min-h-screen relative overflow-hidden`}>
+      {/* Enhanced Animated Background */}
+      <div className="animated-bg fixed inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-100/50 via-blue-100/30 to-pink-100/50 dark:from-purple-900/20 dark:via-blue-900/10 dark:to-pink-900/20"></div>
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-400/20 rounded-full filter blur-3xl animate-blob"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-400/20 rounded-full filter blur-3xl animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-pink-400/20 rounded-full filter blur-3xl animate-blob animation-delay-4000"></div>
+      </div>
+      
+      <div className="page-container container mx-auto relative z-10">
+        {/* Enhanced Header with Gradient Text */}
+        <div className="space-y-6 mb-8">
+          <div className="text-center mb-8">
+            <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 bg-clip-text text-transparent animate-gradient">
+              Report Templates
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300">
+              Choose from <span className="font-semibold text-purple-600 dark:text-purple-400">{useCounter(definitions.length)}</span> pre-configured templates or create custom reports
+            </p>
+          </div>
+          
+          {/* Enhanced Stats Cards */}
+          <div className="flex flex-wrap justify-center gap-4 mb-8">
+            <div className="glass-card px-6 py-3 flex items-center gap-3 hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-lg">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white">{useCounter(totalRuns)}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">total runs</p>
+              </div>
+            </div>
+            
+            <div className="glass-card px-6 py-3 flex items-center gap-3 hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 text-white shadow-lg">
+                <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                  {avgExecutionTime < 1000 
+                    ? `${Math.round(avgExecutionTime)}ms` 
+                    : `${(avgExecutionTime / 1000).toFixed(1)}s`}
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">avg time</p>
+              </div>
+            </div>
+            
+            <div className="glass-card px-6 py-3 flex items-center gap-3 hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-green-400 to-green-600 text-white shadow-lg">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white">98%</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">success rate</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex justify-center gap-3">
+            <button 
+              onClick={() => fetchTemplates(true)}
+              disabled={isRefreshing}
+              className={`btn-action backdrop-blur-md ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              aria-label="Refresh templates"
+            >
+              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <button 
+              onClick={() => navigate('/reports/custom/new')}
+              className="btn-gradient px-6 py-2.5 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Custom Report</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Enhanced Search Bar */}
+        <div className="max-w-2xl mx-auto mb-8">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 rounded-2xl blur opacity-25 group-hover:opacity-40 transition-opacity"></div>
+            <div className="relative glass-card p-1 rounded-2xl">
+              <div className="flex items-center p-3">
+                <Search className="w-5 h-5 text-purple-500 mr-3 animate-pulse" />
+                <input
+                  type="text"
+                  placeholder="Search templates by name, description, or category..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 bg-transparent outline-none text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="ml-3 p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          {searchQuery && (
+            <div className="text-center mt-3 text-sm">
+              <span className="text-gray-600 dark:text-gray-400">
+                Found <span className="font-semibold text-purple-600 dark:text-purple-400">{filteredDefinitions.length}</span> template{filteredDefinitions.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Enhanced Category Filter */}
+        <div className="flex justify-center gap-3 flex-wrap mb-10">
+          {categories.map((category, index) => {
+            const isActive = selectedCategory === category;
+            const Icon = category === 'All' ? Sparkles : 
+                       category === 'AD' ? UserCheck :
+                       category === 'Azure' ? Cloud : Mail;
+            
+            return (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`
+                  relative px-6 py-3 rounded-2xl font-medium transition-all duration-300 transform hover:scale-105
+                  ${isActive 
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' 
+                    : 'glass-card hover:shadow-lg'
+                  }
+                `}
+                style={{animationDelay: `${index * 0.1}s`}}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className="w-4 h-4" />
+                  <span>{category}</span>
+                  <span className={`
+                    px-2 py-0.5 text-xs rounded-full
+                    ${isActive 
+                      ? 'bg-white/20 text-white' 
+                      : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                    }
+                  `}>
+                    {categoryCounts[category]}
+                  </span>
+                </div>
+                {isActive && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur opacity-50 -z-10"></div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, index) => (
+              <div
+                key={index}
+                className="glass-card p-6 relative overflow-hidden animate-pulse"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800"></div>
+                  <div className="w-24 h-6 rounded-full bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800"></div>
+                </div>
+                <div className="h-6 bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800 rounded-lg mb-3"></div>
+                <div className="h-4 bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800 rounded-lg w-3/4"></div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Enhanced Templates Grid */}
+        {!loading && filteredDefinitions.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredDefinitions.map((definition, index) => {
+              const Icon = getIconForDataSource(definition.dataSource);
+              const isFavorite = favoriteTemplates.has(definition.id);
+              const isHovered = hoveredCard === definition.id;
+              
+              return (
+                <div
+                  key={definition.id}
+                  className="group relative animate-fade-in-up"
+                  style={{animationDelay: `${Math.min(index * 0.1, 0.5)}s`}}
+                  onMouseEnter={() => setHoveredCard(definition.id)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                >
+                  {/* Card Glow Effect */}
+                  <div className={`
+                    absolute inset-0 bg-gradient-to-br ${getColorForDataSource(definition.dataSource)} 
+                    rounded-2xl opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500
+                  `}></div>
+                  
+                  {/* Card Content */}
+                  <div className="relative glass-card p-6 rounded-2xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer overflow-hidden"
+                       onClick={() => handleTemplateSelect(definition)}>
+                    
+                    {/* Favorite Button */}
+                    <button
+                      onClick={(e) => toggleFavorite(e, definition.id)}
+                      className={`
+                        absolute top-4 right-4 z-10 p-2 rounded-xl transition-all duration-300
+                        ${isFavorite 
+                          ? 'bg-yellow-400/20 text-yellow-500 shadow-lg' 
+                          : 'bg-gray-100 dark:bg-gray-800/50 text-gray-400 hover:text-yellow-500'
+                        }
+                      `}
+                    >
+                      <Star className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''} transition-all`} />
+                    </button>
+                    
+                    {/* Icon and Category */}
+                    <div className="flex items-start justify-between mb-6">
+                      <div className={`
+                        w-14 h-14 rounded-2xl bg-gradient-to-br ${getColorForDataSource(definition.dataSource)} 
+                        text-white flex items-center justify-center shadow-lg transform transition-all duration-300
+                        ${isHovered ? 'scale-110 rotate-3' : ''}
+                      `}>
+                        <Icon className="w-7 h-7" />
+                      </div>
+                      <span className={`
+                        px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md
+                        ${theme === 'dark' 
+                          ? 'bg-gray-800/50 text-gray-300' 
+                          : 'bg-white/70 text-gray-700 shadow-sm'
+                        }
+                      `}>
+                        {getCategoryDisplayName(definition.dataSource)}
+                      </span>
+                    </div>
+                    
+                    {/* Title and Description */}
+                    <h4 className="text-lg font-bold mb-2 text-gray-800 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                      {definition.name}
+                    </h4>
+                    {definition.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                        {definition.description}
+                      </p>
+                    )}
+                    
+                    {/* Stats Bar */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-3">
+                        {definition.avgExecutionTime !== null && definition.avgExecutionTime !== undefined ? (
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-medium">
+                            <Zap className="w-3 h-3" />
+                            {definition.avgExecutionTime < 1000 
+                              ? `${Math.round(definition.avgExecutionTime)}ms` 
+                              : `${(definition.avgExecutionTime / 1000).toFixed(1)}s`}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs">
+                            <Clock className="w-3 h-3" />
+                            New
+                          </div>
+                        )}
+                      </div>
+                      {definition.parameters && definition.parameters.length > 0 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-500">
+                          {definition.parameters.length} param{definition.parameters.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Hover Action */}
+                    <div className={`
+                      absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white dark:from-gray-900 to-transparent
+                      transform transition-all duration-300
+                      ${isHovered ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}
+                    `}>
+                      <button className="w-full btn-gradient py-2 text-sm font-medium flex items-center justify-center gap-2">
+                        <Play className="w-4 h-4" />
+                        Generate Report
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && filteredDefinitions.length === 0 && (
+          <div className="text-center py-20">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 mb-6">
+              {searchQuery ? (
+                <Search className="w-12 h-12 text-purple-500" />
+              ) : (
+                <FileText className="w-12 h-12 text-purple-500" />
+              )}
+            </div>
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-3">
+              {searchQuery ? 'No matching templates' : 'No templates found'}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+              {searchQuery 
+                ? `We couldn't find any templates matching "${searchQuery}".`
+                : selectedCategory !== 'All' 
+                ? `No templates are currently available for ${selectedCategory}.`
+                : 'No report templates are currently available.'
+              }
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="btn-secondary px-6 py-2.5"
+                >
+                  Clear Search
+                </button>
+              )}
+              <button
+                onClick={() => navigate('/reports/custom/new')}
+                className="btn-gradient px-6 py-2.5 flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Create Custom Report
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Report Execution Modal */}
+      {parameterModalOpen && selectedDefinition && (
+        <ReportExecutionModal
+          queryDefinition={selectedDefinition}
+          onClose={() => {
+            setParameterModalOpen(false);
+            setSelectedDefinition(null);
+          }}
+          onExecute={handleExecuteReport}
+        />
+      )}
+
+      <style jsx>{`
+        @keyframes blob {
+          0%, 100% {
+            transform: translate(0, 0) scale(1);
+          }
+          33% {
+            transform: translate(30px, -50px) scale(1.1);
+          }
+          66% {
+            transform: translate(-20px, 20px) scale(0.9);
+          }
+        }
+        
+        @keyframes gradient {
+          0%, 100% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+        }
+        
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-blob {
+          animation: blob 20s infinite;
+        }
+        
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 6s ease infinite;
+        }
+        
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s ease-out both;
+        }
+        
+        .glass-card {
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .glass-card {
+          background: rgba(31, 41, 55, 0.7);
+          border: 1px solid rgba(75, 85, 99, 0.2);
+        }
+        
+        .btn-gradient {
+          background: var(--slate-600);
+          color: #ffffff;
+          font-weight: 500;
+          border-radius: 12px;
+          transition: all 0.3s ease;
+        }
+        
+        .btn-gradient:hover {
+          background: var(--slate-700);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-gradient:active {
+          background: var(--slate-800);
+        }
+
+        .btn-gradient:disabled {
+          background: var(--slate-200);
+          color: var(--slate-400);
+        }
+        
+        .btn-action {
+          background: rgba(255, 255, 255, 0.9);
+          border: 1px solid rgba(229, 231, 235, 1);
+          padding: 10px;
+          border-radius: 12px;
+          transition: all 0.3s ease;
+        }
+        
+        .dark .btn-action {
+          background: rgba(31, 41, 55, 0.9);
+          border: 1px solid rgba(75, 85, 99, 1);
+        }
+        
+        .btn-action:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-secondary {
+          background: rgba(243, 244, 246, 0.9);
+          color: #4b5563;
+          font-weight: 500;
+          padding: 10px 20px;
+          border-radius: 12px;
+          transition: all 0.3s ease;
+        }
+        
+        .dark .btn-secondary {
+          background: rgba(55, 65, 81, 0.9);
+          color: #d1d5db;
+        }
+        
+        .btn-secondary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default TemplatesPage;
