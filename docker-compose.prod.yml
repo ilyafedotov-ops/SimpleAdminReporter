@@ -1,0 +1,243 @@
+# Production Docker Compose with Enhanced Security
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: reporting-nginx
+    ports:
+      - "80:80"   # HTTP redirect only
+      - "443:443" # HTTPS secure port
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/ssl/certs:ro  # SSL certificates
+      - ./nginx/logs:/var/log/nginx  # Persistent logs
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - frontend-tier
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - VITE_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+        - VITE_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+        - VITE_API_URL=/api
+    container_name: reporting-frontend
+    environment:
+      - REACT_APP_API_URL=/api
+      - GENERATE_SOURCEMAP=false
+      - NODE_ENV=production
+    networks:
+      - frontend-tier
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: reporting-backend
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      # SECURITY: Database connection via Docker secrets
+      - DATABASE_URL_FILE=/run/secrets/database_url
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - SESSION_SECRET_FILE=/run/secrets/session_secret
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - AD_PASSWORD_FILE=/run/secrets/ad_password
+      - AZURE_CLIENT_SECRET_FILE=/run/secrets/azure_client_secret
+      - CREDENTIAL_ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
+      
+      # Non-sensitive configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=reporting
+      - DB_USER=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - USE_COOKIE_AUTH=true
+      - USE_UNIFIED_AUTH=true
+      - AD_SERVER=${AD_SERVER}
+      - AD_DOMAIN=${AD_DOMAIN}
+      - AD_BASE_DN=${AD_BASE_DN}
+      - AD_USERNAME=${AD_USERNAME}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - REPORT_TIMEOUT=300000
+      - REPORT_MAX_ROWS=50000
+      - REPORT_DEFAULT_LIMIT=1000
+      - LOG_LEVEL=warn
+      - USE_MATERIALIZED_VIEWS=true
+      - ENABLE_DB_LOGS=true
+      - DB_LOG_LEVEL=warn
+    
+    secrets:
+      - database_url
+      - jwt_secret
+      - session_secret
+      - redis_password
+      - ad_password
+      - azure_client_secret
+      - encryption_key
+      
+    volumes:
+      - ./reports:/app/reports:rw
+      - ./exports:/app/exports:rw
+      - backend-logs:/app/logs
+      
+    depends_on:
+      - postgres
+      - redis
+      
+    networks:
+      - frontend-tier
+      - backend-tier
+      
+    restart: unless-stopped
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: reporting-postgres
+    environment:
+      - POSTGRES_DB=reporting
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+      # SECURITY: Enable SSL and logging
+      - POSTGRES_INITDB_ARGS=--auth-host=md5 --auth-local=trust
+    
+    command: >
+      postgres
+      -c ssl=on
+      -c ssl_cert_file=/etc/ssl/certs/server.crt
+      -c ssl_key_file=/etc/ssl/private/server.key
+      -c log_statement=all
+      -c log_min_duration_statement=1000
+      -c shared_preload_libraries='pg_stat_statements'
+      -c pg_stat_statements.track=all
+    
+    secrets:
+      - postgres_password
+      
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./ssl/postgres:/etc/ssl:ro  # PostgreSQL SSL certificates
+      - postgres-logs:/var/log/postgresql
+      
+    # SECURITY: No external ports exposed
+    networks:
+      - backend-tier
+      
+    restart: unless-stopped
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: reporting-redis
+    command: >
+      sh -c '
+        mkdir -p /etc/redis &&
+        echo "requirepass $$(cat /run/secrets/redis_password)" > /etc/redis/redis.conf &&
+        echo "appendonly yes" >> /etc/redis/redis.conf &&
+        echo "appendfsync everysec" >> /etc/redis/redis.conf &&
+        echo "save 900 1" >> /etc/redis/redis.conf &&
+        echo "save 300 10" >> /etc/redis/redis.conf &&
+        echo "save 60 10000" >> /etc/redis/redis.conf &&
+        redis-server /etc/redis/redis.conf
+      '
+    
+    secrets:
+      - redis_password
+      
+    volumes:
+      - redis-data:/data
+      - redis-logs:/var/log/redis
+      
+    # SECURITY: No external ports exposed
+    networks:
+      - backend-tier
+      
+    restart: unless-stopped
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# SECURITY: Docker secrets for sensitive data
+secrets:
+  database_url:
+    file: ./secrets/database_url.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  session_secret:
+    file: ./secrets/session_secret.txt
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  ad_password:
+    file: ./secrets/ad_password.txt
+  azure_client_secret:
+    file: ./secrets/azure_client_secret.txt
+  encryption_key:
+    file: ./secrets/encryption_key.txt
+
+# Persistent volumes
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  backend-logs:
+    driver: local
+  postgres-logs:
+    driver: local
+  redis-logs:
+    driver: local
+
+# SECURITY: Multi-tier network architecture
+networks:
+  frontend-tier:
+    driver: bridge
+    # External access for nginx and frontend
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  
+  backend-tier:
+    driver: bridge
+    internal: true  # SECURITY: No external internet access
+    # Internal only - databases and backend services
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24

@@ -1,0 +1,14 @@
+# ==================== .gitlab/ci/variables.yml ====================
+# Shared variables configuration
+variables:
+  # Docker build args
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+  
+  # Test configuration
+  TEST_TIMEOUT: 300
+  
+  # Deployment configuration
+  DEPLOY_TIMEOUT: 600
+  HEALTH_CHECK_RETRIES: 10
+  HEALTH_CHECK_INTERVAL: 30

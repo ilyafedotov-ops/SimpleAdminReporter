@@ -1,0 +1,40 @@
+# AD Reporting Application - Example Crontab Configuration
+# 
+# Add these entries to your crontab by running: crontab -e
+# Or install system-wide in /etc/cron.d/ad-reporting-backup
+#
+# Format: minute hour day month day-of-week command
+# 
+# NOTE: Adjust paths and environment variables according to your setup
+
+# Environment variables (adjust as needed)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+BACKUP_DIR=/app/backups
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=reporting
+DB_USER=postgres
+# DB_PASSWORD should be set securely, not in crontab
+
+# Daily backup at 2:30 AM
+30 2 * * * /app/scripts/backup-cron.sh
+
+# Weekly backup verification (Sundays at 3:00 AM)
+0 3 * * 0 /app/scripts/verify-backups.sh
+
+# Monthly backup report (First day of month at 4:00 AM)
+0 4 1 * * /app/scripts/backup-report.sh
+
+# Clean up old exports every day at 1:00 AM
+0 1 * * * curl -X POST http://localhost:5000/api/export/cleanup -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -H "Content-Type: application/json" -d '{"daysOld": 7}'
+
+# Optional: Backup to remote storage (daily at 3:30 AM)
+# 30 3 * * * /app/scripts/backup-to-s3.sh
+
+# Optional: Database maintenance (Sundays at 4:00 AM)
+# 0 4 * * 0 /app/scripts/db-maintenance.sh
+
+# Note: For Docker deployments, you might want to run these as Docker commands:
+# 30 2 * * * docker exec ad-reporting-backend /app/scripts/backup-cron.sh
+# 0 1 * * * docker exec ad-reporting-backend npm run cleanup:exports

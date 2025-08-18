@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Build artifacts  
+dist/
+*.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
+junit.xml
+*.lcov
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+
+# Documentation
+*.md
+
+# Scripts (except migration)
+scripts/
+!scripts/migrate.js
+
+# Temporary
+temp/
+tmp/

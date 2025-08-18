@@ -1,0 +1,27 @@
+.test_template:
+  image: node:${NODE_VERSION}-alpine
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  variables:
+    COMPONENT: ""
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-${COMPONENT}-node
+    paths:
+      - .npm/
+      - ${COMPONENT}/node_modules/
+  before_script:
+    - cd ${COMPONENT}
+    - npm ci --prefer-offline
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: ${COMPONENT}/coverage/cobertura-coverage.xml
+      junit: ${COMPONENT}/junit.xml
+    paths:
+      - ${COMPONENT}/coverage/lcov.info
+      - ${COMPONENT}/coverage/cobertura-coverage.xml
+    expire_in: 1 week
+    exclude:
+      - ${COMPONENT}/coverage/lcov-report/**
+      - ${COMPONENT}/coverage/**/*.html
+      - ${COMPONENT}/coverage/**/*.json
