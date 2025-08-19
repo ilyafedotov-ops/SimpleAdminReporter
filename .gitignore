@@ -132,6 +132,7 @@ coverage/
 *.claude
 .claude-cache/
 claude/
+claude
 
 # Backup files
 *.bak
