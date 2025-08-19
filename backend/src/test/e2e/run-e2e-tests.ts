@@ -392,6 +392,7 @@ class E2ETestRunner {
    * Print console report
    */
   private printConsoleReport(report: TestReport): void {
+    /* eslint-disable no-console */
     console.log('\n' + '='.repeat(80));
     console.log('E2E TEST REPORT');
     console.log('='.repeat(80));
@@ -415,6 +416,7 @@ class E2ETestRunner {
     }
     
     console.log('='.repeat(80) + '\n');
+    /* eslint-enable no-console */
   }
 
   /**
@@ -626,6 +628,7 @@ async function main() {
         }
         break;
       case '--help':
+        // eslint-disable-next-line no-console
         console.log(`
 Usage: npm run test:e2e [options]
 
@@ -664,6 +667,7 @@ Examples:
 // Run if called directly
 if (require.main === module) {
   main().catch((error) => {
+    // eslint-disable-next-line no-console
     console.error('E2E Test Runner failed:', error);
     process.exit(1);
   });
