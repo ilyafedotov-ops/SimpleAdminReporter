@@ -788,3 +788,165 @@ AZURE_CLIENT_SECRET        # Azure AD application secret (Masked)
 - Experiment with different approaches to find optimal workflows
 - Balance speed with safety and code quality
 - **Always commit and push changes to GitLab server immediately**
+
+## GitHub Configuration & Commit Standards
+
+### GitHub Repository Information
+- **Repository**: [ilyafedotov-ops/SimpleAdminReporter](https://github.com/ilyafedotov-ops/SimpleAdminReporter)
+- **Main Branch**: `main`
+- **Actions**: GitHub Actions CI/CD pipeline configured
+- **Security**: CodeQL analysis enabled for security scanning
+
+### Conventional Commit Standards
+The project uses **commitlint** with conventional commit format. All commits must follow this structure:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Required Commit Types
+```bash
+feat     # New features
+fix      # Bug fixes
+docs     # Documentation changes
+style    # Code style changes (formatting, etc.)
+refactor # Code refactoring
+perf     # Performance improvements
+test     # Test-related changes
+chore    # Maintenance tasks
+ci       # CI/CD related changes
+build    # Build system changes
+revert   # Reverts previous commits
+```
+
+#### Commit Examples
+```bash
+# Feature addition
+feat: add user authentication with JWT tokens
+
+# Bug fix (including security fixes)
+fix: replace Math.random() with crypto.randomBytes() for secure random generation
+
+# Documentation update
+docs: update API documentation with new endpoints
+
+# Refactoring
+refactor: extract common validation logic into utility functions
+
+# Styling/linting fixes
+style: fix ESLint violations and improve type safety
+```
+
+#### Commitlint Configuration
+The project uses `@commitlint/config-conventional` with these rules:
+- **Type**: Must be one of the allowed types above
+- **Subject**: Must be lowercase, no period at the end
+- **Body**: Optional detailed explanation
+- **Footer**: Optional breaking changes or issue references
+
+### GitHub Actions Workflow
+The repository includes a CI/CD pipeline (`.github/workflows/ci.yml`) with:
+
+#### Pipeline Stages
+1. **Validate**: Commit message validation with commitlint
+2. **Build**: Frontend and backend compilation with linting
+3. **Test**: Unit tests, integration tests with coverage thresholds
+4. **Security**: Dependency audits and CodeQL security scanning
+5. **Deploy**: Staging and production deployment (manual triggers)
+
+#### Key Features
+- **Parallel Execution**: Frontend and backend builds run concurrently
+- **Cache Optimization**: NPM cache for dependency installation speed
+- **Coverage Thresholds**: Enforces minimum test coverage requirements
+- **Security Scanning**: Automated vulnerability detection with CodeQL
+- **Artifact Management**: Build artifacts with size optimization
+
+### Development Workflow with GitHub
+```bash
+# 1. Create feature branch
+git checkout -b feature/your-feature-name
+
+# 2. Make changes and commit with conventional format
+git add .
+git commit -m "feat: add new reporting dashboard"
+
+# 3. Push to GitHub
+git push origin feature/your-feature-name
+
+# 4. Create Pull Request on GitHub
+# 5. Wait for CI/CD pipeline to pass
+# 6. Merge after code review
+```
+
+### GitHub Security Features
+- **CodeQL Analysis**: Automatic security vulnerability scanning
+- **Dependabot**: Automated dependency security updates  
+- **Secret Scanning**: Prevents committing sensitive information
+- **Branch Protection**: Requires PR reviews and status checks
+
+### Commit Message Validation
+Install commitlint globally for local validation:
+```bash
+npm install -g @commitlint/cli @commitlint/config-conventional
+```
+
+Validate commit messages locally:
+```bash
+echo "feat: add new feature" | commitlint
+```
+
+### Emergency Commit Fixes
+If commitlint fails, fix the commit message:
+```bash
+# For the last commit
+git commit --amend -m "fix: correct commit message format"
+git push --force-with-lease origin main
+
+# For multiple commits
+git rebase -i HEAD~n  # where n is number of commits to fix
+```
+
+### GitHub Actions Troubleshooting
+
+#### Recent Fixes Applied (2025)
+
+**Issue**: GitHub Actions failing with "Dependencies lock file is not found" error
+- **Root Cause**: NPM cache configuration in `validate` job looking for package-lock.json at root level
+- **Solution**: Removed cache configuration from validate job since it only installs global packages
+- **Fix Location**: `.github/workflows/ci.yml` line 32
+- **Status**: ✅ Resolved in commit `7fa5c37`
+
+**Issue**: CodeQL Security Alert #54 - Insecure randomness
+- **Root Cause**: Using `Math.random()` in test data generation for passwords
+- **Solution**: Replaced with `crypto.randomBytes()` for cryptographically secure random generation
+- **Fix Location**: `frontend/e2e/fixtures/test-data.ts:279`
+- **Status**: ✅ Resolved in commit `965352e`
+
+**Issue**: ESLint linting violations in test files
+- **Root Cause**: Excessive use of `any` types, missing type annotations, magic numbers
+- **Solution**: Added proper TypeScript interfaces, constants, and type safety improvements
+- **Fix Location**: `backend/src/routes/reports.routes.test.ts`
+- **Status**: ✅ Resolved in commit `ea8a1c2`
+
+#### Common GitHub Actions Issues
+```bash
+# Cache dependency path issues
+- Problem: "Dependencies lock file is not found"
+- Solution: Ensure cache-dependency-path points to correct package-lock.json location
+- Example: `cache-dependency-path: backend/package-lock.json`
+
+# Commitlint failures
+- Problem: "type must be one of [feat, fix, docs...]"
+- Solution: Use conventional commit types only
+- Invalid: "security:", "bugfix:", "update:"
+- Valid: "fix:", "feat:", "docs:", "refactor:"
+
+# ESLint max-warnings exceeded
+- Problem: Too many linting violations
+- Solution: Fix TypeScript any types, add proper interfaces, remove unused imports
+- Run locally: `npm run lint -- --max-warnings 0`
+```
