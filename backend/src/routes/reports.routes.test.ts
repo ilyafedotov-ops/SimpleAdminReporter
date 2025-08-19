@@ -1,9 +1,34 @@
 import request from 'supertest';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import reportsRouter from './reports.routes';
 import { reportsController } from '@/controllers/reports.controller';
 import { queryController } from '@/controllers/query.controller';
 import { ExportController } from '@/controllers/export.controller';
+
+// Type definitions for better type safety
+interface MockRequest extends Partial<Request> {
+  user?: { id: number; username: string; isAdmin: boolean };
+  headers: { authorization?: string };
+}
+
+interface MockResponse extends Partial<Response> {}
+
+type MockNext = NextFunction;
+
+interface MockAuthWrapper {
+  auditAction: jest.Mock;
+  userRateLimit: jest.Mock;
+  requireResourceAccess: jest.Mock;
+  requireAuth: jest.Mock;
+  requireAdmin: jest.Mock;
+  optionalAuth: jest.Mock;
+}
+
+// Constants for magic numbers
+const RATE_LIMITS = {
+  TEMPLATE_EXECUTION: 30,
+  CUSTOM_REPORT_CREATION: 20
+} as const;
 
 // Mock all controllers and dependencies
 jest.mock('@/controllers/reports.controller', () => ({
@@ -64,7 +89,7 @@ jest.mock('@/controllers/export.controller', () => ({
 }));
 
 // Mock auth wrapper middleware
-const mockAuthWrapper = {
+const mockAuthWrapper: MockAuthWrapper = {
   auditAction: jest.fn(),
   userRateLimit: jest.fn(),
   requireResourceAccess: jest.fn(),
@@ -80,37 +105,37 @@ jest.mock('@/middleware/auth-wrapper', () => {
   };
 
   return {
-    requireAuth: jest.fn((req, res, next) => {
+    requireAuth: jest.fn((req: MockRequest, res: MockResponse, next: MockNext) => {
       mockAuthWrapper.requireAuth();
       req.user = { id: 1, username: 'testuser', isAdmin: false };
       next();
     }),
-    requireAdmin: jest.fn((req, res, next) => {
+    requireAdmin: jest.fn((req: MockRequest, res: MockResponse, next: MockNext) => {
       mockAuthWrapper.requireAdmin();
       req.user = { id: 1, username: 'admin', isAdmin: true };
       next();
     }),
-    optionalAuth: jest.fn((req, res, next) => {
+    optionalAuth: jest.fn((req: MockRequest, res: MockResponse, next: MockNext) => {
       mockAuthWrapper.optionalAuth();
-      if (req.headers.authorization) {
+      if (req.headers?.authorization) {
         req.user = { id: 1, username: 'testuser', isAdmin: false };
       }
       next();
     }),
-    auditAction: jest.fn((action, category) => {
-      return (req: any, res: any, next: any) => {
+    auditAction: jest.fn((action: string, category: string) => {
+      return (req: MockRequest, res: MockResponse, next: MockNext) => {
         mockAuthWrapper.auditAction(action, category);
         next();
       };
     }),
-    userRateLimit: jest.fn((limit) => {
-      return (req: any, res: any, next: any) => {
+    userRateLimit: jest.fn((limit: number) => {
+      return (req: MockRequest, res: MockResponse, next: MockNext) => {
         mockAuthWrapper.userRateLimit(limit);
         next();
       };
     }),
-    requireResourceAccess: jest.fn((checker) => {
-      return (req: any, res: any, next: any) => {
+    requireResourceAccess: jest.fn((checker: unknown) => {
+      return (req: MockRequest, res: MockResponse, next: MockNext) => {
         mockAuthWrapper.requireResourceAccess(checker);
         next();
       };
@@ -121,15 +146,15 @@ jest.mock('@/middleware/auth-wrapper', () => {
 
 // Mock validation middleware
 jest.mock('@/middleware/validation.middleware', () => ({
-  validateRequest: jest.fn(() => (req: any, res: any, next: any) => next()),
-  handleValidationErrors: jest.fn((req: any, res: any, next: any) => next())
+  validateRequest: jest.fn(() => (req: MockRequest, res: MockResponse, next: MockNext) => next()),
+  handleValidationErrors: jest.fn((req: MockRequest, res: MockResponse, next: MockNext) => next())
 }));
 
 // Mock express-validator
 jest.mock('express-validator', () => {
   // Create a function that acts as middleware and has chainable methods
   const createValidatorChain = () => {
-    const middleware: any = (req: any, res: any, next: any) => next();
+    const middleware = (req: MockRequest, res: MockResponse, next: MockNext) => next();
     
     // Add chainable methods
     middleware.optional = jest.fn(() => createValidatorChain());
@@ -196,8 +221,8 @@ describe('Reports Routes', () => {
     app.use('/api/reports', reportsRouter);
 
     // Add error handling middleware
-    app.use((err: any, req: any, res: any, next: any) => {
-      res.status(err.status || 500).json({ error: err.message });
+    app.use((err: Error & { status?: number }, req: MockRequest, res: MockResponse, next: MockNext) => {
+      res.status?.(err.status || 500).json?.({ error: err.message });
     });
   });
 
@@ -267,7 +292,7 @@ describe('Reports Routes', () => {
           .send({})
           .expect(200);
 
-        expect(mockAuthWrapper.userRateLimit).toHaveBeenCalledWith(30);
+        expect(mockAuthWrapper.userRateLimit).toHaveBeenCalledWith(RATE_LIMITS.TEMPLATE_EXECUTION);
       });
 
       it('should audit template execution', async () => {
@@ -395,7 +420,7 @@ describe('Reports Routes', () => {
           .send({ name: 'Test', source: 'ad', query: {} })
           .expect(201);
 
-        expect(mockAuthWrapper.userRateLimit).toHaveBeenCalledWith(20);
+        expect(mockAuthWrapper.userRateLimit).toHaveBeenCalledWith(RATE_LIMITS.CUSTOM_REPORT_CREATION);
       });
 
       it('should audit custom report creation', async () => {
@@ -722,9 +747,10 @@ describe('Reports Routes', () => {
     describe('GET /api/reports/admin/usage', () => {
       it('should get usage statistics with admin authentication', async () => {
         const { db } = require('@/config/database');
-        db.query.mockResolvedValueOnce({ rows: [] }) // template stats
-               .mockResolvedValueOnce({ rows: [] }) // custom stats
-               .mockResolvedValueOnce({ rows: [] }); // user stats
+        db.query
+          .mockResolvedValueOnce({ rows: [] }) // template stats
+          .mockResolvedValueOnce({ rows: [] }) // custom stats
+          .mockResolvedValueOnce({ rows: [] }); // user stats
 
         const response = await request(app)
           .get('/api/reports/admin/usage')
@@ -918,15 +944,16 @@ describe('Reports Routes', () => {
     describe('GET /api/reports/query/metrics', () => {
       it('should get query execution metrics', async () => {
         const { db } = require('@/config/database');
-        db.query.mockResolvedValueOnce({ rows: [{ total: '100' }] }) // total queries
-               .mockResolvedValueOnce({ rows: [] }) // recent queries
-               .mockResolvedValueOnce({ rows: [{ 
-                 total_executions: '50', 
-                 avg_execution_time: '125.5',
-                 max_execution_time: '500',
-                 cached_executions: '10'
-               }] }) // query stats
-               .mockResolvedValueOnce({ rows: [{ error_count: '2' }] }); // error stats
+        db.query
+          .mockResolvedValueOnce({ rows: [{ total: '100' }] }) // total queries
+          .mockResolvedValueOnce({ rows: [] }) // recent queries
+          .mockResolvedValueOnce({ rows: [{ 
+            total_executions: '50', 
+            avg_execution_time: '125.5',
+            max_execution_time: '500',
+            cached_executions: '10'
+          }] }) // query stats
+          .mockResolvedValueOnce({ rows: [{ error_count: '2' }] }); // error stats
 
         const response = await request(app)
           .get('/api/reports/query/metrics')
@@ -1240,7 +1267,7 @@ describe('Reports Routes', () => {
 
       for (const route of protectedRoutes) {
         const req = request(app);
-        const method = route.method as 'get' | 'post' | 'put' | 'patch' | 'delete';
+        const method = route.method as keyof typeof req & ('get' | 'post' | 'put' | 'patch' | 'delete');
         await req[method](route.path)
           .set('Authorization', 'Bearer valid-token')
           .send({});
@@ -1259,7 +1286,7 @@ describe('Reports Routes', () => {
 
       for (const route of adminRoutes) {
         const req = request(app);
-        const method = route.method as 'get' | 'post' | 'put' | 'patch' | 'delete';
+        const method = route.method as keyof typeof req & ('get' | 'post' | 'put' | 'patch' | 'delete');
         await req[method](route.path)
           .set('Authorization', 'Bearer admin-token')
           .send({});
@@ -1276,7 +1303,7 @@ describe('Reports Routes', () => {
       
       for (const route of rateLimitedRoutes) {
         const req = request(app);
-        const method = route.method as 'get' | 'post' | 'put' | 'patch' | 'delete';
+        const method = route.method as keyof typeof req & ('get' | 'post' | 'put' | 'patch' | 'delete');
         await req[method](route.path)
           .set('Authorization', 'Bearer valid-token')
           .send({ source: 'ad', query: { fields: ['username'] } });
@@ -1306,7 +1333,7 @@ describe('Reports Routes', () => {
       
       for (const route of auditedRoutes) {
         const req = request(app);
-        const method = route.method as 'get' | 'post' | 'put' | 'patch' | 'delete';
+        const method = route.method as keyof typeof req & ('get' | 'post' | 'put' | 'patch' | 'delete');
         await req[method](route.path)
           .set('Authorization', 'Bearer admin-token')
           .send({ source: 'ad', query: { fields: ['username'] } });
