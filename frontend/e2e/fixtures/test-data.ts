@@ -3,6 +3,8 @@
  * Contains test users, mock data, and configuration
  */
 
+import { randomBytes } from 'crypto';
+
 export interface TestUser {
   username: string;
   password: string;
@@ -273,10 +275,11 @@ export class TestDataHelper {
   }
 
   /**
-   * Generate random test data
+   * Generate random test data using cryptographically secure randomness
    */
   static generateRandomUser(): TestUser {
-    const randomId = Math.floor(Math.random() * 1000);
+    // Use cryptographically secure random bytes to generate unique ID
+    const randomId = randomBytes(4).readUInt32BE(0) % 10000;
     return {
       username: `testuser${randomId}@testdomain.local`,
       password: `TestPass${randomId}!`,
