@@ -16,7 +16,9 @@ if [ -n "$STAGED_FILES" ]; then
         if [ -n "$BACKEND_FILES" ]; then
             echo "Checking backend files: $BACKEND_FILES"
             cd backend || exit 1
-            npx eslint $BACKEND_FILES --max-warnings 100
+            # Remove "backend/" prefix from file paths for ESLint
+            BACKEND_FILES_RELATIVE=$(echo "$BACKEND_FILES" | sed 's/^backend\///')
+            npx eslint $BACKEND_FILES_RELATIVE --max-warnings 100
             BACKEND_EXIT_CODE=$?
             cd .. || exit 1
             if [ $BACKEND_EXIT_CODE -ne 0 ]; then
@@ -32,7 +34,9 @@ if [ -n "$STAGED_FILES" ]; then
         if [ -n "$FRONTEND_FILES" ]; then
             echo "Checking frontend files: $FRONTEND_FILES"
             cd frontend || exit 1
-            npx eslint $FRONTEND_FILES --max-warnings 10
+            # Remove "frontend/" prefix from file paths for ESLint
+            FRONTEND_FILES_RELATIVE=$(echo "$FRONTEND_FILES" | sed 's/^frontend\///')
+            npx eslint $FRONTEND_FILES_RELATIVE --max-warnings 10
             FRONTEND_EXIT_CODE=$?
             cd .. || exit 1
             if [ $FRONTEND_EXIT_CODE -ne 0 ]; then
