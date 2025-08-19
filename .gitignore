@@ -152,3 +152,7 @@ backups/
 wiki-content/
 setup-github-wiki.sh
 deploy-wiki.sh
+
+# Attribution replacement scripts
+scripts/replace-attribution.sh
+scripts/install-attribution-hook.sh
