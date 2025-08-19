@@ -576,7 +576,8 @@ describe('Graph Routes Integration', () => {
       const entityTypes = ['users', 'groups', 'devices', 'applications'];
 
       for (const entityType of entityTypes) {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/graph/fields/${entityType}`)
           .expect(200);
 

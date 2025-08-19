@@ -426,6 +426,7 @@ describe('User Preferences Routes Integration', () => {
         }
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await request(app)
         .put('/api/user/preferences')
         .send(booleanPrefs)
@@ -486,6 +487,7 @@ describe('User Preferences Routes Integration', () => {
 
       (userPreferencesService.updateUserPreferences as jest.Mock).mockResolvedValue(mockServiceResponse);
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await request(app)
         .put('/api/user/preferences/notifications')
         .send(partialUpdate)
@@ -667,6 +669,7 @@ describe('User Preferences Routes Integration', () => {
         next();
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await request(app)
         .get('/api/user/preferences')
         .expect(500);

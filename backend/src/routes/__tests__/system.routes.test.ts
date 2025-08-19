@@ -571,7 +571,8 @@ describe('System Routes Integration', () => {
       });
 
       // Basic health check
-      const basicResponse = await request(app)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _basicResponse = await request(app)
         .get('/api/system/health')
         .expect(200);
 
@@ -608,7 +609,8 @@ describe('System Routes Integration', () => {
 
       for (const route of adminRoutes) {
         const agent = request(app);
-        const response = await (agent as any)[route.method](`/api/system${route.path}`)
+        const response = 
+      await (agent as any)[route.method](`/api/system${route.path}`)
           .send({})
           .expect(403);
 

@@ -74,7 +74,8 @@ describe('Database Stability E2E Tests', () => {
       const client = await testContext.pool.connect();
       try {
         // Should still be able to make API requests while holding a connection
-        const response = await testContext.request
+        const response = 
+      await testContext.request
           .get('/api/health/detailed')
           .set('Authorization', `Bearer ${testContext.testToken}`)
           .set('X-Correlation-ID', correlationId);
@@ -286,7 +287,8 @@ describe('Database Stability E2E Tests', () => {
       
       for (let i = 0; i < 10; i++) {
         try {
-          const response = await testContext.request
+          const response = 
+      await testContext.request
             .get('/api/health')
             .set('Authorization', `Bearer ${testContext.testToken}`)
             .set('X-Correlation-ID', `${correlationId}-recovery-${i}`)

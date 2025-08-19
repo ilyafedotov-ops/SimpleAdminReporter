@@ -584,7 +584,7 @@ describe('UnifiedAuthenticationService - Comprehensive Tests', () => {
           exp: Math.floor(Date.now() / 1000) + 86400
         };
 
-        const _mockUser = {
+        const _mockUser = { // eslint-disable-line @typescript-eslint/no-unused-vars
           id: 1,
           username: 'testuser',
           isActive: true,
@@ -850,7 +850,7 @@ describe('UnifiedAuthenticationService - Comprehensive Tests', () => {
           exp: Math.floor(Date.now() / 1000) + 3600
         };
 
-        const _mockUser = {
+        const _mockUser = { // eslint-disable-line @typescript-eslint/no-unused-vars
           id: 1,
           username: 'testuser',
           isActive: true,

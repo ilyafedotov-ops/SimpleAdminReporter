@@ -211,7 +211,8 @@ describe('Preview Data Extractor - Enhanced Coverage', () => {
 
   describe('Extract Row Count - Enhanced Coverage', () => {
     it('should handle objects with all count properties present', () => {
-      const response = {
+      const response = 
+      {
         count: 5,
         totalCount: 10,
         resultCount: 15,
@@ -278,7 +279,8 @@ describe('Preview Data Extractor - Enhanced Coverage', () => {
         }
       };
 
-      const response = createPreviewResponse('ad', 999999, extractedData);
+      const response = 
+      createPreviewResponse('ad', 999999, extractedData);
 
       expect(response.data.executionTime).toBe(999999);
       expect(response.success).toBe(true);
@@ -297,7 +299,8 @@ describe('Preview Data Extractor - Enhanced Coverage', () => {
         }
       };
 
-      const response = createPreviewResponse('azure', 0, extractedData);
+      const response = 
+      createPreviewResponse('azure', 0, extractedData);
 
       expect(response.data.executionTime).toBe(0);
       expect(response.data.rowCount).toBe(0);
@@ -317,7 +320,8 @@ describe('Preview Data Extractor - Enhanced Coverage', () => {
         }
       };
 
-      const response = createPreviewResponse('o365', -100, extractedData);
+      const response = 
+      createPreviewResponse('o365', -100, extractedData);
 
       expect(response.data.executionTime).toBe(-100);
       expect(response.success).toBe(true);
@@ -476,7 +480,8 @@ describe('Preview Data Extractor - Enhanced Coverage', () => {
       ];
 
       testCases.forEach(({ data, source, time }) => {
-        const response = processPreviewData(data, source as DataSourceType, time);
+        const response = 
+      processPreviewData(data, source as DataSourceType, time);
         
         expect(response).toHaveProperty('success', true);
         expect(response).toHaveProperty('data');

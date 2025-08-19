@@ -65,7 +65,7 @@ describe('Database Configuration', () => {
     test('should handle pool statistics gracefully', () => {
       const database = Database.getInstance();
       expect(() => {
-        const _stats = database.getPoolStats();
+        const _stats = database.getPoolStats(); // eslint-disable-line @typescript-eslint/no-unused-vars
       }).not.toThrow();
     });
   });
@@ -121,7 +121,7 @@ describe('Database Configuration', () => {
     test('should create instance without errors in test environment', () => {
       // In test environment, DATABASE_URL might be set
       expect(() => {
-        const _instance = Database.getInstance();
+        const _instance = Database.getInstance(); // eslint-disable-line @typescript-eslint/no-unused-vars
       }).not.toThrow();
     });
   });

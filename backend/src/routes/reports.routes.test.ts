@@ -3,7 +3,6 @@ import express, { Request, Response, NextFunction } from 'express';
 import reportsRouter from './reports.routes';
 import { reportsController } from '@/controllers/reports.controller';
 import { queryController } from '@/controllers/query.controller';
-import { ExportController } from '@/controllers/export.controller';
 
 // Type definitions for better type safety
 interface MockRequest extends Partial<Request> {
@@ -105,10 +104,10 @@ jest.mock('@/middleware/auth-wrapper', () => {
   };
 
   return {
-    requireAuth: jest.fn((req: MockRequest, res: MockResponse, next: MockNext) => {
+    requireAuth: jest.fn((req: MockRequest, res: MockResponse, _next: MockNext) => {
       mockAuthWrapper.requireAuth();
       req.user = { id: 1, username: 'testuser', isAdmin: false };
-      next();
+      _next();
     }),
     requireAdmin: jest.fn((req: MockRequest, res: MockResponse, next: MockNext) => {
       mockAuthWrapper.requireAdmin();
@@ -220,50 +219,89 @@ describe('Reports Routes', () => {
     app.use(express.json());
     app.use('/api/reports', reportsRouter);
 
-    // Add error handling middleware
-    app.use((err: Error & { status?: number }, req: MockRequest, res: MockResponse, next: MockNext) => {
-      res.status?.(err.status || 500).json?.({ error: err.message });
-    });
+// Add error handling middleware
+  app.use((err: Error & { status?: number }, _req: MockRequest, res: MockResponse, _next: MockNext) => {
+    res.status?.(err.status || 500).json?.({ error: err.message });
   });
 
   describe('Pre-built Report Templates', () => {
     describe('GET /api/reports/templates', () => {
       it('should get report templates without authentication', async () => {
-        const response = await request(app)
+        const _response = 
+      await request(app)
           .get('/api/reports/templates')
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { templates: [] }
         });
         expect(reportsController.getTemplates).toHaveBeenCalled();
       });
 
-      it('should filter templates by category', async () => {
-        const response = await request(app)
+it('should filter templates by category', async () => {
+        const _response = 
+      await request(app)
           .get('/api/reports/templates')
           .query({ category: 'ad' })
           .expect(200);
 
+        expect(_response.body).toEqual({
+          success: true,
+          data: { templates: [] }
+        });
         expect(reportsController.getTemplates).toHaveBeenCalled();
       });
 
       it('should filter templates by source', async () => {
-        const response = await request(app)
+        const _response = 
+      await request(app)
           .get('/api/reports/templates')
           .query({ source: 'azure' })
           .expect(200);
 
+        expect(_response.body).toEqual({
+          success: true,
+          data: { templates: [] }
+        });
         expect(reportsController.getTemplates).toHaveBeenCalled();
       });
 
       it('should handle invalid category parameter gracefully', async () => {
-        const response = await request(app)
+        const _response = 
+      await request(app)
           .get('/api/reports/templates')
           .query({ category: 'invalid' })
           .expect(200); // Validation passes in mock
 
+        expect(_response.body).toEqual({
+          success: true,
+          data: { templates: [] }
+        });
+        expect(reportsController.getTemplates).toHaveBeenCalled();
+      });
+        expect(reportsController.getTemplates).toHaveBeenCalled();
+      });
+
+      it('should filter templates by source', async () => {
+        const _response = 
+      await request(app)
+          .get('/api/reports/templates')
+          .query({ source: 'azure' })
+          .expect(200);
+
+        expect(_response.status).toBe(200);
+        expect(reportsController.getTemplates).toHaveBeenCalled();
+      });
+
+      it('should handle invalid category parameter gracefully', async () => {
+        const _response = 
+      await request(app)
+          .get('/api/reports/templates')
+          .query({ category: 'invalid' })
+          .expect(200); // Validation passes in mock
+
+        expect(_response.status).toBe(200);
         expect(reportsController.getTemplates).toHaveBeenCalled();
       });
     });
@@ -272,13 +310,14 @@ describe('Reports Routes', () => {
       const validTemplateId = '123e4567-e89b-12d3-a456-426614174000';
 
       it('should execute template with authentication', async () => {
-        const response = await request(app)
+        const _response = 
+      await request(app)
           .post(`/api/reports/execute/${validTemplateId}`)
           .set('Authorization', 'Bearer valid-token')
           .send({ parameters: { days: 30 } })
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           executionId: 'test-execution-id'
         });
@@ -322,11 +361,12 @@ describe('Reports Routes', () => {
   describe('Field Discovery', () => {
     describe('GET /api/reports/fields/:source', () => {
       it('should get fields for AD source', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/fields/ad')
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { fields: [] }
         });
@@ -334,16 +374,19 @@ describe('Reports Routes', () => {
       });
 
       it('should get fields for Azure source with category filter', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/fields/azure')
           .query({ category: 'basic' })
           .expect(200);
 
+        expect(_response.status).toBe(200);
         expect(reportsController.getFields).toHaveBeenCalled();
       });
 
       it('should get fields with search filter', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/fields/o365')
           .query({ search: 'username' })
           .expect(200);
@@ -354,12 +397,13 @@ describe('Reports Routes', () => {
 
     describe('GET /api/reports/schema/:source/discover', () => {
       it('should discover AD schema with authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/schema/ad/discover')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { schema: {} }
         });
@@ -367,7 +411,8 @@ describe('Reports Routes', () => {
       });
 
       it('should refresh schema when requested', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/schema/ad/discover')
           .set('Authorization', 'Bearer valid-token')
           .query({ refresh: 'true' })
@@ -377,7 +422,8 @@ describe('Reports Routes', () => {
       });
 
       it('should use specific credential for discovery', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/schema/ad/discover')
           .set('Authorization', 'Bearer valid-token')
           .query({ credentialId: '123' })
@@ -400,13 +446,14 @@ describe('Reports Routes', () => {
           query: { fields: ['username'] }
         };
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/reports/custom')
           .set('Authorization', 'Bearer valid-token')
           .send(customReport)
           .expect(201);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           reportId: 'new-report-id'
         });
@@ -436,11 +483,12 @@ describe('Reports Routes', () => {
 
     describe('GET /api/reports/custom', () => {
       it('should get custom reports without authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/custom')
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { reports: [] }
         });
@@ -448,7 +496,8 @@ describe('Reports Routes', () => {
       });
 
       it('should filter custom reports by source', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/custom')
           .query({ source: 'azure' })
           .expect(200);
@@ -457,7 +506,8 @@ describe('Reports Routes', () => {
       });
 
       it('should filter by public reports', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/custom')
           .query({ isPublic: 'true' })
           .expect(200);
@@ -468,11 +518,12 @@ describe('Reports Routes', () => {
 
     describe('GET /api/reports/custom/:reportId', () => {
       it('should get specific custom report', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/reports/custom/${validReportId}`)
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { report: {} }
         });
@@ -487,13 +538,14 @@ describe('Reports Routes', () => {
           description: 'Updated description'
         };
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .put(`/api/reports/custom/${validReportId}`)
           .set('Authorization', 'Bearer valid-token')
           .send(updates)
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           message: 'Report updated'
         });
@@ -524,12 +576,13 @@ describe('Reports Routes', () => {
 
     describe('DELETE /api/reports/custom/:reportId', () => {
       it('should delete custom report with authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .delete(`/api/reports/custom/${validReportId}`)
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           message: 'Report deleted'
         });
@@ -548,13 +601,14 @@ describe('Reports Routes', () => {
 
     describe('POST /api/reports/custom/:reportId/execute', () => {
       it('should execute custom report', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post(`/api/reports/custom/${validReportId}/execute`)
           .set('Authorization', 'Bearer valid-token')
           .send({ parameters: { limit: 100 } })
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           executionId: 'custom-execution-id'
         });
@@ -581,13 +635,14 @@ describe('Reports Routes', () => {
           limit: 10
         };
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/reports/custom/test')
           .set('Authorization', 'Bearer valid-token')
           .send(testQuery)
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { results: [] }
         });
@@ -609,12 +664,13 @@ describe('Reports Routes', () => {
   describe('Report History and Stats', () => {
     describe('GET /api/reports/stats', () => {
       it('should get report statistics with authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/stats')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { stats: {} }
         });
@@ -624,11 +680,12 @@ describe('Reports Routes', () => {
 
     describe('GET /api/reports/history', () => {
       it('should get report history without authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/history')
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { history: [] }
         });
@@ -636,7 +693,8 @@ describe('Reports Routes', () => {
       });
 
       it('should filter history by status', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/history')
           .query({ status: 'completed' })
           .expect(200);
@@ -645,7 +703,8 @@ describe('Reports Routes', () => {
       });
 
       it('should filter history by source', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/history')
           .query({ source: 'ad' })
           .expect(200);
@@ -654,7 +713,8 @@ describe('Reports Routes', () => {
       });
 
       it('should paginate history results', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/history')
           .query({ limit: '50', offset: '20' })
           .expect(200);
@@ -667,11 +727,12 @@ describe('Reports Routes', () => {
       const validExecutionId = '123e4567-e89b-12d3-a456-426614174000';
 
       it('should get specific report execution', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/reports/history/${validExecutionId}`)
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { execution: {} }
         });
@@ -683,11 +744,12 @@ describe('Reports Routes', () => {
       const validExecutionId = '123e4567-e89b-12d3-a456-426614174000';
 
       it('should get report execution results', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/reports/history/${validExecutionId}/results`)
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: { results: [] }
         });
@@ -702,12 +764,13 @@ describe('Reports Routes', () => {
         const { db } = require('@/config/database');
         db.query.mockResolvedValueOnce({ rows: [] });
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/admin/templates')
           .set('Authorization', 'Bearer admin-token')
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: {
             reports: [],
@@ -732,12 +795,13 @@ describe('Reports Routes', () => {
         const { db } = require('@/config/database');
         db.query.mockRejectedValueOnce(new Error('Database error'));
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/admin/templates')
           .set('Authorization', 'Bearer admin-token')
           .expect(500);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: false,
           error: 'Failed to get admin templates'
         });
@@ -752,12 +816,13 @@ describe('Reports Routes', () => {
           .mockResolvedValueOnce({ rows: [] }) // custom stats
           .mockResolvedValueOnce({ rows: [] }); // user stats
 
-        const response = await request(app)
+        const _response = 
+      await request(app)
           .get('/api/reports/admin/usage')
           .set('Authorization', 'Bearer admin-token')
           .expect(200);
 
-        expect(response.body).toEqual({
+        expect(_response.body).toEqual({
           success: true,
           data: {
             topTemplates: [],
@@ -774,7 +839,8 @@ describe('Reports Routes', () => {
         const { db } = require('@/config/database');
         db.query.mockResolvedValueOnce({ rowCount: 5 });
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .delete('/api/reports/admin/cleanup')
           .set('Authorization', 'Bearer admin-token')
           .expect(200);
@@ -802,7 +868,8 @@ describe('Reports Routes', () => {
   describe('Query Routes', () => {
     describe('POST /api/reports/query/execute', () => {
       it('should execute query with authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/reports/query/execute')
           .set('Authorization', 'Bearer valid-token')
           .send({ queryId: 'test-query', parameters: {} })
@@ -818,7 +885,8 @@ describe('Reports Routes', () => {
 
     describe('POST /api/reports/query/build', () => {
       it('should build and execute query', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/reports/query/build')
           .set('Authorization', 'Bearer valid-token')
           .send({ dataSource: 'postgres', filters: [] })
@@ -834,7 +902,8 @@ describe('Reports Routes', () => {
 
     describe('GET /api/reports/query/definitions', () => {
       it('should get query definitions', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/query/definitions')
           .expect(200);
 
@@ -846,7 +915,8 @@ describe('Reports Routes', () => {
       });
 
       it('should filter definitions by data source', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/query/definitions')
           .query({ dataSource: 'postgres' })
           .expect(200);
@@ -857,7 +927,8 @@ describe('Reports Routes', () => {
 
     describe('GET /api/reports/query/schema/:dataSource', () => {
       it('should get schema for data source', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/query/schema/postgres')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
@@ -870,7 +941,8 @@ describe('Reports Routes', () => {
       });
 
       it('should get schema for specific table', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/query/schema/postgres')
           .set('Authorization', 'Bearer valid-token')
           .query({ table: 'users' })
@@ -887,7 +959,8 @@ describe('Reports Routes', () => {
           sql: 'SELECT * FROM users'
         };
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/reports/query/validate')
           .set('Authorization', 'Bearer valid-token')
           .send({ queryDef })
@@ -900,7 +973,8 @@ describe('Reports Routes', () => {
 
     describe('GET /api/reports/query/health', () => {
       it('should get query service health status', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/query/health')
           .expect(200);
 
@@ -916,7 +990,8 @@ describe('Reports Routes', () => {
         };
         QueryService.getInstance.mockReturnValueOnce(mockInstance);
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/query/health')
           .expect(503);
 
@@ -929,7 +1004,8 @@ describe('Reports Routes', () => {
           throw new Error('Service unavailable');
         });
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/query/health')
           .expect(500);
 
@@ -955,7 +1031,8 @@ describe('Reports Routes', () => {
           }] }) // query stats
           .mockResolvedValueOnce({ rows: [{ error_count: '2' }] }); // error stats
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/query/metrics')
           .expect(200);
 
@@ -977,7 +1054,8 @@ describe('Reports Routes', () => {
     describe('Graph Query Routes', () => {
       describe('POST /api/reports/query/graph/execute', () => {
         it('should execute Graph API query', async () => {
-          const response = await request(app)
+          const response = 
+      await request(app)
             .post('/api/reports/query/graph/execute')
             .set('Authorization', 'Bearer valid-token')
             .send({ queryId: 'graph-users', parameters: {} })
@@ -993,7 +1071,8 @@ describe('Reports Routes', () => {
 
       describe('GET /api/reports/query/graph/definitions', () => {
         it('should get Graph query definitions', async () => {
-          const response = await request(app)
+          const response = 
+      await request(app)
             .get('/api/reports/query/graph/definitions')
             .set('Authorization', 'Bearer valid-token')
             .expect(200);
@@ -1006,7 +1085,8 @@ describe('Reports Routes', () => {
         });
 
         it('should filter Graph definitions by category', async () => {
-          const response = await request(app)
+          const response = 
+      await request(app)
             .get('/api/reports/query/graph/definitions')
             .set('Authorization', 'Bearer valid-token')
             .query({ category: 'users' })
@@ -1018,7 +1098,8 @@ describe('Reports Routes', () => {
 
       describe('POST /api/reports/query/graph/batch', () => {
         it('should execute Graph queries in batch', async () => {
-          const response = await request(app)
+          const response = 
+      await request(app)
             .post('/api/reports/query/graph/batch')
             .set('Authorization', 'Bearer valid-token')
             .send({ queries: [{ queryId: 'users' }, { queryId: 'groups' }] })
@@ -1039,7 +1120,8 @@ describe('Reports Routes', () => {
 
     describe('POST /api/reports/export/report/:templateId', () => {
       it('should export report with authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post(`/api/reports/export/report/${validTemplateId}`)
           .set('Authorization', 'Bearer valid-token')
           .send({ format: 'excel' })
@@ -1066,7 +1148,8 @@ describe('Reports Routes', () => {
 
     describe('POST /api/reports/export/queue/report/:templateId', () => {
       it('should queue export job', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post(`/api/reports/export/queue/report/${validTemplateId}`)
           .set('Authorization', 'Bearer valid-token')
           .send({ format: 'excel', priority: 5 })
@@ -1081,7 +1164,8 @@ describe('Reports Routes', () => {
 
     describe('GET /api/reports/export/job/:jobId', () => {
       it('should get export job status', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/export/job/123')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
@@ -1095,7 +1179,8 @@ describe('Reports Routes', () => {
 
     describe('GET /api/reports/export/download/:filename', () => {
       it('should download exported file', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/export/download/report_123.xlsx')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
@@ -1113,7 +1198,8 @@ describe('Reports Routes', () => {
 
     describe('POST /api/reports/export/cleanup', () => {
       it('should cleanup old exports with admin privileges', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/reports/export/cleanup')
           .set('Authorization', 'Bearer admin-token')
           .send({ daysOld: 30 })
@@ -1142,7 +1228,8 @@ describe('Reports Routes', () => {
   describe('Favorites', () => {
     describe('GET /api/reports/favorites', () => {
       it('should get user favorites with authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/reports/favorites')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
@@ -1159,7 +1246,8 @@ describe('Reports Routes', () => {
       const validTemplateId = '123e4567-e89b-12d3-a456-426614174000';
 
       it('should add report to favorites', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/reports/favorites')
           .set('Authorization', 'Bearer valid-token')
           .send({ templateId: validTemplateId })
@@ -1173,7 +1261,8 @@ describe('Reports Routes', () => {
       });
 
       it('should add custom report to favorites', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/reports/favorites')
           .set('Authorization', 'Bearer valid-token')
           .send({ customTemplateId: validTemplateId })
@@ -1187,7 +1276,8 @@ describe('Reports Routes', () => {
       const validTemplateId = '123e4567-e89b-12d3-a456-426614174000';
 
       it('should remove report from favorites', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .delete('/api/reports/favorites')
           .set('Authorization', 'Bearer valid-token')
           .send({ templateId: validTemplateId })

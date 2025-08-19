@@ -3,7 +3,8 @@ import express from 'express';
 import healthRoutes from './health.routes';
 import healthController from '@/controllers/health.controller';
 import { requireAuth } from '@/middleware/auth-wrapper';
-import { logger } from '@/utils/logger';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { logger as _logger } from '@/utils/logger';
 
 // Mock all dependencies
 jest.mock('@/controllers/health.controller');
@@ -102,7 +103,7 @@ describe('Health Routes', () => {
     app.use('/api/health', healthRoutes);
 
     // Add error handling middleware
-    app.use((err: any, req: any, res: any, next: any) => {
+    app.use((err: any, req: any, res: any, _next: any) => {
       res.status(err.statusCode || 500).json({
         error: err.message || 'Internal Server Error'
       });
@@ -1099,7 +1100,8 @@ describe('Health Routes', () => {
       });
 
       for (const component of validComponents) {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/health/component/${component}`)
           .expect(200);
 

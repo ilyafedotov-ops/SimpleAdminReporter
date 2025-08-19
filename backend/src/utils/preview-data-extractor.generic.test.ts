@@ -63,7 +63,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         }
       ];
 
-      const response = processPreviewData<ADUser>(adUsers, 'ad', 150);
+      const response = 
+      processPreviewData<ADUser>(adUsers, 'ad', 150);
 
       // Type assertions should pass at compile time
       expect(response.success).toBe(true);
@@ -94,7 +95,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         }
       ];
 
-      const response = processPreviewData<AzureUser>(azureUsers, 'azure', 200);
+      const response = 
+      processPreviewData<AzureUser>(azureUsers, 'azure', 200);
 
       expect(response.success).toBe(true);
       expect(response.data.source).toBe('azure');
@@ -120,7 +122,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         }
       ];
 
-      const response = processPreviewData<O365Mailbox>(mailboxes, 'o365', 300);
+      const response = 
+      processPreviewData<O365Mailbox>(mailboxes, 'o365', 300);
 
       expect(response.success).toBe(true);
       expect(response.data.source).toBe('o365');
@@ -141,7 +144,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         { id: 2, name: 'Another', active: false, count: 42 }
       ];
 
-      const response = processPreviewData(genericData, 'postgres', 100);
+      const response = 
+      processPreviewData(genericData, 'postgres', 100);
 
       expect(response.success).toBe(true);
       expect(response.data.testData).toHaveLength(2);
@@ -170,7 +174,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         '@odata.count': 50
       };
 
-      const response = processPreviewData<TestUser>(graphResponse, 'azure', 180);
+      const response = 
+      processPreviewData<TestUser>(graphResponse, 'azure', 180);
 
       expect(response.success).toBe(true);
       expect(response.data.source).toBe('azure');
@@ -194,7 +199,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         cached: false
       };
 
-      const response = processPreviewData<TestUser>(queryResponse, 'ad', 120);
+      const response = 
+      processPreviewData<TestUser>(queryResponse, 'ad', 120);
 
       expect(response.success).toBe(true);
       expect(response.data.source).toBe('ad');
@@ -215,7 +221,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         success: true
       };
 
-      const response = processPreviewData<TestUser>(processedResponse, 'o365', 90);
+      const response = 
+      processPreviewData<TestUser>(processedResponse, 'o365', 90);
 
       expect(response.success).toBe(true);
       expect(response.data.testData).toHaveLength(1);
@@ -271,7 +278,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         }
       ];
 
-      const response = processPreviewData<ComplexUser>(complexUsers, 'ad', 250);
+      const response = 
+      processPreviewData<ComplexUser>(complexUsers, 'ad', 250);
 
       expect(response.success).toBe(true);
       expect(response.data.testData).toHaveLength(1);
@@ -306,7 +314,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         }
       ];
 
-      const response = processPreviewData<UserWithArrays>(users, 'azure', 150);
+      const response = 
+      processPreviewData<UserWithArrays>(users, 'azure', 150);
 
       const user = response.data.testData[0];
       expect(Array.isArray(user.tags)).toBe(true);
@@ -328,7 +337,8 @@ describe('Generic processPreviewData<T>() Function', () => {
     it('should handle empty data arrays gracefully', () => {
       const emptyData: SimpleUser[] = [];
 
-      const response = processPreviewData<SimpleUser>(emptyData, 'ad', 50);
+      const response = 
+      processPreviewData<SimpleUser>(emptyData, 'ad', 50);
 
       expect(response.success).toBe(true);
       expect(response.data.testData).toEqual([]);
@@ -356,7 +366,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         count: 'invalid' // Invalid count type
       };
 
-      const response = processPreviewData<SimpleUser>(malformedResponse, 'azure', 100);
+      const response = 
+      processPreviewData<SimpleUser>(malformedResponse, 'azure', 100);
 
       expect(response.success).toBe(true);
       expect(response.data.testData).toEqual([malformedResponse]); // Should treat as single object
@@ -370,7 +381,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         { id: 3, name: 'User 3', extra: 'field' }  // Extra field
       ];
 
-      const response = processPreviewData(mixedData, 'postgres', 75);
+      const response = 
+      processPreviewData(mixedData, 'postgres', 75);
 
       expect(response.success).toBe(true);
       expect(response.data.testData).toHaveLength(3);
@@ -391,7 +403,8 @@ describe('Generic processPreviewData<T>() Function', () => {
       const data: MetadataTest[] = [{ value: 'test', count: 1 }];
       const executionTime = 12345;
 
-      const response = processPreviewData<MetadataTest>(data, 'ad', executionTime);
+      const response = 
+      processPreviewData<MetadataTest>(data, 'ad', executionTime);
 
       expect(response.data.executionTime).toBe(executionTime);
     });
@@ -402,7 +415,8 @@ describe('Generic processPreviewData<T>() Function', () => {
       const sources: DataSourceType[] = ['ad', 'azure', 'o365', 'postgres'];
       
       sources.forEach(source => {
-        const response = processPreviewData<MetadataTest>(data, source, 100);
+        const response = 
+      processPreviewData<MetadataTest>(data, source, 100);
         expect(response.data.source).toBe(source);
       });
     });
@@ -413,7 +427,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         { value: 'test2', count: 2 }
       ];
 
-      const response = processPreviewData<MetadataTest>(data, 'ad', 100);
+      const response = 
+      processPreviewData<MetadataTest>(data, 'ad', 100);
 
       expect(response.data.metadata).toBeDefined();
       expect(response.data.metadata?.originalFormat).toBe('direct_array');
@@ -425,7 +440,8 @@ describe('Generic processPreviewData<T>() Function', () => {
     it('should mark response as test run', () => {
       const data: MetadataTest[] = [{ value: 'test', count: 1 }];
 
-      const response = processPreviewData<MetadataTest>(data, 'azure', 100);
+      const response = 
+      processPreviewData<MetadataTest>(data, 'azure', 100);
 
       expect(response.data.isTestRun).toBe(true);
     });
@@ -433,7 +449,8 @@ describe('Generic processPreviewData<T>() Function', () => {
     it('should handle cached flag when provided', () => {
       const data: MetadataTest[] = [{ value: 'test', count: 1 }];
 
-      const response = processPreviewData<MetadataTest>(data, 'o365', 100, true);
+      const response = 
+      processPreviewData<MetadataTest>(data, 'o365', 100, true);
 
       expect(response.data.cached).toBe(true);
     });
@@ -455,7 +472,8 @@ describe('Generic processPreviewData<T>() Function', () => {
       }));
 
       const startTime = Date.now();
-      const response = processPreviewData<LargeDataset>(largeDataset, 'postgres', 500);
+      const response = 
+      processPreviewData<LargeDataset>(largeDataset, 'postgres', 500);
       const processingTime = Date.now() - startTime;
 
       expect(response.success).toBe(true);
@@ -473,7 +491,8 @@ describe('Generic processPreviewData<T>() Function', () => {
       
       const originalDataCopy = JSON.parse(JSON.stringify(originalData));
 
-      const response = processPreviewData<LargeDataset>(originalData, 'ad', 100);
+      const response = 
+      processPreviewData<LargeDataset>(originalData, 'ad', 100);
 
       // Original data should remain unchanged (timestamps will differ in copy)
       expect(originalData[0].id).toBe(originalDataCopy[0].id);
@@ -496,7 +515,8 @@ describe('Generic processPreviewData<T>() Function', () => {
 
       expect(isServiceResponse(serviceResponse)).toBe(true);
 
-      const response = processPreviewData(serviceResponse, 'ad', 100);
+      const response = 
+      processPreviewData(serviceResponse, 'ad', 100);
       expect(response.success).toBe(true);
       expect(response.data.testData).toEqual(serviceResponse.data);
     });
@@ -509,7 +529,8 @@ describe('Generic processPreviewData<T>() Function', () => {
 
       expect(isGraphApiResponse(graphResponse)).toBe(true);
 
-      const response = processPreviewData(graphResponse, 'azure', 100);
+      const response = 
+      processPreviewData(graphResponse, 'azure', 100);
       expect(response.success).toBe(true);
       expect(response.data.testData).toEqual(graphResponse.value);
       expect(response.data.rowCount).toBe(1);
@@ -525,7 +546,8 @@ describe('Generic processPreviewData<T>() Function', () => {
         { sAMAccountName: 'user2', displayName: 'User Two', enabled: false }
       ];
 
-      const response = processPreviewData(legacyData, 'ad', 150);
+      const response = 
+      processPreviewData(legacyData, 'ad', 150);
 
       // Verify exact structure expected by frontend
       expect(response).toMatchObject({

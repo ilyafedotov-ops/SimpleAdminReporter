@@ -144,7 +144,8 @@ describe('Auth Routes Integration', () => {
 
       const authSources = ['ad', 'azure', 'local'];
       for (const source of authSources) {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/auth/login')
           .send({ username: 'test', password: 'test', authSource: source })
           .expect(200);

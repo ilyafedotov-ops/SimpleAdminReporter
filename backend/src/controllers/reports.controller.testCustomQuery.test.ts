@@ -710,7 +710,7 @@ describe('API Endpoint: POST /api/reports/testCustomQuery', () => {
     });
 
     it('should report execution time accurately', async () => {
-      const startTime = Date.now();
+      const startTime = Date.now(); // eslint-disable-line @typescript-eslint/no-unused-vars
       
       const response: PreviewResponse = {
         success: true,

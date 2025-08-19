@@ -861,7 +861,8 @@ describe('Health Routes Integration', () => {
       });
 
       for (const component of validComponents) {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/health/component/${component}`)
           .expect(200);
 

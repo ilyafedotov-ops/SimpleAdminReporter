@@ -461,7 +461,8 @@ describe('HealthController', () => {
       const validComponents = ['database', 'redis', 'ldap', 'azure', 'queue', 'storage', 'system'];
       
       for (const component of validComponents) {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/health/component/${component}`)
           .expect(200);
 

@@ -291,7 +291,8 @@ describe('Graph Utilities', () => {
 
   describe('parseGraphResponse', () => {
     it('should parse value property response', () => {
-      const response = {
+      const response = 
+      {
         value: [{ id: '1' }, { id: '2' }],
         '@odata.count': 2
       };
@@ -305,14 +306,16 @@ describe('Graph Utilities', () => {
     });
 
     it('should handle direct array response', () => {
-      const response = [{ id: '1' }, { id: '2' }];
+      const response = 
+      [{ id: '1' }, { id: '2' }];
       
       const result = parseGraphResponse(response);
       expect(result).toEqual({ data: response });
     });
 
     it('should handle single object response', () => {
-      const response = { id: '1', name: 'Test' };
+      const response = 
+      { id: '1', name: 'Test' };
       
       const result = parseGraphResponse(response);
       expect(result).toEqual({ data: [response] });

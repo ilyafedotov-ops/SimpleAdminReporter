@@ -43,7 +43,7 @@ describe('UnifiedAuthController - Comprehensive Tests', () => {
     jest.clearAllMocks();
     
     // Dynamic imports to avoid hoisting issues
-    const { UnifiedAuthController, unifiedAuthController } = await import('./unified-auth.controller');
+    const { unifiedAuthController } = await import('./unified-auth.controller');
     const authService = await import('../services/unified-auth.service');
     const strategies = await import('../strategies');
     const csrf = await import('@/services/csrf.service');

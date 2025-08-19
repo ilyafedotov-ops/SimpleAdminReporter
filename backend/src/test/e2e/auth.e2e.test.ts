@@ -122,7 +122,8 @@ describe('Authentication E2E Tests', () => {
       // Simulate multiple failed login attempts
       const maxAttempts = 5;
       for (let i = 1; i <= maxAttempts; i++) {
-        const response = await testContext.request
+        const response = 
+      await testContext.request
           .post('/api/auth/login')
           .set('X-Correlation-ID', `${correlationId}-${i}`)
           .send({

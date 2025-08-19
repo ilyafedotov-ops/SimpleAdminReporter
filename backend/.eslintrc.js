@@ -17,7 +17,7 @@ module.exports = {
   ignorePatterns: ['.eslintrc.js', 'dist/**', 'coverage/**', 'jest.config.js'],
   rules: {
     'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': ['warn', { 'argsIgnorePattern': '^_' }],
+    '@typescript-eslint/no-unused-vars': ['warn', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_' }],
     'no-console': 'warn',
     'prefer-const': 'error',
   },

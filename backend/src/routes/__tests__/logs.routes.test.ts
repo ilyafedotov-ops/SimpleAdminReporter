@@ -893,7 +893,8 @@ describe('Logs Routes Integration', () => {
 
       const logTypes = ['audit', 'system'];
       for (const type of logTypes) {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/logs/search/fulltext?q=test&type=${type}`)
           .expect(200);
 
@@ -1059,7 +1060,8 @@ describe('Logs Routes Integration', () => {
       ];
 
       for (const route of adminRoutes) {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/logs${route}`)
           .expect(403);
 

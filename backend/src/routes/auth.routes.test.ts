@@ -144,7 +144,7 @@ describe('Auth Routes', () => {
     app.use('/api/auth', authRouter);
 
     // Add error handling middleware
-    app.use((err: any, req: any, res: any, next: any) => {
+    app.use((err: any, req: any, res: any, _next: any) => {
       res.status(err.status || 500).json({ error: err.message });
     });
   });
@@ -631,7 +631,8 @@ it('should audit logout actions', async () => {
   describe('Azure AD Configuration Routes', () => {
     describe('GET /api/auth/azure/config', () => {
       it('should get Azure public config with authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/auth/azure/config')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
@@ -643,7 +644,8 @@ it('should audit logout actions', async () => {
 
     describe('POST /api/auth/azure/authorize', () => {
       it('should generate Azure authorization URL', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/auth/azure/authorize')
           .set('Authorization', 'Bearer valid-token')
           .send({ scopes: ['User.Read'] })
@@ -683,7 +685,8 @@ it('should audit authorization URL generation', async () => {
           state: 'state-value'
         };
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/auth/azure/token')
           .set('Authorization', 'Bearer valid-token')
           .send(tokenData)
@@ -724,7 +727,8 @@ it('should audit token exchange', async () => {
           tokenType: 'access_token'
         };
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .post('/api/auth/azure/store-token')
           .set('Authorization', 'Bearer valid-token')
           .send(tokenData)
@@ -760,7 +764,8 @@ it('should audit token storage', async () => {
 
     describe('GET /api/auth/azure/userinfo', () => {
       it('should get Azure user information', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/auth/azure/userinfo')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
@@ -774,7 +779,8 @@ it('should audit token storage', async () => {
   describe('Azure OAuth Routes', () => {
     describe('GET /api/auth/azure/oauth/url', () => {
       it('should generate OAuth URL with authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/auth/azure/oauth/url')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
@@ -788,7 +794,9 @@ it('should audit token storage', async () => {
 
     describe('GET /api/auth/azure/oauth/authorize', () => {
       it('should initiate OAuth flow', async () => {
-        const response = await request(app)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const response = 
+      await request(app)
           .get('/api/auth/azure/oauth/authorize')
           .set('Authorization', 'Bearer valid-token')
           .expect(302); // Redirect response
@@ -799,7 +807,8 @@ it('should audit token storage', async () => {
 
     describe('GET /api/auth/azure/callback', () => {
       it('should handle OAuth callback without authentication', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/auth/azure/callback?code=test&state=test')
           .expect(200);
 
@@ -808,7 +817,9 @@ it('should audit token storage', async () => {
       });
 
       it('should handle callback with error parameter', async () => {
-        const response = await request(app)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const response = 
+      await request(app)
           .get('/api/auth/azure/callback?error=access_denied')
           .expect(200);
 
@@ -818,7 +829,8 @@ it('should audit token storage', async () => {
 
     describe('GET /api/auth/azure/oauth/status', () => {
       it('should check OAuth token status', async () => {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/auth/azure/oauth/status')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);

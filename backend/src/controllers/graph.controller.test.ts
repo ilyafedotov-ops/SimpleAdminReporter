@@ -710,7 +710,8 @@ describe('GraphController', () => {
       for (const errorMsg of authErrors) {
         mockFieldDiscovery.discoverFields.mockRejectedValue(new Error(errorMsg));
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/graph/fields/user')
           .expect(401);
 

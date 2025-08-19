@@ -148,7 +148,8 @@ describe('Preview Data Extractor', () => {
         }
       };
 
-      const response = createPreviewResponse('ad', 150, extractedData);
+      const response = 
+      createPreviewResponse('ad', 150, extractedData);
 
       expect(response.success).toBe(true);
       expect(response.data.source).toBe('ad');
@@ -167,7 +168,8 @@ describe('Preview Data Extractor', () => {
         { id: 2, name: 'User 2' }
       ];
 
-      const response = processPreviewData(testData, 'azure' as DataSourceType, 250);
+      const response = 
+      processPreviewData(testData, 'azure' as DataSourceType, 250);
 
       expect(response.success).toBe(true);
       expect(response.data.source).toBe('azure');
@@ -214,7 +216,8 @@ describe('Preview Data Extractor', () => {
     });
 
     it('should prioritize count properties correctly', () => {
-      const response = {
+      const response = 
+      {
         count: 5,
         totalCount: 10,
         resultCount: 15,
@@ -291,7 +294,8 @@ describe('Preview Data Extractor', () => {
         { sAMAccountName: 'user2', displayName: 'User Two' }
       ];
 
-      const response = processPreviewData(testData, 'ad' as DataSourceType, 123);
+      const response = 
+      processPreviewData(testData, 'ad' as DataSourceType, 123);
 
       // Check that the response has the exact structure expected by frontend
       expect(response).toHaveProperty('success', true);
@@ -307,7 +311,8 @@ describe('Preview Data Extractor', () => {
       const testData = [{ id: 1 }];
       
       (['ad', 'azure', 'o365'] as DataSourceType[]).forEach(source => {
-        const response = processPreviewData(testData, source, 100);
+        const response = 
+      processPreviewData(testData, source, 100);
         expect(response.data.source).toBe(source);
       });
     });

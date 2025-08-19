@@ -61,7 +61,8 @@ describe('SystemController', () => {
     azure: true
   };
 
-  const mockValidationResult = {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _mockValidationResult = {
     errors: [],
     warnings: [],
     availability: mockServiceAvailability
@@ -500,7 +501,8 @@ describe('SystemController', () => {
         (configService.getErrors as jest.Mock).mockReturnValue([]);
         (configService.initialize as jest.Mock).mockResolvedValue(mockValidationResult);
 
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get('/api/system/config')
           .expect(200);
         

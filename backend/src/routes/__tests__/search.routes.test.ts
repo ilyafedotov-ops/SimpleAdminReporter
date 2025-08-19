@@ -714,7 +714,8 @@ describe('Search Routes Integration', () => {
       const routes = ['/global', '/suggestions', '/recent'];
       
       for (const route of routes) {
-        const response = await request(unauthedApp)
+        const response = 
+      await request(unauthedApp)
           .get(`/api/search${route}`)
           .expect(401);
 
@@ -738,7 +739,8 @@ describe('Search Routes Integration', () => {
       const routes = ['/global?q=test', '/suggestions?q=tes', '/recent'];
       
       for (const route of routes) {
-        const response = await request(app)
+        const response = 
+      await request(app)
           .get(`/api/search${route}`)
           .expect(200);
 

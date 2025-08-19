@@ -76,7 +76,8 @@ import { notificationService } from '../../services/notification.service';
 import { validationResult } from 'express-validator';
 
 // Type assertion to make validationResult a mock
-const mockValidationResult = validationResult as jest.MockedFunction<typeof validationResult>;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _mockValidationResult = validationResult as jest.MockedFunction<typeof validationResult>;
 
 describe('Notifications Routes Integration', () => {
   let app: express.Application;
@@ -214,7 +215,8 @@ describe('Notifications Routes Integration', () => {
         data: mockNotifications
       });
 
-      const response = await request(app)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _response = await request(app)
         .get('/api/notifications?page=2&pageSize=10')
         .expect(200);
 
@@ -231,7 +233,8 @@ describe('Notifications Routes Integration', () => {
         data: mockNotifications
       });
 
-      const response = await request(app)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _response = await request(app)
         .get('/api/notifications?types=report_complete,system')
         .expect(200);
 
@@ -248,7 +251,8 @@ describe('Notifications Routes Integration', () => {
         data: mockNotifications
       });
 
-      const response = await request(app)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _response = await request(app)
         .get('/api/notifications?isRead=false')
         .expect(200);
 
@@ -265,7 +269,8 @@ describe('Notifications Routes Integration', () => {
         data: mockNotifications
       });
 
-      const response = await request(app)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _response = await request(app)
         .get('/api/notifications?dateFrom=2025-01-01T00:00:00Z&dateTo=2025-01-01T23:59:59Z')
         .expect(200);
 
@@ -285,7 +290,8 @@ describe('Notifications Routes Integration', () => {
         data: mockNotifications
       });
 
-      const response = await request(app)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _response = await request(app)
         .get('/api/notifications?priority=3,4,5')
         .expect(200);
 
@@ -335,7 +341,8 @@ describe('Notifications Routes Integration', () => {
         data: mockNotifications
       });
 
-      const response = await request(app)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _response = await request(app)
         .get('/api/notifications?types=report_complete&categories=reports&isRead=false&priority=2,3')
         .expect(200);
 
@@ -359,13 +366,13 @@ describe('Notifications Routes Integration', () => {
         data: mockNotificationStats
       });
 
-      const response = await request(app)
+      const _response = await request(app)
         .get('/api/notifications/stats')
         .expect(200);
 
-      expect(response.body.total).toBe(15);
-      expect(response.body.unread).toBe(3);
-      expect(response.body.byType.report_complete).toBe(5);
+      expect(_response.body.total).toBe(15);
+      expect(_response.body.unread).toBe(3);
+      expect(_response.body.byType.report_complete).toBe(5);
       expect(notificationService.getUserNotificationStats).toHaveBeenCalledWith(1);
     });
 
@@ -501,6 +508,7 @@ describe('Notifications Routes Integration', () => {
         data: mockSingleNotification
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await request(app)
         .post('/api/notifications')
         .send({
@@ -561,6 +569,7 @@ describe('Notifications Routes Integration', () => {
         data: mockSingleNotification
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await request(app)
         .post('/api/notifications')
         .send({
@@ -658,6 +667,7 @@ describe('Notifications Routes Integration', () => {
         data: { deleted: true }
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await request(app)
         .delete('/api/notifications/550e8400-e29b-41d4-a716-446655440001')
         .expect(204);
@@ -703,12 +713,12 @@ describe('Notifications Routes Integration', () => {
         }
       });
 
-      const response = await request(app)
+      const _response = await request(app)
         .post('/api/notifications/bulk')
         .send(bulkOperationData)
         .expect(200);
 
-      expect(response.body.updatedCount).toBe(2);
+      expect(_response.body.updatedCount).toBe(2);
       expect(notificationService.bulkUpdateNotifications).toHaveBeenCalledWith(
         1,
         bulkOperationData
@@ -790,13 +800,13 @@ describe('Notifications Routes Integration', () => {
         data: 150 // Number of users notified
       });
 
-      const response = await request(app)
+      const _response = await request(app)
         .post('/api/notifications/system')
         .send(systemNotificationData)
         .expect(201);
 
-      expect(response.body.message).toBe('System notification created successfully');
-      expect(response.body.usersNotified).toBe(150);
+      expect(_response.body.message).toBe('System notification created successfully');
+      expect(_response.body.usersNotified).toBe(150);
     });
 
     it('should reject non-admin users', async () => {
@@ -818,6 +828,7 @@ describe('Notifications Routes Integration', () => {
         data: 150
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await request(app)
         .post('/api/notifications/system')
         .send({
@@ -846,12 +857,12 @@ describe('Notifications Routes Integration', () => {
         data: 25 // Number of notifications cleaned up
       });
 
-      const response = await request(app)
+      const _response = await request(app)
         .post('/api/notifications/cleanup')
         .expect(200);
 
-      expect(response.body.message).toBe('Cleanup completed successfully');
-      expect(response.body.deletedCount).toBe(25);
+      expect(_response.body.message).toBe('Cleanup completed successfully');
+      expect(_response.body.deletedCount).toBe(25);
     });
 
     it('should reject non-admin users from cleanup', async () => {
@@ -888,7 +899,7 @@ describe('Notifications Routes Integration', () => {
       // Create app that always returns 401
       const unauthedApp = express();
       unauthedApp.use(express.json());
-      unauthedApp.use('/api/notifications', (req, res, next) => {
+      unauthedApp.use('/api/notifications', (_req, res, _next) => {
         res.status(401).json({ error: 'Authentication required' });
       });
 
