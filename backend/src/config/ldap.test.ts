@@ -81,7 +81,9 @@ if (ldapAvailable) {
       };
 
       expect(() => {
+        // Test constructor doesn't throw - variable unused intentionally
         const _client = new LDAPClient(config);
+        expect(_client).toBeDefined(); // Use variable to avoid linting warning
       }).not.toThrow();
     });
 
@@ -179,7 +181,9 @@ if (ldapAvailable) {
       process.env.AD_PASSWORD = 'servicepass';
 
       expect(() => {
-        const client = createLDAPClient();
+        // Test factory function doesn't throw - variable used to avoid linting warning
+        const _client = createLDAPClient();
+        expect(_client).toBeDefined(); // Use variable to avoid linting warning
       }).not.toThrow();
     });
 

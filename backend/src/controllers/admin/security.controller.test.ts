@@ -145,7 +145,7 @@ describe('SecurityController', () => {
     app.use('/api/admin/security', router);
     
     // Error handling middleware
-    app.use((err: any, _req: any, res: any, _next: any) => {
+    app.use((err: any, _req: any, res: any, __next: any) => {
       const statusCode = err.statusCode || 500;
       res.status(statusCode).json({
         success: false,
@@ -168,7 +168,7 @@ describe('SecurityController', () => {
       testApp.use('/api/admin/security', testRouter);
       
       // Error handling middleware
-      testApp.use((err: any, _req: any, res: any, _next: any) => {
+      testApp.use((err: any, _req: any, res: any, __next: any) => {
         const statusCode = err.statusCode || 500;
         res.status(statusCode).json({
           success: false,
@@ -621,7 +621,7 @@ describe('SecurityController', () => {
       (failedLoginTracker.unlockAccount as jest.Mock).mockResolvedValue(true);
       (auditLogger.logAdmin as jest.Mock).mockResolvedValue(undefined);
 
-      /* const __response = */ await request(app)
+      await request(app)
         .post('/api/admin/security/unlock-account')
         .send({ username: 'lockeduser' })
         .expect(200);
@@ -750,7 +750,7 @@ describe('SecurityController', () => {
       }, controller.getAuditLogs);
       
       // Error handling middleware
-      testApp.use((err: any, _req: any, res: any, _next: any) => {
+      testApp.use((err: any, _req: any, res: any, __next: any) => {
         const statusCode = err.statusCode || 500;
         res.status(statusCode).json({
           success: false,
@@ -775,7 +775,7 @@ describe('SecurityController', () => {
       }, controller.getAuditLogs);
       
       // Error handling middleware
-      testApp.use((err: any, _req: any, res: any, _next: any) => {
+      testApp.use((err: any, _req: any, res: any, __next: any) => {
         const statusCode = err.statusCode || 500;
         res.status(statusCode).json({
           success: false,
@@ -800,7 +800,7 @@ describe('SecurityController', () => {
       }, controller.getAuditLogs);
       
       // Error handling middleware
-      testApp.use((err: any, _req: any, res: any, _next: any) => {
+      testApp.use((err: any, _req: any, res: any, __next: any) => {
         const statusCode = err.statusCode || 500;
         res.status(statusCode).json({
           success: false,
@@ -902,7 +902,7 @@ describe('SecurityController', () => {
     });
 
     it('should handle floating point user IDs', async () => {
-      /* const __response = */ await request(app)
+      await request(app)
         .get('/api/admin/security/user-activity/123.456')
         .expect(200);
 

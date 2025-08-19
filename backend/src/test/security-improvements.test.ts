@@ -1,18 +1,15 @@
-import { describe, it, expect, beforeAll } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import request from 'supertest';
 import { cryptoService } from '../services/crypto.service';
 import app from '../app';
 
 describe('Security Improvements Tests', () => {
-  let authToken: string;
+  const authToken: string = 'mock-auth-token';
 
-  beforeAll(async () => {
-    // Mock authentication token for tests
-    authToken = 'mock-auth-token';
-  });
+  // Authentication token is defined above as const
 
   describe('Client Secret Protection', () => {
-    it.skip('should NOT expose client secret in /api/auth/azure/config', async () => {
+    it.skip('should NOT expose client secret in /api/auth/azure/config - PENDING: API endpoint not implemented', async () => {
       const response = await request(app)
         .get('/api/auth/azure/config')
         .set('Authorization', `Bearer ${authToken}`)
@@ -33,7 +30,7 @@ describe('Security Improvements Tests', () => {
   });
 
   describe('PKCE Implementation', () => {
-    it.skip('should generate authorization URL with PKCE parameters', async () => {
+    it.skip('should generate authorization URL with PKCE parameters - PENDING: API endpoint not implemented', async () => {
       const response = await request(app)
         .post('/api/auth/azure/authorize')
         .set('Authorization', `Bearer ${authToken}`)
@@ -53,7 +50,7 @@ describe('Security Improvements Tests', () => {
       expect(authUrl.searchParams.get('state')).toBe(response.body.data.state);
     });
 
-    it.skip('should reject token exchange without valid state', async () => {
+    it.skip('should reject token exchange without valid state - PENDING: API endpoint not implemented', async () => {
       const response = await request(app)
         .post('/api/auth/azure/token')
         .set('Authorization', `Bearer ${authToken}`)
@@ -108,7 +105,7 @@ describe('Security Improvements Tests', () => {
   });
 
   describe('Security Headers', () => {
-    it.skip('should have proper security headers', async () => {
+    it.skip('should have proper security headers - PENDING: /api/health endpoint not implemented', async () => {
       const response = await request(app)
         .get('/api/health')
         .expect(200);
@@ -125,7 +122,7 @@ describe('Security Improvements Tests', () => {
       expect(csp).not.toContain("script-src 'self' 'unsafe-inline'"); // Should not have unsafe-inline for scripts
     });
 
-    it.skip('should have proper CORS configuration', async () => {
+    it.skip('should have proper CORS configuration - PENDING: API endpoint not implemented', async () => {
       const response = await request(app)
         .options('/api/auth/azure/config')
         .set('Origin', 'http://localhost:3000')

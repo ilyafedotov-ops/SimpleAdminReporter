@@ -121,7 +121,7 @@ describe('HealthController', () => {
     app.use('/api/health', router);
     
     // Add error middleware
-    app.use((err: any, req: any, res: any, _next: any) => {
+    app.use((err: any, _req: any, res: any, _next: any) => {
       const statusCode = err.statusCode || 500;
       res.status(statusCode).json({
         status: 'error',
@@ -661,7 +661,7 @@ describe('HealthController', () => {
       authApp.use(express.json());
       
       // Mock authentication failure
-      const failingAuth = jest.fn((req: any, res, _next) => {
+      const failingAuth = jest.fn((_req: any, res, _next) => {
         return res.status(401).json({ error: 'Unauthorized' });
       });
 
@@ -716,7 +716,7 @@ describe('HealthController', () => {
       errorApp.use('/api/health', router);
       
       // Add error middleware
-      errorApp.use((err: any, req: any, res: any, _next: any) => {
+      errorApp.use((err: any, _req: any, res: any, _next: any) => {
         const statusCode = err.statusCode || 500;
         res.status(statusCode).json({
           status: 'error',
@@ -733,7 +733,7 @@ describe('HealthController', () => {
 
     it('should handle malformed requests gracefully', async () => {
       // Test with invalid component parameter
-      /* const __response = */ await request(app)
+      await request(app)
         .get('/api/health/component/')
         .expect(404); // Express will return 404 for empty param
 
@@ -771,7 +771,7 @@ describe('HealthController', () => {
         ...mockHealthStatus,
         checks: {
           ...mockHealthStatus.checks,
-          database: undefined as any
+          database: undefined
         }
       };
 

@@ -38,7 +38,7 @@ describe('Cookie Authentication System', () => {
   }
 
   let app: express.Application;
-  let testUser: any;
+  let testUser: { id: number; email: string; username: string; };
   let setupFailed = false;
 
   beforeAll(async () => {

@@ -166,7 +166,6 @@ describe('ReportsController', () => {
       createError.mockImplementation((message: string, statusCode: number) => {
         const error = new Error(message) as any;
         error.statusCode = statusCode;
-        // console.error('createError mock implementation called:', message);
         return error;
       });
     }

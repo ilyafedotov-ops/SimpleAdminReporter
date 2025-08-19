@@ -368,7 +368,7 @@ describe('SearchService', () => {
 
         // Verify that the malicious query is parameterized, not directly concatenated
         const calls = mockDbQuery.mock.calls as any[];
-        let foundParamaterizedQuery = false;
+        let foundParameterizedQuery = false;
         
         calls.forEach(call => {
           expect(call[0]).not.toContain("'; DROP TABLE users; --");
@@ -377,13 +377,13 @@ describe('SearchService', () => {
               typeof param === 'string' && param.includes("'; DROP TABLE users; --")
             );
             if (hasParam) {
-              foundParamaterizedQuery = true;
+              foundParameterizedQuery = true;
             }
           }
         });
         
         // At least one call should have the malicious query as a parameter
-        expect(foundParamaterizedQuery).toBe(true);
+        expect(foundParameterizedQuery).toBe(true);
       });
 
       it('should handle special SQL characters safely', async () => {

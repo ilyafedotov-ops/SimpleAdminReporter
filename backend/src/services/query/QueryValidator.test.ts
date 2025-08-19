@@ -1,10 +1,10 @@
 import { QueryValidator } from './QueryValidator';
-import { QueryDefinition, ParameterDefinition, QueryValidationResult } from './types';
+import { QueryDefinition } from './types';
 import { logger } from '@/utils/logger';
 
 // Mock logger
 jest.mock('@/utils/logger');
-const mockLogger = logger as jest.Mocked<typeof logger>;
+const _mockLogger = logger as jest.Mocked<typeof logger>;
 
 describe('QueryValidator', () => {
   let validator: QueryValidator;
@@ -261,27 +261,27 @@ describe('QueryValidator', () => {
     describe('String Parameter Validation', () => {
       it('should validate string length constraints', async () => {
         // Too short
-        let result = await validator.validateQuery(testQueryDef, {
+        const shortResult = await validator.validateQuery(testQueryDef, {
           name: 'a',
           age: 25
         });
-        expect(result.valid).toBe(false);
-        expect(result.errors).toContain('Parameter name must be at least 2 characters');
+        expect(shortResult.valid).toBe(false);
+        expect(shortResult.errors).toContain('Parameter name must be at least 2 characters');
 
         // Too long
-        result = await validator.validateQuery(testQueryDef, {
+        const longResult = await validator.validateQuery(testQueryDef, {
           name: 'a'.repeat(51),
           age: 25
         });
-        expect(result.valid).toBe(false);
-        expect(result.errors).toContain('Parameter name must be at most 50 characters');
+        expect(longResult.valid).toBe(false);
+        expect(longResult.errors).toContain('Parameter name must be at most 50 characters');
 
         // Valid length
-        result = await validator.validateQuery(testQueryDef, {
+        const validResult = await validator.validateQuery(testQueryDef, {
           name: 'John Doe',
           age: 25
         });
-        expect(result.valid).toBe(true);
+        expect(validResult.valid).toBe(true);
       });
 
       it('should validate string pattern constraints', async () => {
@@ -313,27 +313,27 @@ describe('QueryValidator', () => {
     describe('Number Parameter Validation', () => {
       it('should validate number range constraints', async () => {
         // Below minimum
-        let result = await validator.validateQuery(testQueryDef, {
+        const belowMinResult = await validator.validateQuery(testQueryDef, {
           name: 'John Doe',
           age: -1
         });
-        expect(result.valid).toBe(false);
-        expect(result.errors).toContain('Parameter age must be >= 0');
+        expect(belowMinResult.valid).toBe(false);
+        expect(belowMinResult.errors).toContain('Parameter age must be >= 0');
 
         // Above maximum
-        result = await validator.validateQuery(testQueryDef, {
+        const aboveMaxResult = await validator.validateQuery(testQueryDef, {
           name: 'John Doe',
           age: 151
         });
-        expect(result.valid).toBe(false);
-        expect(result.errors).toContain('Parameter age must be <= 150');
+        expect(aboveMaxResult.valid).toBe(false);
+        expect(aboveMaxResult.errors).toContain('Parameter age must be <= 150');
 
         // Valid range
-        result = await validator.validateQuery(testQueryDef, {
+        const validRangeResult = await validator.validateQuery(testQueryDef, {
           name: 'John Doe',
           age: 25
         });
-        expect(result.valid).toBe(true);
+        expect(validRangeResult.valid).toBe(true);
       });
 
       it('should validate number type', async () => {
@@ -349,16 +349,16 @@ describe('QueryValidator', () => {
     describe('Array Parameter Validation', () => {
       it('should validate array enum constraints', async () => {
         // Invalid enum values
-        let result = await validator.validateQuery(testQueryDef, {
+        const invalidEnumResult = await validator.validateQuery(testQueryDef, {
           name: 'John Doe',
           age: 25,
           roles: ['admin', 'superuser'] // 'superuser' not in enum
         });
-        expect(result.valid).toBe(false);
-        expect(result.errors).toContain('Parameter roles must be one of: admin, user, guest');
+        expect(invalidEnumResult.valid).toBe(false);
+        expect(invalidEnumResult.errors).toContain('Parameter roles must be one of: admin, user, guest');
 
         // Valid enum values - note: array enum validation needs implementation enhancement
-        result = await validator.validateQuery(testQueryDef, {
+        const validEnumResult = await validator.validateQuery(testQueryDef, {
           name: 'John Doe',
           age: 25,
           roles: ['admin', 'user']
@@ -366,7 +366,7 @@ describe('QueryValidator', () => {
         // The validator doesn't yet handle array enum validation correctly 
         // It treats the whole array as a single value, so this currently fails
         // This is a known limitation that would need enhancement
-        expect(result.valid).toBe(false); // Current behavior until array enum validation is implemented
+        expect(validEnumResult.valid).toBe(false); // Current behavior until array enum validation is implemented
       });
 
       it('should validate array type', async () => {
@@ -400,30 +400,30 @@ describe('QueryValidator', () => {
 
       it('should validate date types', async () => {
         // Valid Date object
-        let result = await validator.validateQuery(dateQueryDef, {
+        const dateResult = await validator.validateQuery(dateQueryDef, {
           startDate: new Date('2023-01-01')
         });
-        expect(result.valid).toBe(true);
+        expect(dateResult.valid).toBe(true);
 
         // Valid ISO string
-        result = await validator.validateQuery(dateQueryDef, {
+        const isoStringResult = await validator.validateQuery(dateQueryDef, {
           startDate: '2023-01-01T00:00:00Z'
         });
-        expect(result.valid).toBe(true);
+        expect(isoStringResult.valid).toBe(true);
 
         // Invalid date string
-        result = await validator.validateQuery(dateQueryDef, {
+        const invalidDateResult = await validator.validateQuery(dateQueryDef, {
           startDate: 'not-a-date'
         });
-        expect(result.valid).toBe(false);
-        expect(result.errors).toContain('Parameter startDate must be a valid date');
+        expect(invalidDateResult.valid).toBe(false);
+        expect(invalidDateResult.errors).toContain('Parameter startDate must be a valid date');
 
         // Invalid type
-        result = await validator.validateQuery(dateQueryDef, {
+        const invalidTypeResult = await validator.validateQuery(dateQueryDef, {
           startDate: 12345
         });
-        expect(result.valid).toBe(false);
-        expect(result.errors).toContain('Parameter startDate must be a valid date');
+        expect(invalidTypeResult.valid).toBe(false);
+        expect(invalidTypeResult.errors).toContain('Parameter startDate must be a valid date');
       });
     });
 

@@ -600,9 +600,9 @@ describe('MaterializedViewsService', () => {
 
     it('should handle malformed count results by setting rowCount to 0', async () => {
       // Test that parseInt of invalid values results in NaN which gets handled
-      expect(parseInt('invalid')).toBeNaN();
-      expect(parseInt('')).toBeNaN();
-      expect(parseInt('abc123')).toBeNaN();
+      expect(parseInt('invalid', 10)).toBeNaN();
+      expect(parseInt('', 10)).toBeNaN();
+      expect(parseInt('abc123', 10)).toBeNaN();
       
       // This verifies our understanding of how the service would handle malformed data
     });

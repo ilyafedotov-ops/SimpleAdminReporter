@@ -1,10 +1,8 @@
 import { LogsService } from './logs.service';
 import { db } from '@/config/database';
-// import { logsCacheService } from './logs-cache.service';
 import { logger } from '@/utils/logger';
 
 jest.mock('@/config/database');
-jest.mock('./logs-cache.service');
 jest.mock('@/utils/logger');
 
 describe('LogsService - Full-Text Search', () => {

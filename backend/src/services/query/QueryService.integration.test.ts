@@ -134,12 +134,7 @@ describe('QueryService Integration Tests', () => {
         sql: "SELECT * FROM users WHERE username = $1; DROP TABLE users; --"
       };
 
-      // Context reserved for query execution testing
-      // const __context: QueryExecutionContext = {
-      //   userId: testContext.userId,
-      //   parameters: { username: "admin'; DROP TABLE users; --" },
-      //   options: {}
-      // };
+      // SQL injection test - malicious query should be rejected during registration
 
       // Query should execute safely with parameterized queries
       await expect(queryRegistry.registerQuery(maliciousQuery))
@@ -358,14 +353,7 @@ describe('QueryService Integration Tests', () => {
       expect(isHealthy).toBe(true);
     });
 
-    it.skip('should report query service metrics', async () => {
-      // Get metrics - assuming this method exists or we skip this test
-      // const metrics = await queryService.getMetrics();
-      // expect(metrics).toBeDefined();
-      // expect(metrics.queries).toBeDefined();
-      // expect(metrics.cache).toBeDefined();
-      // expect(metrics.connections).toBeDefined();
-      // expect(metrics.performance).toBeDefined();
-    });
+    // Note: Query service metrics method not implemented yet
+    // This test is removed as the getMetrics() method doesn't exist in the current implementation
   });
 });
