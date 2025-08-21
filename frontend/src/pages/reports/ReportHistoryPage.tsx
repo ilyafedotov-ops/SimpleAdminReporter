@@ -311,7 +311,7 @@ const ReportHistoryPage: React.FC = () => {
       setSelectedRows([]);
       
       // Refresh the list after deletion
-      await refreshHistory();
+      await handleRefresh();
       
     } catch (error: any) {
       console.error('Bulk delete error:', error);
@@ -439,7 +439,7 @@ const ReportHistoryPage: React.FC = () => {
       setActionMenuOpen(null);
       
       // Refresh the history list
-      await refreshHistory();
+      await handleRefresh();
       
     } catch (error: any) {
       console.error('Error deleting report:', error);
