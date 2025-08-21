@@ -175,17 +175,37 @@ export class ExportController {
   async downloadFile(req: Request, res: Response, _next: NextFunction) {
     try {
       const { filename } = req.params;
-      // Use container detection logic for export path
-      const isInContainer = process.env.REPORT_EXPORT_PATH || 
-        (existsSync('/.dockerenv') || existsSync('/proc/1/cgroup'));
-      const exportPath = process.env.REPORT_EXPORT_PATH || 
-        (isInContainer ? '/app/exports' : './exports');
-      const filePath = path.join(exportPath, filename);
-
-      // Security check - prevent directory traversal
-      if (!filename || filename.includes('..') || filename.includes('/')) {
-        throw createError('Invalid filename', 400);
+      
+      // Validate filename first - prevent directory traversal and special characters
+      if (!filename || typeof filename !== 'string') {
+        throw createError('Invalid filename parameter', 400);
       }
+      
+      // Sanitize filename - allow only alphanumeric, dots, hyphens, underscores
+      const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '');
+      if (!sanitizedFilename || sanitizedFilename !== filename) {
+        throw createError('Invalid filename - contains illegal characters', 400);
+      }
+      
+      // Additional security checks
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        throw createError('Invalid filename - path traversal attempt', 400);
+      }
+
+      // Use container detection logic for export path  
+      const exportPath = process.env.REPORT_EXPORT_PATH || './exports';
+      
+      // Resolve and normalize paths to prevent directory traversal
+      const resolvedExportPath = path.resolve(exportPath);
+      const requestedFilePath = path.resolve(resolvedExportPath, sanitizedFilename);
+      
+      // Security validation - ensure the resolved path is within the export directory
+      if (!requestedFilePath.startsWith(resolvedExportPath + path.sep) && 
+          requestedFilePath !== resolvedExportPath) {
+        throw createError('Invalid file path - outside allowed directory', 403);
+      }
+      
+      const filePath = requestedFilePath;
 
       // Check if file exists and user has access
       const historyResult = await db.query(
@@ -193,7 +213,7 @@ export class ExportController {
          WHERE file_path LIKE $1 
          AND (user_id = $2 OR $3 = true)
          AND expires_at > NOW()`,
-        [`%${filename}`, req.user!.id, req.user!.isAdmin]
+        [`%${sanitizedFilename}`, req.user!.id, req.user!.isAdmin]
       );
 
       if (historyResult.rows.length === 0) {
@@ -211,7 +231,7 @@ export class ExportController {
       const stats = await fs.stat(filePath);
       
       // Determine content type based on file extension
-      const ext = path.extname(filename).toLowerCase();
+      const ext = path.extname(sanitizedFilename).toLowerCase();
       let contentType = 'application/octet-stream';
       
       switch (ext) {
@@ -228,7 +248,7 @@ export class ExportController {
 
       // Set headers
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${sanitizedFilename}"`);
       res.setHeader('Content-Length', stats.size);
 
       // Stream file

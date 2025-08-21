@@ -674,25 +674,47 @@ describe('ExportController', () => {
       expect(mockStream.pipe).toHaveBeenCalledWith(mockRes);
     });
 
-    it('should handle invalid filename', async () => {
+    it('should handle invalid filename with illegal characters', async () => {
       mockReq.params = { filename: '../../../etc/passwd' };
 
-      (createError as jest.Mock).mockReturnValue(new Error('Invalid filename'));
+      (createError as jest.Mock).mockReturnValue(new Error('Invalid filename - contains illegal characters'));
 
       await exportController.downloadFile(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(createError).toHaveBeenCalledWith('Invalid filename', 400);
+      expect(createError).toHaveBeenCalledWith('Invalid filename - contains illegal characters', 400);
       expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
     });
 
     it('should handle empty filename', async () => {
       mockReq.params = { filename: '' };
 
-      (createError as jest.Mock).mockReturnValue(new Error('Invalid filename'));
+      (createError as jest.Mock).mockReturnValue(new Error('Invalid filename parameter'));
 
       await exportController.downloadFile(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(createError).toHaveBeenCalledWith('Invalid filename', 400);
+      expect(createError).toHaveBeenCalledWith('Invalid filename parameter', 400);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+    });
+
+    it('should handle filename with illegal characters', async () => {
+      mockReq.params = { filename: 'test<script>alert(1)</script>.xlsx' };
+
+      (createError as jest.Mock).mockReturnValue(new Error('Invalid filename - contains illegal characters'));
+
+      await exportController.downloadFile(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(createError).toHaveBeenCalledWith('Invalid filename - contains illegal characters', 400);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+    });
+
+    it('should handle path traversal with clean filename', async () => {
+      mockReq.params = { filename: '..report.xlsx' }; // Contains .. but no slashes
+
+      (createError as jest.Mock).mockReturnValue(new Error('Invalid filename - path traversal attempt'));
+
+      await exportController.downloadFile(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(createError).toHaveBeenCalledWith('Invalid filename - path traversal attempt', 400);
       expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
     });
 
