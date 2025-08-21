@@ -88,8 +88,9 @@ export const useFieldDiscovery = (source: 'ad' | 'azure' | 'o365' | 'postgres'):
             if (response.ok) {
               const result: ApiResponse<any> = await response.json();
               if (result.success && ((result as any)?.data)?.fields) {
-                // Convert Graph fields to FieldMetadata format
-                const fields: FieldMetadata[] = ((result as any)?.data).fields.map((field: Record<string, unknown>) => ({
+                // Convert Graph fields to FieldMetadata format  
+                const resultData = (result as any)?.data;
+                const fields: FieldMetadata[] = resultData?.fields?.map((field: Record<string, unknown>) => ({
                   source: 'azure' as const,
                   fieldName: field.name,
                   displayName: field.displayName,
@@ -104,7 +105,7 @@ export const useFieldDiscovery = (source: 'ad' | 'azure' | 'o365' | 'postgres'):
                   isExportable: true,
                   isSensitive: false,
                   sampleValues: field.sampleValues
-                }));
+                })) || [];
 
                 allFields.push(...fields);
 
@@ -175,9 +176,10 @@ export const useFieldDiscovery = (source: 'ad' | 'azure' | 'o365' | 'postgres'):
         // The backend now returns an object: { source, categories, totalFields }
         // but older versions returned the categories array directly. Support both.
 
-        const categoriesData: FieldCategory[] = Array.isArray(((result as any)?.data))
-          ? (((result as any)?.data) as FieldCategory[])
-          : (((result as any)?.data).categories || []);
+        const resultData = (result as any)?.data;
+        const categoriesData: FieldCategory[] = Array.isArray(resultData)
+          ? (resultData as FieldCategory[])
+          : (resultData?.categories || []);
 
         setCategories(categoriesData);
 
@@ -189,10 +191,10 @@ export const useFieldDiscovery = (source: 'ad' | 'azure' | 'o365' | 'postgres'):
         setFields(allFields);
 
         // Update total fields if the API provided it, otherwise derive from length
-        setTotalFields(
-          (Array.isArray(((result as any)?.data)) ? (((result as any)?.data) as any).totalFields : ((result as any)?.data).totalFields) ||
-          allFields.length
-        );
+        const totalFieldsFromApi = Array.isArray(resultData) 
+          ? (resultData as any)?.totalFields 
+          : resultData?.totalFields;
+        setTotalFields(totalFieldsFromApi || allFields.length);
       } else {
         throw new Error(result.error || 'Failed to load field metadata');
       }
@@ -256,17 +258,18 @@ export const useFieldDiscovery = (source: 'ad' | 'azure' | 'o365' | 'postgres'):
       
       if (result.success && ((result as any)?.data)) {
         // Use the dynamically discovered fields
-        if (((result as any)?.data).categories) {
-          setCategories(((result as any)?.data).categories);
+        const schemaData = (result as any)?.data;
+        if (schemaData?.categories) {
+          setCategories(schemaData.categories);
         }
         
-        if (((result as any)?.data).allFields) {
-          setFields(((result as any)?.data).allFields);
-          setTotalFields(((result as any)?.data).totalAttributes || ((result as any)?.data).allFields.length);
+        if (schemaData?.allFields) {
+          setFields(schemaData.allFields);
+          setTotalFields(schemaData?.totalAttributes || schemaData?.allFields?.length || 0);
         }
         
         // If we have common attributes, we could highlight them
-        console.log(`Discovered ${((result as any)?.data).totalAttributes} attributes from ${source}`);
+        console.log(`Discovered ${schemaData?.totalAttributes || 0} attributes from ${source}`);
         
         // Also refresh the regular fields to ensure we have the latest
         await fetchFields(true);
