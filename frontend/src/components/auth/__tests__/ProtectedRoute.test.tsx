@@ -33,7 +33,7 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
-    Navigate: ({ to, state, replace }: any) => {
+    Navigate: ({ to, state, replace }: { to: string; state?: unknown; replace?: boolean }) => {
       mockNavigate(to, state, replace);
       return <div data-testid="navigate" data-to={to}>Navigating to {to}</div>;
     },
@@ -61,7 +61,7 @@ describe('ProtectedRoute', () => {
 
   beforeEach(() => {
     // Mock authService methods
-    vi.mocked(authService.logout).mockResolvedValue(undefined as any);
+    vi.mocked(authService.logout).mockResolvedValue(undefined);
     
     vi.clearAllMocks();
   });
@@ -100,7 +100,7 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: true,
-              user: null as any,
+              user: null,
               isLoading: false,
               token: 'valid-token'
             }
@@ -140,7 +140,7 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: true,
-              user: null as any,
+              user: null,
               isLoading: true,
               token: 'valid-token'
             }
@@ -161,7 +161,7 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: true,
-              user: null as any,
+              user: null,
               isLoading: false,
               token: 'valid-token'
             }
@@ -184,9 +184,9 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: false,
-              user: null as any,
+              user: null,
               isLoading: false,
-              token: null as any
+              token: null
             }
           }
         }
@@ -205,9 +205,9 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: false, // Simulate expired token state
-              user: null as any,
+              user: null,
               isLoading: false,
-              token: null as any
+              token: null
             }
           }
         }
@@ -226,9 +226,9 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: false,
-              user: null as any,
+              user: null,
               isLoading: false,
-              token: null as any
+              token: null
             }
           }
         }
@@ -527,7 +527,7 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: true,
-              user: null as any,
+              user: null,
               isLoading: true,
               token: 'valid-token'
             }
@@ -589,7 +589,7 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: true,
-              user: null as any,
+              user: null,
               isLoading: false,
               token: 'valid-token'
             }
@@ -614,9 +614,9 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: false,
-              user: null as any,
+              user: null,
               isLoading: false,
-              token: null as any
+              token: null
             }
           }
         }
@@ -696,9 +696,9 @@ describe('ProtectedRoute', () => {
           initialState: {
             auth: {
               isAuthenticated: false,
-              user: null as any,
+              user: null,
               isLoading: false,
-              token: null as any
+              token: null
             }
           }
         }
