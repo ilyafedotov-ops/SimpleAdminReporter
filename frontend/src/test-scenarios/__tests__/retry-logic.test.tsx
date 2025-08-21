@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppError, ErrorType, getRetryDelay } from '@/utils/errorHandler';
@@ -14,10 +14,14 @@ const RetryTestComponent: React.FC<{
 }> = ({ shouldThrow, errorType = ErrorType.NETWORK, throwCount = 1 }) => {
   const [currentThrowCount, setCurrentThrowCount] = React.useState(0);
 
-  if (shouldThrow && currentThrowCount < throwCount) {
-    React.useEffect(() => {
+  // Always call useEffect at the top level, but conditionally execute logic
+  React.useEffect(() => {
+    if (shouldThrow && currentThrowCount < throwCount) {
       setCurrentThrowCount(prev => prev + 1);
-    });
+    }
+  }, [shouldThrow, currentThrowCount, throwCount]);
+
+  if (shouldThrow && currentThrowCount < throwCount) {
     throw new AppError(
       `Test error ${currentThrowCount + 1}`,
       errorType,
@@ -33,7 +37,7 @@ const RetryTestComponent: React.FC<{
 const createMockAsyncOperation = (
   failureCount: number,
   errorType: ErrorType = ErrorType.NETWORK,
-  successValue: any = 'success'
+  successValue: string = 'success'
 ) => {
   let attempt = 0;
   return vi.fn().mockImplementation(() => {
@@ -134,8 +138,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = createMockAsyncOperation(2, ErrorType.NETWORK);
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
       
-      const startTime = Date.now();
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -161,7 +164,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = createMockAsyncOperation(5, ErrorType.NETWORK); // More failures than max attempts
       const retryHandler = result.current.createRetryHandler(mockOperation, 2);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -186,7 +189,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = createMockAsyncOperation(1, ErrorType.AUTHENTICATION);
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       await act(async () => {
         resultValue = await retryHandler();
@@ -209,10 +212,8 @@ describe('Retry Logic Comprehensive Tests', () => {
         onSuccess,
       });
       
-      let resultValue: any;
-      
       const promise = act(async () => {
-        resultValue = await retryHandler();
+        await retryHandler();
       });
       
       await act(async () => {
@@ -241,7 +242,7 @@ describe('Retry Logic Comprehensive Tests', () => {
         onFailure,
       });
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -407,7 +408,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = vi.fn().mockResolvedValue('immediate success');
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       await act(async () => {
         resultValue = await retryHandler();
@@ -423,7 +424,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = createMockAsyncOperation(1, ErrorType.NETWORK, 'success after retry');
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -446,7 +447,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = createMockAsyncOperation(3, ErrorType.TIMEOUT, 'final success');
       const retryHandler = result.current.createRetryHandler(mockOperation, 5);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -474,7 +475,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = createMockAsyncOperation(10, ErrorType.SERVER); // More failures than max
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -515,7 +516,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       
       const retryHandler = result.current.createRetryHandler(mockOperation, 5);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -551,7 +552,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -579,7 +580,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const retryHandler1 = result.current.createRetryHandler(mockOperation1, 3);
       const retryHandler2 = result.current.createRetryHandler(mockOperation2, 3);
       
-      let result1: any, result2: any;
+      let result1: string | null, result2: string | null;
       
       const promise1 = act(async () => {
         result1 = await retryHandler1();
@@ -610,7 +611,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = createMockAsyncOperation(2, ErrorType.RATE_LIMIT);
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -650,7 +651,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
@@ -704,7 +705,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const retryHandler2 = result.current.createRetryHandler(mockOperation, 5);
       const retryHandler3 = result.current.createRetryHandler(mockOperation, 0);
       
-      let result1: any, result2: any, result3: any;
+      let result1: string | null, result2: string | null, result3: string | null;
       
       // Handler with 1 max retry
       await act(async () => {
@@ -748,7 +749,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = createMockAsyncOperation(1, ErrorType.NETWORK);
       const retryHandler = result.current.createRetryHandler(mockOperation, -1);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       await act(async () => {
         resultValue = await retryHandler();
@@ -764,7 +765,7 @@ describe('Retry Logic Comprehensive Tests', () => {
       const mockOperation = createMockAsyncOperation(3, ErrorType.NETWORK);
       const retryHandler = result.current.createRetryHandler(mockOperation, 1000);
       
-      let resultValue: any;
+      let resultValue: string | null;
       
       const promise = act(async () => {
         resultValue = await retryHandler();
