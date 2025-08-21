@@ -653,5 +653,52 @@ describe('QueryBuilder', () => {
           .build();
       }).toThrow('Field name must be a non-empty string');
     });
+
+    it('should prevent type confusion attacks on identifiers', () => {
+      // Test that escapeIdentifier properly handles non-string types
+      const builder = queryBuilder.select('id').from('users');
+      
+      // Access private method through any cast for testing
+      const escapeIdentifier = (builder as any).escapeIdentifier;
+      
+      // Test array input (potential type confusion)
+      expect(() => {
+        escapeIdentifier(['malicious', 'array']);
+      }).toThrow('Identifier must be a string');
+      
+      // Test object input
+      expect(() => {
+        escapeIdentifier({ malicious: 'object' });
+      }).toThrow('Identifier must be a string');
+      
+      // Test undefined/null
+      expect(() => {
+        escapeIdentifier(undefined);
+      }).toThrow('Identifier must be a string');
+      
+      expect(() => {
+        escapeIdentifier(null);
+      }).toThrow('Identifier must be a string');
+      
+      // Test empty string
+      expect(() => {
+        escapeIdentifier('');
+      }).toThrow('Identifier cannot be empty');
+      
+      // Test valid string should work
+      expect(escapeIdentifier('valid_column')).toBe('"valid_column"');
+      
+      // Test table.column format
+      expect(escapeIdentifier('users.id')).toBe('"users"."id"');
+      
+      // Test invalid sanitization cases
+      expect(() => {
+        escapeIdentifier('!!!@@@###'); // Only special chars, nothing left after sanitization
+      }).toThrow('Invalid identifier after sanitization');
+      
+      expect(() => {
+        escapeIdentifier('valid.!!!'); // One valid part, one invalid after sanitization
+      }).toThrow('Invalid identifier part after sanitization');
+    });
   });
 });

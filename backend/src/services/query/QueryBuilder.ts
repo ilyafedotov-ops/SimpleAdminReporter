@@ -432,6 +432,16 @@ export class QueryBuilder {
    * Escape SQL identifier (table/column names)
    */
   private escapeIdentifier(identifier: string): string {
+    // Type guard to prevent type confusion attacks
+    if (typeof identifier !== 'string') {
+      throw createError('Identifier must be a string', 400);
+    }
+    
+    // Additional validation for security
+    if (!identifier || identifier.length === 0) {
+      throw createError('Identifier cannot be empty', 400);
+    }
+    
     // Don't escape *
     if (identifier === '*') {
       return '*';
@@ -442,12 +452,18 @@ export class QueryBuilder {
       const parts = identifier.split('.');
       return parts.map(part => {
         const cleaned = part.replace(/[^\w_]/g, '');
+        if (!cleaned || cleaned.length === 0) {
+          throw createError('Invalid identifier part after sanitization', 400);
+        }
         return `"${cleaned}"`;
       }).join('.');
     }
     
     // Remove dangerous characters and wrap in quotes
     const cleaned = identifier.replace(/[^\w_]/g, '');
+    if (!cleaned || cleaned.length === 0) {
+      throw createError('Invalid identifier after sanitization', 400);
+    }
     return `"${cleaned}"`;
   }
   
