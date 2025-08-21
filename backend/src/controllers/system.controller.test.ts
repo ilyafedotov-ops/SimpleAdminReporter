@@ -98,7 +98,7 @@ describe('SystemController', () => {
     (configService.getServiceAvailability as jest.Mock).mockReturnValue(mockServiceAvailability);
     (configService.getErrors as jest.Mock).mockReturnValue([]);
     (configService.hasErrors as jest.Mock).mockReturnValue(false);
-    (configService.initialize as jest.Mock).mockResolvedValue(mockValidationResult);
+    (configService.initialize as jest.Mock).mockResolvedValue(_mockValidationResult);
 
     // Create router and register routes
     const router = express.Router();
@@ -499,7 +499,7 @@ describe('SystemController', () => {
         (configService.getConfig as jest.Mock).mockReturnValue(mockConfig);
         (configService.getServiceAvailability as jest.Mock).mockReturnValue(mockServiceAvailability);
         (configService.getErrors as jest.Mock).mockReturnValue([]);
-        (configService.initialize as jest.Mock).mockResolvedValue(mockValidationResult);
+        (configService.initialize as jest.Mock).mockResolvedValue(_mockValidationResult);
 
         const response = 
       await request(app)

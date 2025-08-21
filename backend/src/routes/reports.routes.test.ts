@@ -6,7 +6,15 @@ import { queryController } from '@/controllers/query.controller';
 
 // Type definitions for better type safety
 interface MockRequest extends Partial<Request> {
-  user?: { id: number; username: string; isAdmin: boolean };
+  user?: {
+    id: number;
+    username: string;
+    displayName: string;
+    email: string;
+    authSource: 'ad' | 'azure' | 'o365' | 'local';
+    isAdmin: boolean;
+    isActive: boolean;
+  };
   headers: { authorization?: string };
 }
 
@@ -106,18 +114,18 @@ jest.mock('@/middleware/auth-wrapper', () => {
   return {
     requireAuth: jest.fn((req: MockRequest, res: MockResponse, _next: MockNext) => {
       mockAuthWrapper.requireAuth();
-      req.user = { id: 1, username: 'testuser', isAdmin: false };
+      req.user = { id: 1, username: 'testuser', displayName: 'Test User', email: 'test@example.com', authSource: 'local', isAdmin: false, isActive: true };
       _next();
     }),
     requireAdmin: jest.fn((req: MockRequest, res: MockResponse, next: MockNext) => {
       mockAuthWrapper.requireAdmin();
-      req.user = { id: 1, username: 'admin', isAdmin: true };
+      req.user = { id: 1, username: 'admin', displayName: 'Admin User', email: 'admin@example.com', authSource: 'local', isAdmin: true, isActive: true };
       next();
     }),
     optionalAuth: jest.fn((req: MockRequest, res: MockResponse, next: MockNext) => {
       mockAuthWrapper.optionalAuth();
       if (req.headers?.authorization) {
-        req.user = { id: 1, username: 'testuser', isAdmin: false };
+        req.user = { id: 1, username: 'testuser', displayName: 'Test User', email: 'test@example.com', authSource: 'local', isAdmin: false, isActive: true };
       }
       next();
     }),
@@ -227,12 +235,11 @@ describe('Reports Routes', () => {
   describe('Pre-built Report Templates', () => {
     describe('GET /api/reports/templates', () => {
       it('should get report templates without authentication', async () => {
-        const _response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/templates')
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { templates: [] }
         });
@@ -240,13 +247,12 @@ describe('Reports Routes', () => {
       });
 
 it('should filter templates by category', async () => {
-        const _response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/templates')
           .query({ category: 'ad' })
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { templates: [] }
         });
@@ -254,13 +260,12 @@ it('should filter templates by category', async () => {
       });
 
       it('should filter templates by source', async () => {
-        const _response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/templates')
           .query({ source: 'azure' })
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { templates: [] }
         });
@@ -268,13 +273,12 @@ it('should filter templates by category', async () => {
       });
 
       it('should handle invalid category parameter gracefully', async () => {
-        const _response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/templates')
           .query({ category: 'invalid' })
           .expect(200); // Validation passes in mock
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { templates: [] }
         });
@@ -284,24 +288,22 @@ it('should filter templates by category', async () => {
       });
 
       it('should filter templates by source', async () => {
-        const _response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/templates')
           .query({ source: 'azure' })
           .expect(200);
 
-        expect(_response.status).toBe(200);
+        expect(response.status).toBe(200);
         expect(reportsController.getTemplates).toHaveBeenCalled();
       });
 
       it('should handle invalid category parameter gracefully', async () => {
-        const _response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/templates')
           .query({ category: 'invalid' })
           .expect(200); // Validation passes in mock
 
-        expect(_response.status).toBe(200);
+        expect(response.status).toBe(200);
         expect(reportsController.getTemplates).toHaveBeenCalled();
       });
     });
@@ -310,14 +312,13 @@ it('should filter templates by category', async () => {
       const validTemplateId = '123e4567-e89b-12d3-a456-426614174000';
 
       it('should execute template with authentication', async () => {
-        const _response = 
-      await request(app)
+        const response = await request(app)
           .post(`/api/reports/execute/${validTemplateId}`)
           .set('Authorization', 'Bearer valid-token')
           .send({ parameters: { days: 30 } })
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           executionId: 'test-execution-id'
         });
@@ -361,12 +362,11 @@ it('should filter templates by category', async () => {
   describe('Field Discovery', () => {
     describe('GET /api/reports/fields/:source', () => {
       it('should get fields for AD source', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/fields/ad')
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { fields: [] }
         });
@@ -374,19 +374,17 @@ it('should filter templates by category', async () => {
       });
 
       it('should get fields for Azure source with category filter', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/fields/azure')
           .query({ category: 'basic' })
           .expect(200);
 
-        expect(_response.status).toBe(200);
+        expect(response.status).toBe(200);
         expect(reportsController.getFields).toHaveBeenCalled();
       });
 
       it('should get fields with search filter', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/fields/o365')
           .query({ search: 'username' })
           .expect(200);
@@ -397,13 +395,12 @@ it('should filter templates by category', async () => {
 
     describe('GET /api/reports/schema/:source/discover', () => {
       it('should discover AD schema with authentication', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/schema/ad/discover')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { schema: {} }
         });
@@ -411,8 +408,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should refresh schema when requested', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/schema/ad/discover')
           .set('Authorization', 'Bearer valid-token')
           .query({ refresh: 'true' })
@@ -422,8 +418,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should use specific credential for discovery', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/schema/ad/discover')
           .set('Authorization', 'Bearer valid-token')
           .query({ credentialId: '123' })
@@ -446,14 +441,13 @@ it('should filter templates by category', async () => {
           query: { fields: ['username'] }
         };
 
-        const response = 
-      await request(app)
+        const response = await request(app)
           .post('/api/reports/custom')
           .set('Authorization', 'Bearer valid-token')
           .send(customReport)
           .expect(201);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           reportId: 'new-report-id'
         });
@@ -483,12 +477,11 @@ it('should filter templates by category', async () => {
 
     describe('GET /api/reports/custom', () => {
       it('should get custom reports without authentication', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/custom')
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { reports: [] }
         });
@@ -496,8 +489,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should filter custom reports by source', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/custom')
           .query({ source: 'azure' })
           .expect(200);
@@ -506,8 +498,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should filter by public reports', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/custom')
           .query({ isPublic: 'true' })
           .expect(200);
@@ -518,12 +509,11 @@ it('should filter templates by category', async () => {
 
     describe('GET /api/reports/custom/:reportId', () => {
       it('should get specific custom report', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get(`/api/reports/custom/${validReportId}`)
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { report: {} }
         });
@@ -538,14 +528,13 @@ it('should filter templates by category', async () => {
           description: 'Updated description'
         };
 
-        const response = 
-      await request(app)
+        const response = await request(app)
           .put(`/api/reports/custom/${validReportId}`)
           .set('Authorization', 'Bearer valid-token')
           .send(updates)
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           message: 'Report updated'
         });
@@ -576,13 +565,12 @@ it('should filter templates by category', async () => {
 
     describe('DELETE /api/reports/custom/:reportId', () => {
       it('should delete custom report with authentication', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .delete(`/api/reports/custom/${validReportId}`)
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           message: 'Report deleted'
         });
@@ -601,14 +589,13 @@ it('should filter templates by category', async () => {
 
     describe('POST /api/reports/custom/:reportId/execute', () => {
       it('should execute custom report', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .post(`/api/reports/custom/${validReportId}/execute`)
           .set('Authorization', 'Bearer valid-token')
           .send({ parameters: { limit: 100 } })
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           executionId: 'custom-execution-id'
         });
@@ -635,14 +622,13 @@ it('should filter templates by category', async () => {
           limit: 10
         };
 
-        const response = 
-      await request(app)
+        const response = await request(app)
           .post('/api/reports/custom/test')
           .set('Authorization', 'Bearer valid-token')
           .send(testQuery)
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { results: [] }
         });
@@ -664,13 +650,12 @@ it('should filter templates by category', async () => {
   describe('Report History and Stats', () => {
     describe('GET /api/reports/stats', () => {
       it('should get report statistics with authentication', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/stats')
           .set('Authorization', 'Bearer valid-token')
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { stats: {} }
         });
@@ -680,12 +665,11 @@ it('should filter templates by category', async () => {
 
     describe('GET /api/reports/history', () => {
       it('should get report history without authentication', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/history')
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { history: [] }
         });
@@ -693,8 +677,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should filter history by status', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/history')
           .query({ status: 'completed' })
           .expect(200);
@@ -703,8 +686,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should filter history by source', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/history')
           .query({ source: 'ad' })
           .expect(200);
@@ -713,8 +695,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should paginate history results', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/history')
           .query({ limit: '50', offset: '20' })
           .expect(200);
@@ -727,12 +708,11 @@ it('should filter templates by category', async () => {
       const validExecutionId = '123e4567-e89b-12d3-a456-426614174000';
 
       it('should get specific report execution', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get(`/api/reports/history/${validExecutionId}`)
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { execution: {} }
         });
@@ -744,12 +724,11 @@ it('should filter templates by category', async () => {
       const validExecutionId = '123e4567-e89b-12d3-a456-426614174000';
 
       it('should get report execution results', async () => {
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get(`/api/reports/history/${validExecutionId}/results`)
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: { results: [] }
         });
@@ -764,13 +743,12 @@ it('should filter templates by category', async () => {
         const { db } = require('@/config/database');
         db.query.mockResolvedValueOnce({ rows: [] });
 
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/admin/templates')
           .set('Authorization', 'Bearer admin-token')
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: {
             reports: [],
@@ -795,13 +773,12 @@ it('should filter templates by category', async () => {
         const { db } = require('@/config/database');
         db.query.mockRejectedValueOnce(new Error('Database error'));
 
-        const response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/admin/templates')
           .set('Authorization', 'Bearer admin-token')
           .expect(500);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: false,
           error: 'Failed to get admin templates'
         });
@@ -816,13 +793,12 @@ it('should filter templates by category', async () => {
           .mockResolvedValueOnce({ rows: [] }) // custom stats
           .mockResolvedValueOnce({ rows: [] }); // user stats
 
-        const _response = 
-      await request(app)
+        const response = await request(app)
           .get('/api/reports/admin/usage')
           .set('Authorization', 'Bearer admin-token')
           .expect(200);
 
-        expect(_response.body).toEqual({
+        expect(response.body).toEqual({
           success: true,
           data: {
             topTemplates: [],
@@ -915,8 +891,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should filter definitions by data source', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/query/definitions')
           .query({ dataSource: 'postgres' })
           .expect(200);
@@ -941,8 +916,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should get schema for specific table', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .get('/api/reports/query/schema/postgres')
           .set('Authorization', 'Bearer valid-token')
           .query({ table: 'users' })
@@ -1085,8 +1059,7 @@ it('should filter templates by category', async () => {
         });
 
         it('should filter Graph definitions by category', async () => {
-          const response = 
-      await request(app)
+          await request(app)
             .get('/api/reports/query/graph/definitions')
             .set('Authorization', 'Bearer valid-token')
             .query({ category: 'users' })
@@ -1261,8 +1234,7 @@ it('should filter templates by category', async () => {
       });
 
       it('should add custom report to favorites', async () => {
-        const response = 
-      await request(app)
+        await request(app)
           .post('/api/reports/favorites')
           .set('Authorization', 'Bearer valid-token')
           .send({ customTemplateId: validTemplateId })

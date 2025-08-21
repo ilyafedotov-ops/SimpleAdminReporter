@@ -448,7 +448,7 @@ class AutomatedSecurityScanner {
             : undefined
         });
 
-      } catch (error) {
+      } catch (_error) {
         // Endpoint might not exist, which is fine
         continue;
       }
@@ -753,7 +753,7 @@ if (require.main === module) {
   scanner.runFullScan()
     .then(report => {
       console.log('Security scan completed');
-      console.log(`Failed tests: ${report.summary.failed}`);
+      logger.info(`Failed tests: ${report.summary.failed}`);
       console.log(`Critical issues: ${report.summary.criticalIssues}`);
       console.log(`High issues: ${report.summary.highIssues}`);
       
