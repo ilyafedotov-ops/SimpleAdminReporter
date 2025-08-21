@@ -4,8 +4,7 @@ import {
   PaginatedResponse, 
   QueryDefinition, 
   QueryExecutionResult,
-  PreviewResponse,
-  PreviewMetadata
+  PreviewResponse
 } from '@/types';
 import { 
   ReportTemplate, 

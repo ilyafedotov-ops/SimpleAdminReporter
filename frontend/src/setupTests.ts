@@ -71,7 +71,7 @@ global.fetch = vi.fn().mockImplementation(() =>
     json: () => Promise.resolve({}),
     text: () => Promise.resolve(''),
     blob: () => Promise.resolve(new Blob()),
-  } as Response)
+  } as globalThis.Response)
 )
 
 // Mock axios to prevent real network calls

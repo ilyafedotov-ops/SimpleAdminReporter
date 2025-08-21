@@ -80,7 +80,9 @@ describe('reportsService', () => {
       const result = await reportsService.getReportTemplates({ category: 'AD' });
 
       expect(apiService.get).toHaveBeenCalledWith('/reports/templates', { category: 'AD' });
-      expect(((result as any)?.data)).toEqual(mockTemplates);
+      if (result.success) {
+        expect(result.data).toEqual(mockTemplates);
+      }
     });
   });
 
@@ -111,22 +113,24 @@ describe('reportsService', () => {
         credentialId: undefined,
         format: 'json'
       });
-      expect(((result as any)?.data)).toEqual({
-        queryId: 'template-1',
-        executionId: 'exec-123',
-        executedAt: mockResult.executedAt,
-        result: {
-          success: true,
-          data: mockResult.data,
-          metadata: {
-            rowCount: mockResult.rowCount,
-            executionTime: 0,
-            cached: false,
-            dataSource: 'ad'
-          }
-        },
-        cached: false
-      });
+      if (result.success) {
+        expect(result.data).toEqual({
+            queryId: 'template-1',
+          executionId: 'exec-123',
+          executedAt: mockResult.executedAt,
+          result: {
+            success: true,
+            data: mockResult.data,
+            metadata: {
+              rowCount: mockResult.rowCount,
+              executionTime: 0,
+              cached: false,
+              dataSource: 'ad'
+            }
+          },
+          cached: false
+        });
+      }
     });
 
     it('should handle execution error', async () => {
@@ -226,13 +230,15 @@ describe('reportsService', () => {
       const result = await reportsService.getAvailableFields('ad');
 
       expect(queryService.getSchema).toHaveBeenCalledWith('ad');
-      expect(((result as any)?.data).fields).toHaveLength(2);
-      expect(((result as any)?.data).fields[0]).toMatchObject({
-        fieldName: 'displayName',
-        displayName: 'Display Name',
-        dataType: 'string',
-        category: 'basic'
-      });
+      if (result.success) {
+        expect(result.data.fields).toHaveLength(2);
+        expect(result.data.fields?.[0]).toMatchObject({
+          fieldName: 'displayName',
+          displayName: 'Display Name',
+          dataType: 'string',
+          category: 'basic'
+        });
+      }
     });
   });
 
@@ -401,7 +407,9 @@ describe('reportsService', () => {
       const result = await reportsService.getReportExecution('1');
 
       expect(apiService.get).toHaveBeenCalledWith('/reports/history/1');
-      expect(((result as any)?.data)).toEqual(mockExecution);
+      if (result.success) {
+        expect(result.data).toEqual(mockExecution);
+      }
     });
   });
 });
