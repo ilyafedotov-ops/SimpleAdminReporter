@@ -174,7 +174,7 @@ export function parseError(error: unknown): AppError {
 
   // Handle standard Error objects
   if (error instanceof Error) {
-    return new AppError(((error as any)?.message || String(error)), ErrorType.UNKNOWN);
+    return new AppError(error.message || String(error), ErrorType.UNKNOWN);
   }
 
   // Handle string errors
@@ -225,7 +225,7 @@ export function getUserFriendlyMessage(error: AppError): string {
     case ErrorType.AUTHORIZATION:
       return 'You do not have permission to perform this action.';
     case ErrorType.VALIDATION:
-      return ((error as any)?.message || String(error)); // Validation errors are usually already user-friendly
+      return error.message || String(error); // Validation errors are usually already user-friendly
     case ErrorType.QUERY_VALIDATION:
       return 'The query contains errors. Please check your query and try again.';
     case ErrorType.QUERY_EXECUTION:
@@ -237,7 +237,7 @@ export function getUserFriendlyMessage(error: AppError): string {
     case ErrorType.SERVER:
       return 'Server error occurred. Please try again later or contact support.';
     default:
-      return ((error as any)?.message || String(error)) || 'An unexpected error occurred. Please try again.';
+      return error.message || String(error) || 'An unexpected error occurred. Please try again.';
   }
 }
 
@@ -311,21 +311,21 @@ export function logError(error: AppError, context?: string): void {
   switch (error.type) {
     case ErrorType.VALIDATION:
     case ErrorType.QUERY_VALIDATION:
-      console.warn(`${logContext} Validation Error:`, ((error as any)?.message || String(error)), error.details);
+      console.warn(`${logContext} Validation Error:`, error.message || String(error), error.details);
       break;
     case ErrorType.AUTHENTICATION:
     case ErrorType.AUTHORIZATION:
-      console.warn(`${logContext} Auth Error:`, ((error as any)?.message || String(error)));
+      console.warn(`${logContext} Auth Error:`, error.message || String(error));
       break;
     case ErrorType.NETWORK:
     case ErrorType.TIMEOUT:
-      console.error(`${logContext} Network Error:`, ((error as any)?.message || String(error)));
+      console.error(`${logContext} Network Error:`, error.message || String(error));
       break;
     case ErrorType.SERVER:
     case ErrorType.QUERY_EXECUTION:
-      console.error(`${logContext} Server Error:`, ((error as any)?.message || String(error)), error.details);
+      console.error(`${logContext} Server Error:`, error.message || String(error), error.details);
       break;
     default:
-      console.error(`${logContext} Error:`, ((error as any)?.message || String(error)), error.details);
+      console.error(`${logContext} Error:`, error.message || String(error), error.details);
   }
 }

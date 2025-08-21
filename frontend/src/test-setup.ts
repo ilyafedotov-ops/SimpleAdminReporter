@@ -56,14 +56,14 @@ global.console.warn = vi.fn();
 // Mock timer functions for vitest compatibility
 // These ensure that timer functions work properly in the test environment
 Object.defineProperty(global, 'setTimeout', {
-  value: (fn: (...args: any[]) => void, delay?: number, ...args: any[]) => {
+  value: (fn: (...args: unknown[]) => void, delay?: number, ...args: unknown[]) => {
     return setTimeout(fn, delay, ...args);
   },
   writable: true,
 });
 
 Object.defineProperty(global, 'clearTimeout', {
-  value: (id?: any) => {
+  value: (id?: NodeJS.Timeout) => {
     if (id !== null && id !== undefined) {
       clearTimeout(id);
     }
@@ -72,14 +72,14 @@ Object.defineProperty(global, 'clearTimeout', {
 });
 
 Object.defineProperty(global, 'setInterval', {
-  value: (fn: (...args: any[]) => void, delay?: number, ...args: any[]) => {
+  value: (fn: (...args: unknown[]) => void, delay?: number, ...args: unknown[]) => {
     return setInterval(fn, delay, ...args);
   },
   writable: true,
 });
 
 Object.defineProperty(global, 'clearInterval', {
-  value: (id?: any) => {
+  value: (id?: NodeJS.Timeout) => {
     if (id !== null && id !== undefined) {
       clearInterval(id);
     }

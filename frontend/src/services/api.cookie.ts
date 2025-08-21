@@ -160,10 +160,16 @@ class CookieApiService {
         if (error.response?.status === 403 && error.response?.data?.message?.includes('CSRF')) {
           // Try to get a new CSRF token and retry
           if (!((error as any)?.config)?._retry) {
-            ((error as any)?.config)._retry = true;
+            const config = (error as any)?.config;
+            if (config) {
+              config._retry = true;
+            }
             try {
               await cookieAuthService.refreshToken();
-              return this.client.request(((error as any)?.config));
+              const config = (error as any)?.config;
+              if (config) {
+                return this.client.request(config);
+              }
             } catch (_csrfError) {
               console.error('Failed to refresh CSRF token:', _csrfError);
             }

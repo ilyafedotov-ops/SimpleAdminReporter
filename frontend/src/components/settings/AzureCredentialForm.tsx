@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 import React, { useState } from 'react';
 import { Form, Input, Switch, Select, Alert, Space, Divider, Tooltip, FormInstance } from 'antd';
 import { InfoCircleOutlined, GlobalOutlined, UserOutlined } from '@ant-design/icons';

@@ -4,10 +4,10 @@ import { Provider } from 'react-redux';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import { configureStore } from '@reduxjs/toolkit';
-import { mockStoreState, mockUser } from './test-mocks';
+import { mockStoreState } from './test-mocks';
 
 // Create simple mock reducers for testing
-const createMockReducer = (initialState: any) => (state = initialState, action: any) => {
+const createMockReducer = (initialState: unknown) => (state = initialState, action: { type: string; payload?: unknown }) => {
   // Handle common Redux Toolkit action types
   switch (action.type) {
     case 'auth/login/pending':

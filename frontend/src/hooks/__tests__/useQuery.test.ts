@@ -184,7 +184,6 @@ describe('useQuery hooks', () => {
 
   // Wrapper component for Redux Provider
   const createWrapper = (testStore: EnhancedStore) => {
-    // eslint-disable-next-line react/display-name
     return ({ children }: { children: React.ReactNode }) => (
       React.createElement(Provider, { store: testStore }, children)
     );
