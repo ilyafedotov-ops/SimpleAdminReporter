@@ -96,9 +96,9 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
       const response = await graphService.discoverFields(selectedEntity);
       console.log('Field discovery response:', response);
       
-      if (response.success && ((response as any).data)) {
+      if (response.success && response.data) {
         // Transform Graph fields to FieldMetadata format
-        const transformedFields: FieldMetadata[] = ((response as any).data).fields.map(field => ({
+        const transformedFields: FieldMetadata[] = (response.data as { fields: Array<{ name: string; displayName: string; type: string; required: boolean }> }).fields.map(field => ({
           source: 'azure' as const,
           fieldName: field.name,
           displayName: field.displayName,
@@ -122,7 +122,7 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? ((error as any)?.message || String(error)) : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
       // Check if it's an authentication error from the network request
       if (error && typeof error === 'object' && 'status' in error && (error as { status: number }).status === 401) {

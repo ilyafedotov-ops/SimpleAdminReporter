@@ -121,7 +121,7 @@ const CredentialList: React.FC<CredentialListProps> = ({
       render: (name: string, record: ServiceCredential) => (
         <Space>
           <Text strong>{name}</Text>
-          {((record as any).isDefault) && (
+          {record.isDefault && (
             <Tooltip title="Default credential">
               <StarFilled style={{ color: '#faad14' }} />
             </Tooltip>
@@ -146,7 +146,7 @@ const CredentialList: React.FC<CredentialListProps> = ({
       width: 200,
       render: (_, record) => (
         <Text ellipsis={{ tooltip: true }}>
-          {((record as any).username) || ((record as any).clientId) || '-'}
+          {record.username || record.clientId || '-'}
         </Text>
       ),
     },
@@ -177,8 +177,8 @@ const CredentialList: React.FC<CredentialListProps> = ({
             <Button
               size="small"
               icon={<ExperimentOutlined />}
-              onClick={() => handleTest(((record as any).id))}
-              loading={testingId === ((record as any).id)}
+              onClick={() => handleTest(record.id)}
+              loading={testingId === record.id}
             />
           </Tooltip>
           <Tooltip title="Edit">
@@ -188,19 +188,19 @@ const CredentialList: React.FC<CredentialListProps> = ({
               onClick={() => onEdit(record)}
             />
           </Tooltip>
-          {!((record as any).isDefault) && (
+          {!record.isDefault && (
             <Tooltip title="Set as Default">
               <Button
                 size="small"
                 icon={<StarOutlined />}
-                onClick={() => handleSetDefault(((record as any).id))}
+                onClick={() => handleSetDefault(record.id)}
               />
             </Tooltip>
           )}
           <Popconfirm
             title="Delete Credential"
             description="Are you sure you want to delete this credential?"
-            onConfirm={() => handleDelete(((record as any).id))}
+            onConfirm={() => handleDelete(record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -209,8 +209,8 @@ const CredentialList: React.FC<CredentialListProps> = ({
                 size="small"
                 danger
                 icon={<DeleteOutlined />}
-                loading={deletingId === ((record as any).id)}
-                disabled={((record as any).isDefault)}
+                loading={deletingId === record.id}
+                disabled={record.isDefault}
               />
             </Tooltip>
           </Popconfirm>

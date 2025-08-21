@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { Client } from '@microsoft/microsoft-graph-client';
 import { msalAuthService } from './auth/msal-auth.service';
 import { graphScopes } from '@/config/msal.config';
@@ -52,7 +51,7 @@ class GraphService {
   /**
    * Make a Graph API request
    */
-  async request<T = any>(options: GraphRequestOptions): Promise<T> {
+  async request<T = unknown>(options: GraphRequestOptions): Promise<T> {
     try {
       const client = await this.getClient();
       let request = client.api(options.endpoint);
@@ -93,9 +92,9 @@ class GraphService {
         });
       }
 
-      const response: any = await request.get();
+      const response: T = await request.get();
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.handleGraphError(error);
       throw error;
     }
@@ -146,7 +145,7 @@ class GraphService {
     top?: number;
     orderBy?: string;
   }) {
-    return this.request<GraphPagedResponse<any>>({
+    return this.request<GraphPagedResponse<Record<string, unknown>>>({
       endpoint: '/users',
       scopes: graphScopes.user.readAll,
       ...options,
@@ -162,7 +161,7 @@ class GraphService {
     top?: number;
     orderBy?: string;
   }) {
-    return this.request<GraphPagedResponse<any>>({
+    return this.request<GraphPagedResponse<Record<string, unknown>>>({
       endpoint: '/groups',
       scopes: graphScopes.group.read,
       ...options,
@@ -173,7 +172,7 @@ class GraphService {
    * Get directory roles
    */
   async getDirectoryRoles() {
-    return this.request<GraphPagedResponse<any>>({
+    return this.request<GraphPagedResponse<Record<string, unknown>>>({
       endpoint: '/directoryRoles',
       scopes: graphScopes.directory.read,
       expand: 'members',
@@ -188,7 +187,7 @@ class GraphService {
     top?: number;
     orderBy?: string;
   }) {
-    return this.request<GraphPagedResponse<any>>({
+    return this.request<GraphPagedResponse<Record<string, unknown>>>({
       endpoint: '/auditLogs/directoryAudits',
       scopes: graphScopes.auditLog.read,
       ...options,
@@ -203,7 +202,7 @@ class GraphService {
     top?: number;
     orderBy?: string;
   }) {
-    return this.request<GraphPagedResponse<any>>({
+    return this.request<GraphPagedResponse<Record<string, unknown>>>({
       endpoint: '/auditLogs/signIns',
       scopes: graphScopes.auditLog.read,
       ...options,
@@ -231,7 +230,7 @@ class GraphService {
     method: string;
     url: string;
     headers?: Record<string, string>;
-    body?: any;
+    body?: unknown;
   }>) {
     const client = await this.getClient();
     
@@ -252,17 +251,25 @@ class GraphService {
   /**
    * Handle Graph API errors
    */
-  private handleGraphError(error: any) {
+  private handleGraphError(error: unknown) {
     console.error('Graph API error:', error);
 
-    if (error.statusCode === 401) {
-      message.error('Authentication failed. Please sign in again.');
-    } else if (error.statusCode === 403) {
-      message.error('You do not have permission to access this resource.');
-    } else if (error.statusCode === 429) {
-      message.error('Too many requests. Please try again later.');
-    } else if (((error as any)?.message || String(error))) {
-      message.error(`Graph API error: ${((error as any)?.message || String(error))}`);
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const errorObj = error as { statusCode: number; message?: string };
+      
+      if (errorObj.statusCode === 401) {
+        message.error('Authentication failed. Please sign in again.');
+      } else if (errorObj.statusCode === 403) {
+        message.error('You do not have permission to access this resource.');
+      } else if (errorObj.statusCode === 429) {
+        message.error('Too many requests. Please try again later.');
+      } else if (errorObj.message) {
+        message.error(`Graph API error: ${errorObj.message}`);
+      } else {
+        message.error('An unexpected error occurred while calling Microsoft Graph.');
+      }
+    } else if (error && typeof error === 'object' && 'message' in error && error.message) {
+      message.error(`Graph API error: ${error.message}`);
     } else {
       message.error('An unexpected error occurred while calling Microsoft Graph.');
     }

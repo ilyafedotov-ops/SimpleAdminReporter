@@ -25,7 +25,7 @@ export const mockApiResponses = {
         refreshToken: 'mock-refresh-token',
         expiresIn: 3600
       }
-    } as ApiResponse<any>,
+    } as ApiResponse,
     
     method: {
       success: true,
@@ -66,7 +66,7 @@ export const mockApiResponses = {
         totalCount: 2,
         executionTime: 150
       }
-    } as ApiResponse<any>,
+    } as ApiResponse,
 
     templates: {
       success: true,
