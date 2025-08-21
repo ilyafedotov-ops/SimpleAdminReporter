@@ -38,7 +38,7 @@ describe('QueryService', () => {
   let mockApiGet: ReturnType<typeof vi.fn>;
   let mockApiPost: ReturnType<typeof vi.fn>;
   let mockApiDelete: ReturnType<typeof vi.fn>;
-  let mockSchemaCache: any;
+  let mockSchemaCache: unknown;
   let mockCreateCacheKey: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {

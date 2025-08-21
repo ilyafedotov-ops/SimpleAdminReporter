@@ -494,9 +494,9 @@ describe('Frontend Types - PreviewResponse Integration', () => {
       // Mock service method that should accept our types
       function mockTestCustomQuery(
         source: 'ad' | 'azure' | 'o365',
-        query: CustomReportQuery,
-        parameters?: Record<string, unknown>,
-        limit?: number
+        _query: CustomReportQuery,
+        _parameters?: Record<string, unknown>,
+        _limit?: number
       ): Promise<PreviewResponse> {
         return Promise.resolve({
           success: true,

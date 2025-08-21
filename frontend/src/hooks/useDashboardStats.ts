@@ -50,8 +50,8 @@ export const useDashboardStats = (): UseDashboardStatsReturn => {
         { useCache: true, cacheTTL: 60 * 5 }
       );
       
-      if (result.success && ((result as any)?.data)) {
-        setStats(((result as any)?.data));
+      if (result.success && (result as { data?: Record<string, unknown> }).data) {
+        setStats((result as { data: Record<string, unknown> }).data);
       } else {
         throw new Error(result.error || 'Failed to load dashboard statistics');
       }

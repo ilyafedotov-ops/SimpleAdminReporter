@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AxiosError } from 'axios';
 import { AppError, ErrorType, parseError, isRetryableError, getRecoveryGuidance } from '@/utils/errorHandler';
@@ -74,7 +74,7 @@ const ErrorTestComponent: React.FC<{
         { errorId: 'err_123456', service: 'ldap-service' },
         500
       );
-    case 'axios':
+    case 'axios': {
       const axiosError = new Error('Network Error') as AxiosError;
       axiosError.isAxiosError = true;
       axiosError.response = {
@@ -82,9 +82,10 @@ const ErrorTestComponent: React.FC<{
         data: { message: 'Server temporarily unavailable' },
         headers: {},
         statusText: 'Internal Server Error',
-        config: {} as any,
+        config: {} as AxiosError['response']['config'],
       };
       throw axiosError;
+    }
     case 'none':
     default:
       return <div data-testid="success">No error</div>;
@@ -145,7 +146,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
     });
 
     it('provides network-specific recovery guidance', () => {
-      const { result } = renderHook(() => useErrorHandler());
+      renderHook(() => useErrorHandler());
       
       const networkError = new AppError('Network failed', ErrorType.NETWORK);
       const guidance = getRecoveryGuidance(networkError);
@@ -176,7 +177,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         data: { message: 'Request timeout' },
         headers: {},
         statusText: 'Request Timeout',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       render(
@@ -196,7 +197,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         data: { message: 'Gateway timeout' },
         headers: {},
         statusText: 'Gateway Timeout',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       render(
@@ -304,7 +305,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         data: { message: 'Invalid credentials' },
         headers: {},
         statusText: 'Unauthorized',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       render(
@@ -361,7 +362,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         data: { message: 'Access denied' },
         headers: {},
         statusText: 'Forbidden',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       render(
@@ -421,7 +422,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         data: { message: 'Too many requests' },
         headers: { 'retry-after': '120' },
         statusText: 'Too Many Requests',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       render(
@@ -501,7 +502,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         },
         headers: {},
         statusText: 'Internal Server Error',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       render(
@@ -521,7 +522,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         data: { message: 'Service temporarily unavailable' },
         headers: {},
         statusText: 'Service Unavailable',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       render(
@@ -541,7 +542,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         data: { message: 'Bad gateway' },
         headers: {},
         statusText: 'Bad Gateway',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       render(
@@ -579,7 +580,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         data: { message: 'Bad request' },
         headers: {},
         statusText: 'Bad Request',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       const parsed = parseError(responseError);
@@ -604,7 +605,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         },
         headers: {},
         statusText: 'Bad Request',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       const parsed = parseError(nestedError);
@@ -624,7 +625,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         },
         headers: {},
         statusText: 'Bad Request',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       const parsed = parseError(validationError);
@@ -771,7 +772,7 @@ describe('Error Scenarios - Comprehensive Testing', () => {
         },
         headers: {},
         statusText: 'Bad Gateway',
-        config: {} as any,
+        config: {} as unknown,
       };
       
       render(

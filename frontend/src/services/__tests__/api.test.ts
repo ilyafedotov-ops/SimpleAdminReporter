@@ -3,19 +3,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Mock MockAdapter with proper implementation
 vi.mock('axios-mock-adapter', () => {
   const mockHistory = {
-    get: [] as any[],
-    post: [] as any[],
-    put: [] as any[],
-    delete: [] as any[]
+    get: [] as unknown[],
+    post: [] as unknown[],
+    put: [] as unknown[],
+    delete: [] as unknown[]
   };
 
   class MockAdapter {
     adapter = vi.fn();
     restore = vi.fn();
     history = mockHistory;
-    private handlers: Map<string, any> = new Map();
+    private handlers: Map<string, unknown> = new Map();
 
-    constructor(axiosInstance: any) {
+    constructor(axiosInstance: unknown) {
       // Ensure defaults object exists with proper baseURL
       if (!axiosInstance.defaults) {
         axiosInstance.defaults = { baseURL: '/api' };
@@ -32,7 +32,7 @@ vi.mock('axios-mock-adapter', () => {
       }
 
       // Override axios methods to capture requests and return mocked responses
-      axiosInstance.get = vi.fn().mockImplementation(async (url: string, config: any = {}) => {
+      axiosInstance.get = vi.fn().mockImplementation(async (url: string, config: unknown = {}) => {
         this.history.get.push({ url, ...config });
         const key = `GET:${url}`;
         const handler = this.handlers.get(key);
@@ -53,7 +53,7 @@ vi.mock('axios-mock-adapter', () => {
         return { data: {} };
       });
 
-      axiosInstance.post = vi.fn().mockImplementation(async (url: string, data?: any, config: any = {}) => {
+      axiosInstance.post = vi.fn().mockImplementation(async (url: string, data?: unknown, config: unknown = {}) => {
         this.history.post.push({ url, data, ...config });
         const key = `POST:${url}`;
         const handler = this.handlers.get(key);
@@ -74,7 +74,7 @@ vi.mock('axios-mock-adapter', () => {
         return { data: {} };
       });
 
-      axiosInstance.put = vi.fn().mockImplementation(async (url: string, data?: any, config: any = {}) => {
+      axiosInstance.put = vi.fn().mockImplementation(async (url: string, data?: unknown, config: unknown = {}) => {
         this.history.put.push({ url, data, ...config });
         const key = `PUT:${url}`;
         const handler = this.handlers.get(key);
@@ -95,7 +95,7 @@ vi.mock('axios-mock-adapter', () => {
         return { data: {} };
       });
 
-      axiosInstance.delete = vi.fn().mockImplementation(async (url: string, config: any = {}) => {
+      axiosInstance.delete = vi.fn().mockImplementation(async (url: string, config: unknown = {}) => {
         this.history.delete.push({ url, ...config });
         const key = `DELETE:${url}`;
         const handler = this.handlers.get(key);
@@ -117,7 +117,7 @@ vi.mock('axios-mock-adapter', () => {
       });
 
       // Mock the request method for interceptor retry functionality
-      axiosInstance.request = vi.fn().mockImplementation(async (config: any) => {
+      axiosInstance.request = vi.fn().mockImplementation(async (config: unknown) => {
         if (config.method === 'get' || !config.method) {
           return axiosInstance.get(config.url, config);
         } else if (config.method === 'post') {
@@ -151,7 +151,7 @@ vi.mock('axios-mock-adapter', () => {
       const key = `${method}:${url}`;
       
       return {
-        reply: (statusOrCallback: any, data?: any) => {
+        reply: (statusOrCallback: unknown, data?: unknown) => {
           if (typeof statusOrCallback === 'function') {
             this.handlers.set(key, { response: statusOrCallback });
           } else if (statusOrCallback >= 400) {
@@ -170,7 +170,7 @@ vi.mock('axios-mock-adapter', () => {
           return this;
         },
         
-        replyOnce: (statusOrCallback: any, data?: any) => {
+        replyOnce: (statusOrCallback: unknown, data?: unknown) => {
           // For simplicity, treat replyOnce the same as reply
           if (typeof statusOrCallback === 'function') {
             this.handlers.set(key, { response: statusOrCallback });
@@ -240,7 +240,7 @@ vi.mock('@/utils/apiCache');
 describe('ApiService', () => {
   let mockAxios: MockAdapter;
   let apiService: ApiService;
-  let localStorageMock: Storage;
+  let localStorageMock: typeof window.localStorage;
 
   beforeEach(() => {
     // Mock localStorage
@@ -276,7 +276,7 @@ describe('ApiService', () => {
     apiService = new ApiService();
     
     // Setup axios mock
-    mockAxios = new MockAdapter((apiService as any).client);
+    mockAxios = new MockAdapter((apiService as unknown).client);
     
     // Clear mock history
     if (mockAxios.history) {
@@ -292,7 +292,7 @@ describe('ApiService', () => {
       type: errorHandler.ErrorType.NETWORK,
       statusCode: 500,
       toString: () => 'Test error'
-    } as any;
+    } as unknown;
     vi.mocked(errorHandler.parseError).mockReturnValue(mockAppError);
     vi.mocked(errorHandler.logError).mockImplementation(() => {});
     vi.mocked(apiQueue.queueApiCall).mockImplementation((fn) => fn());
@@ -314,7 +314,7 @@ describe('ApiService', () => {
     it('should initialize with environment base URL when VITE_API_URL is set', () => {
       // Mock environment variable
       const originalEnv = import.meta.env.VITE_API_URL;
-      (import.meta.env as any).VITE_API_URL = 'http://test-api.com';
+      (import.meta.env as unknown).VITE_API_URL = 'http://test-api.com';
       
       // Create new instance to test environment variable
       const testService = new ApiService();
@@ -322,7 +322,7 @@ describe('ApiService', () => {
       expect(testService.getBaseURL()).toBe('http://test-api.com');
       
       // Restore original value
-      (import.meta.env as any).VITE_API_URL = originalEnv;
+      (import.meta.env as unknown).VITE_API_URL = originalEnv;
     });
   });
 
@@ -332,8 +332,8 @@ describe('ApiService', () => {
       vi.mocked(localStorageMock.getItem).mockReturnValue(token);
 
       // Mock the request interceptor behavior manually since our mock doesn't trigger interceptors
-      const originalGet = (apiService as any).client.get;
-      (apiService as any).client.get = vi.fn().mockImplementation(async (url: string, config: any = {}) => {
+      const originalGet = (apiService as unknown).client.get;
+      (apiService as unknown).client.get = vi.fn().mockImplementation(async (url: string, config: unknown = {}) => {
         // Simulate the request interceptor adding the auth header
         if (localStorage.getItem('accessToken')) {
           config.headers = config.headers || {};
@@ -347,15 +347,15 @@ describe('ApiService', () => {
       await apiService.get('/test');
       
       // Restore original method
-      (apiService as any).client.get = originalGet;
+      (apiService as unknown).client.get = originalGet;
     });
 
     it('should not add authorization header when token does not exist', async () => {
       vi.mocked(localStorageMock.getItem).mockReturnValue(null);
 
       // Mock the request interceptor behavior manually
-      const originalGet = (apiService as any).client.get;
-      (apiService as any).client.get = vi.fn().mockImplementation(async (url: string, config: any = {}) => {
+      const originalGet = (apiService as unknown).client.get;
+      (apiService as unknown).client.get = vi.fn().mockImplementation(async (url: string, config: unknown = {}) => {
         // Simulate the request interceptor behavior
         if (localStorage.getItem('accessToken')) {
           config.headers = config.headers || {};
@@ -369,7 +369,7 @@ describe('ApiService', () => {
       await apiService.get('/test');
       
       // Restore original method
-      (apiService as any).client.get = originalGet;
+      (apiService as unknown).client.get = originalGet;
     });
   });
 
@@ -569,9 +569,9 @@ describe('ApiService', () => {
         download: '',
         click: vi.fn()
       };
-      const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
-      const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink as any);
-      const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as any);
+      const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockLink as unknown);
+      const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink as unknown);
+      const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as unknown);
       const createObjectURLSpy = vi.fn(() => 'blob:url');
       const revokeObjectURLSpy = vi.fn();
       URL.createObjectURL = createObjectURLSpy;

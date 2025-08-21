@@ -90,7 +90,7 @@ const mockInitialState = {
 
 describe('useQuery hooks', () => {
   let store: EnhancedStore;
-  let mockQueryService: any;
+  let mockQueryService: unknown;
 
   // Test data
   const mockDefinitions: QueryDefinition[] = [
@@ -793,7 +793,7 @@ describe('useQuery hooks', () => {
       ];
 
       expectedMethods.forEach(method => {
-        expect(typeof (result.current as any)[method]).toBe('function');
+        expect(typeof (result.current as unknown as Record<string, unknown>)[method]).toBe('function');
       });
 
       const expectedObjects = [
@@ -805,7 +805,7 @@ describe('useQuery hooks', () => {
       ];
 
       expectedObjects.forEach(obj => {
-        expect((result.current as any)[obj]).toBeDefined();
+        expect((result.current as unknown as Record<string, unknown>)[obj]).toBeDefined();
       });
     });
   });

@@ -27,10 +27,10 @@ class CredentialsApiService {
    */
   async getCredential(credentialId: number): Promise<ServiceCredential> {
     const response = await this.api.get<ServiceCredential>(`${this.basePath}/${credentialId}`);
-    if (!((response as any).data)) {
+    if (!(response as { data?: ServiceCredential[] }).data) {
       throw new Error('Credential not found');
     }
-    return ((response as any).data);
+    return (response as { data: ServiceCredential[] }).data;
   }
 
   /**
@@ -38,7 +38,7 @@ class CredentialsApiService {
    */
   async getDefaultCredentials(): Promise<DefaultCredentials> {
     const response = await this.api.get<DefaultCredentials>(`${this.basePath}/defaults`);
-    return ((response as any).data) || { ad: null, azure: null, o365: null };
+    return (response as { data?: DefaultCredentials }).data || { ad: null, azure: null, o365: null };
   }
 
   /**
@@ -47,10 +47,10 @@ class CredentialsApiService {
    */
   async createCredential(credential: CreateCredentialDto): Promise<ServiceCredential> {
     const response = await this.api.post<ServiceCredential>(this.basePath, credential);
-    if (!((response as any).data)) {
+    if (!(response as { data?: ServiceCredential[] }).data) {
       throw new Error('Failed to create credential');
     }
-    return ((response as any).data);
+    return (response as { data: ServiceCredential[] }).data;
   }
 
   /**
@@ -66,10 +66,10 @@ class CredentialsApiService {
       `${this.basePath}/${credentialId}`, 
       updates
     );
-    if (!((response as any).data)) {
+    if (!(response as { data?: ServiceCredential[] }).data) {
       throw new Error('Failed to update credential');
     }
-    return ((response as any).data);
+    return (response as { data: ServiceCredential[] }).data;
   }
 
   /**
@@ -88,10 +88,10 @@ class CredentialsApiService {
     const response = await this.api.post<TestCredentialResult>(
       `${this.basePath}/${credentialId}/test`
     );
-    if (!((response as any).data)) {
+    if (!(response as { data?: ServiceCredential[] }).data) {
       throw new Error('Failed to test credential');
     }
-    return ((response as any).data);
+    return (response as { data: ServiceCredential[] }).data;
   }
 
   /**
@@ -171,7 +171,7 @@ class CredentialsApiService {
       '/auth/azure/oauth/url', 
       { credentialName }
     );
-    return ((response as any).data)!;
+    return (response as { data: TestCredentialResult }).data;
   }
 
   async checkOAuthStatus(): Promise<{
@@ -188,7 +188,7 @@ class CredentialsApiService {
       clientId?: string;
       hasRefreshToken?: boolean;
     }>('/auth/azure/oauth/status');
-    return ((response as any).data)!;
+    return (response as { data: TestCredentialResult }).data;
   }
 
   /**

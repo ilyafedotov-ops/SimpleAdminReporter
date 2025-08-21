@@ -333,17 +333,18 @@ const TemplatesPageV2: React.FC = () => {
         setRecentTemplates(prev => [queryId, ...prev.filter(id => id !== queryId)].slice(0, 5));
         
         // Transform the result to match expected format
+        const resultData = (result as any)?.data;
         return {
           queryId,
-          executionId: ((result as any)?.data).executionId,
-          executedAt: ((result as any)?.data).executedAt,
+          executionId: resultData?.executionId,
+          executedAt: resultData?.executedAt,
           result: {
-            data: ((result as any)?.data).data || [],
+            data: resultData?.data || [],
             metadata: {
-              rowCount: ((result as any)?.data).totalCount || ((result as any)?.data).rowCount || 0,
-              executionTime: ((result as any)?.data).executionTimeMs || ((result as any)?.data).executionTime || 0,
+              rowCount: resultData?.totalCount || resultData?.rowCount || 0,
+              executionTime: resultData?.executionTimeMs || resultData?.executionTime || 0,
               cachedResult: false,
-              dataSource: ((result as any)?.data).source
+              dataSource: resultData?.source
             }
           },
           cached: false

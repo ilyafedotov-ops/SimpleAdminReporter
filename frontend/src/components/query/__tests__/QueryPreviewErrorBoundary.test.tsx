@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryPreviewErrorBoundary } from '../QueryPreviewErrorBoundary';
-import { AppError, ErrorType, parseError } from '@/utils/errorHandler';
+import { AppError, ErrorType } from '@/utils/errorHandler';
 
 // Mock console and localStorage
 const originalError = console.error;
@@ -46,7 +46,7 @@ afterEach(() => {
   mockLocalStorage = {};
   vi.clearAllTimers();
   vi.useRealTimers();
-  delete (window as any).gtag;
+  delete (window as unknown as { gtag?: unknown }).gtag;
 });
 
 // Test component that throws errors on demand

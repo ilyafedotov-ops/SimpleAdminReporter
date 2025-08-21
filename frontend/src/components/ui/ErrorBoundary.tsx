@@ -104,7 +104,7 @@ class ErrorBoundary extends Component<Props, State> {
                       <Text strong>Error:</Text>
                       <br />
                       <Text code style={{ color: '#ff4d4f' }}>
-                        {(this.state.error as any)?.message || String(this.state.error)}
+                        {this.state.error instanceof Error ? this.state.error.message : String(this.state.error)}
                       </Text>
                     </Paragraph>
 

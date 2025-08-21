@@ -244,7 +244,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
       } else if (axiosError.response?.status === 404) {
         message.error('OAuth endpoint not found. Please check the API configuration.');
       } else if (axiosError.response?.data?.message) {
-        message.error(`OAuth error: ${(axiosError.response?.data as any)?.message}`);
+        message.error(`OAuth error: ${(axiosError.response?.data as { message?: string })?.message}`);
       } else if (axiosError.message) {
         message.error(`Error: ${axiosError.message}`);
       } else {

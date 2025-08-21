@@ -42,7 +42,7 @@ vi.mock('antd', async () => {
 
 // Mock child components
 vi.mock('../EnhancedFieldExplorer', () => ({
-  EnhancedFieldExplorer: ({ onFieldSelect, onFieldDeselect }: any) => (
+  EnhancedFieldExplorer: ({ onFieldSelect, onFieldDeselect }: { onFieldSelect: (field: unknown) => void; onFieldDeselect: (field: unknown) => void }) => (
     <div data-testid="field-explorer">
       <button onClick={() => onFieldSelect({ fieldName: 'testField', displayName: 'Test Field' })}>
         Select Field
@@ -55,7 +55,7 @@ vi.mock('../EnhancedFieldExplorer', () => ({
 }));
 
 vi.mock('./VisualFilterBuilder', () => ({
-  default: ({ onChange }: any) => (
+  default: ({ onChange }: { onChange: (filters: unknown[]) => void }) => (
     <div data-testid="filter-builder">
       <button onClick={() => onChange([{ field: 'testField', operator: 'equals', value: 'test' }])}>
         Add Filter
@@ -75,7 +75,13 @@ vi.mock('../reports/ReportViewer', () => ({
     onGoBack, 
     loading,
     enableRecovery 
-  }: any) => (
+  }: { 
+    error?: string; 
+    onRetry?: () => void; 
+    onGoBack?: () => void; 
+    loading?: boolean; 
+    enableRecovery?: boolean; 
+  }) => (
     <div data-testid="report-viewer">
       {error && <div data-testid="report-error">{error}</div>}
       {loading && <div data-testid="report-loading">Loading...</div>}
@@ -101,7 +107,13 @@ vi.mock('./QueryPreviewErrorBoundary', () => ({
     onGoBack, 
     maxRetries,
     context 
-  }: any) => (
+  }: { 
+    children?: React.ReactNode; 
+    onRetry?: () => void; 
+    onGoBack?: () => void; 
+    maxRetries?: number;
+    context?: string; 
+  }) => (
     <div data-testid="error-boundary" data-context={context} data-max-retries={maxRetries}>
       {onRetry && (
         <button data-testid="boundary-retry" onClick={onRetry}>
@@ -135,9 +147,9 @@ const createMockStore = (initialState = {}) => {
 
 describe('QueryBuilderModal Integration Tests', () => {
   let mockStore: ReturnType<typeof createMockStore>;
-  let mockUseFieldDiscovery: any;
-  let mockUseErrorHandler: any;
-  let mockCredentialsAPI: any;
+  let mockUseFieldDiscovery: unknown;
+  let mockUseErrorHandler: unknown;
+  let mockCredentialsAPI: unknown;
 
   const defaultProps = {
     dataSource: 'ad' as const,
@@ -177,8 +189,7 @@ describe('QueryBuilderModal Integration Tests', () => {
       setCredentialId: vi.fn(),
     };
 
-    const { useFieldDiscovery } = require('@/hooks/useFieldDiscovery');
-    useFieldDiscovery.mockReturnValue(mockUseFieldDiscovery);
+    // useFieldDiscovery is already mocked at the top of the file
 
     // Setup error handler mock
     mockUseErrorHandler = {
@@ -187,8 +198,7 @@ describe('QueryBuilderModal Integration Tests', () => {
       handlePreviewError: vi.fn(),
     };
 
-    const { useErrorHandler } = require('@/hooks/useErrorHandler');
-    useErrorHandler.mockReturnValue(mockUseErrorHandler);
+    // useErrorHandler is already mocked at the top of the file
 
     // Setup credentials API mock
     mockCredentialsAPI = {
@@ -206,8 +216,7 @@ describe('QueryBuilderModal Integration Tests', () => {
       }),
     };
 
-    const { credentialsAPI } = require('@/services/credentials.api');
-    credentialsAPI.getCredentials = mockCredentialsAPI.getCredentials;
+    // credentialsAPI is already mocked at the top of the file
 
     vi.useFakeTimers();
   });
@@ -226,7 +235,7 @@ describe('QueryBuilderModal Integration Tests', () => {
 
   describe('Error Boundary Integration', () => {
     it('renders QueryPreviewErrorBoundary with correct props in results step', async () => {
-      const { rerender } = renderComponent();
+      renderComponent();
 
       // Navigate to step 1 (configure)
       fireEvent.click(screen.getByText('Next'));
@@ -406,7 +415,7 @@ describe('QueryBuilderModal Integration Tests', () => {
         async (operation, options) => {
           try {
             return await operation();
-          } catch (error) {
+          } catch {
             // Simulate retry logic
             await new Promise(resolve => setTimeout(resolve, 100));
             try {
@@ -489,7 +498,6 @@ describe('QueryBuilderModal Integration Tests', () => {
 
   describe('ReportViewer Error Integration', () => {
     it('passes error state to ReportViewer component', async () => {
-      const mockError = 'Test error message';
       renderComponent();
 
       // Navigate to results step

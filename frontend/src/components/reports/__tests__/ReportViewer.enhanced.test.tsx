@@ -4,7 +4,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ReportViewer } from '../ReportViewer';
-import { AppError, ErrorType } from '@/utils/errorHandler';
 import { uiSlice } from '@/store/slices/uiSlice';
 import type { FieldMetadata } from '@/hooks/useFieldDiscovery';
 
@@ -34,7 +33,7 @@ vi.mock('@/components/common', () => ({
     loading, 
     onExport, 
     extraActions 
-  }: any) => (
+  }: unknown) => (
     <div data-testid="enhanced-data-table">
       {loading && <div data-testid="table-loading">Loading table...</div>}
       <div data-testid="table-data">{JSON.stringify(data.slice(0, 2))}</div>
@@ -50,12 +49,12 @@ vi.mock('@/components/common', () => ({
       {extraActions && <div data-testid="extra-actions">{extraActions}</div>}
     </div>
   ),
-  defaultFormatCellValue: (value: any) => String(value),
-  hasInformation: (value: any) => value != null && value !== '',
+  defaultFormatCellValue: (value: unknown) => String(value),
+  hasInformation: (value: unknown) => value != null && value !== '',
 }));
 
 vi.mock('./ExecutionSummary', () => ({
-  ExecutionSummary: ({ status, recordCount, executionTime, category }: any) => (
+  ExecutionSummary: ({ status, recordCount, executionTime, category }: unknown) => (
     <div data-testid="execution-summary">
       <div>Status: {status}</div>
       <div>Records: {recordCount}</div>
@@ -82,7 +81,6 @@ const createMockStore = (initialState = {}) => {
 
 describe('ReportViewer Enhanced Error Handling', () => {
   let mockStore: ReturnType<typeof createMockStore>;
-  let mockUseErrorHandler: any;
 
   const mockFields: FieldMetadata[] = [
     {
@@ -131,12 +129,8 @@ describe('ReportViewer Enhanced Error Handling', () => {
     vi.clearAllMocks();
     mockStore = createMockStore();
 
-    mockUseErrorHandler = {
-      handlePreviewError: vi.fn(),
-    };
 
-    const { useErrorHandler } = require('@/hooks/useErrorHandler');
-    useErrorHandler.mockReturnValue(mockUseErrorHandler);
+    // useErrorHandler is already mocked at the top of the file
 
     vi.useFakeTimers();
   });

@@ -93,7 +93,7 @@ export const GraphEntitySelector: React.FC<GraphEntitySelectorProps> = ({
       setError(null);
       const response = await graphService.getEntityTypes();
       if (response.success) {
-        setAvailableEntities(((response as any).data) || []);
+        setAvailableEntities((response as { data?: string[] }).data || []);
       } else {
         setError(response.error || 'Failed to load entity types');
       }

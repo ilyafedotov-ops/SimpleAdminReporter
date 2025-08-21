@@ -690,7 +690,7 @@ describe('GraphService', () => {
   describe('type mapping', () => {
     it('should map Graph types to Azure types correctly', () => {
       // Access private method via type assertion for testing
-      const service = graphService as any;
+      const service = graphService as unknown;
       
       expect(service.mapGraphTypeToAzureType('Edm.String')).toBe('string');
       expect(service.mapGraphTypeToAzureType('Edm.Boolean')).toBe('boolean');
@@ -731,7 +731,7 @@ describe('GraphService', () => {
 
     it('should handle API rate limiting gracefully', async () => {
       const rateLimitError = new Error('Too Many Requests');
-      (rateLimitError as any).response = { status: 429 };
+      (rateLimitError as unknown as { response: { status: number } }).response = { status: 429 };
 
       mockApiServiceGet.mockRejectedValue(rateLimitError);
 

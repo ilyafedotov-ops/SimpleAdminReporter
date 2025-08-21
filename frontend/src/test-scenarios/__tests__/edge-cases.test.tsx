@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppError, ErrorType } from '@/utils/errorHandler';
@@ -40,7 +40,7 @@ const EdgeCaseTestComponent: React.FC<{
           }
         }, 100);
         break;
-      case 'memory':
+      case 'memory': {
         // Simulate memory-intensive error
         const largeData = new Array(10000).fill(0).map((_, i) => ({ id: i, data: `data-${i}` }));
         throw new AppError(
@@ -49,6 +49,7 @@ const EdgeCaseTestComponent: React.FC<{
           'MEMORY_ERROR',
           { largeData, timestamp: Date.now() }
         );
+      }
       case 'race':
         // Simulate race condition
         Promise.resolve().then(() => {
@@ -412,7 +413,7 @@ describe('Edge Cases and Boundary Conditions', () => {
       const mockOperation = vi.fn().mockImplementation(() => {
         if (!dnsWorking) {
           const dnsError = new Error('ENOTFOUND');
-          (dnsError as any).code = 'ENOTFOUND';
+          (dnsError as unknown).code = 'ENOTFOUND';
           throw dnsError;
         }
         return Promise.resolve('dns resolved');
@@ -443,7 +444,7 @@ describe('Edge Cases and Boundary Conditions', () => {
       const mockOperation = vi.fn().mockImplementation(() => {
         if (proxyBlocked) {
           const proxyError = new Error('ERR_PROXY_CONNECTION_FAILED');
-          (proxyError as any).code = 'ERR_PROXY_CONNECTION_FAILED';
+          (proxyError as unknown).code = 'ERR_PROXY_CONNECTION_FAILED';
           throw proxyError;
         }
         return Promise.resolve('proxy success');
@@ -471,12 +472,6 @@ describe('Edge Cases and Boundary Conditions', () => {
 
   describe('Memory and Performance Edge Cases', () => {
     it('handles large error objects without memory leaks', () => {
-      const largeErrorData = {
-        stackTrace: new Array(1000).fill('stack line'),
-        userData: new Array(10000).fill({ id: 1, data: 'large data chunk' }),
-        debugInfo: new Array(5000).fill('debug information'),
-      };
-
       render(
         <QueryPreviewErrorBoundary darkMode={false} showRecoveryActions={true}>
           <EdgeCaseTestComponent scenario="memory" />
@@ -518,8 +513,8 @@ describe('Edge Cases and Boundary Conditions', () => {
 
     it('handles memory pressure during error recovery', async () => {
       // Simulate memory pressure
-      const originalMemory = (navigator as any).memory;
-      (navigator as any).memory = {
+      const originalMemory = (navigator as unknown).memory;
+      (navigator as unknown).memory = {
         usedJSHeapSize: 180000000, // Close to limit
         totalJSHeapSize: 190000000,
         jsHeapSizeLimit: 200000000,
@@ -543,11 +538,11 @@ describe('Edge Cases and Boundary Conditions', () => {
       expect(resultValue).toBeNull();
 
       // Restore original memory info
-      (navigator as any).memory = originalMemory;
+      (navigator as unknown).memory = originalMemory;
     });
 
     it('handles concurrent error boundaries without interference', () => {
-      const { container } = render(
+      render(
         <div>
           <QueryPreviewErrorBoundary darkMode={false} context="Boundary1">
             <LifecycleTestComponent id="comp1" shouldThrow={true} />
@@ -607,7 +602,7 @@ describe('Edge Cases and Boundary Conditions', () => {
 
     it('handles missing console methods gracefully', () => {
       const originalConsole = console;
-      (global as any).console = {
+      (global as unknown).console = {
         log: vi.fn(),
         // Missing error and warn methods
       };
@@ -621,12 +616,12 @@ describe('Edge Cases and Boundary Conditions', () => {
       expect(screen.getByText('Server Error')).toBeInTheDocument();
 
       // Restore console
-      (global as any).console = originalConsole;
+      (global as unknown).console = originalConsole;
     });
 
     it('handles missing performance API', () => {
       const originalPerformance = window.performance;
-      delete (window as any).performance;
+      delete (window as unknown).performance;
 
       render(
         <QueryPreviewErrorBoundary darkMode={false} showRecoveryActions={true}>
@@ -637,7 +632,7 @@ describe('Edge Cases and Boundary Conditions', () => {
       expect(screen.getByText('Network Connection Issue')).toBeInTheDocument();
 
       // Restore performance
-      (window as any).performance = originalPerformance;
+      (window as unknown).performance = originalPerformance;
     });
 
     it('handles missing navigator properties', () => {
@@ -738,7 +733,7 @@ describe('Edge Cases and Boundary Conditions', () => {
       operationA = vi.fn().mockImplementation(async () => {
         try {
           return await operationB();
-        } catch (error) {
+        } catch {
           throw new AppError('Operation A failed due to B', ErrorType.SERVER);
         }
       });
@@ -746,7 +741,7 @@ describe('Edge Cases and Boundary Conditions', () => {
       operationB = vi.fn().mockImplementation(async () => {
         try {
           return await operationA();
-        } catch (error) {
+        } catch {
           throw new AppError('Operation B failed due to A', ErrorType.NETWORK);
         }
       });

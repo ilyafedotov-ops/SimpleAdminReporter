@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/utils/test-utils';
 import { useAppSelector } from '@/store';
@@ -9,7 +9,6 @@ import * as authSlice from '@/store/slices/authSlice';
 import * as uiSlice from '@/store/slices/uiSlice';
 import { searchService } from '@/services/searchService';
 import { useNotifications } from '@/hooks/useNotifications';
-import { debounce } from 'lodash';
 
 // Mock all the dependencies
 vi.mock('@/store/slices/authSlice');
@@ -132,15 +131,15 @@ describe('MainLayout', () => {
     });
 
     // Mock UI slice actions
-    vi.mocked(uiSlice.initializeUI).mockReturnValue({ type: 'ui/initializeUI' } as any);
-    vi.mocked(uiSlice.toggleDarkMode).mockReturnValue({ type: 'ui/toggleDarkMode' } as any);
-    vi.mocked(uiSlice.toggleSidebar).mockReturnValue({ type: 'ui/toggleSidebar' } as any);
+    vi.mocked(uiSlice.initializeUI).mockReturnValue({ type: 'ui/initializeUI' } as unknown);
+    vi.mocked(uiSlice.toggleDarkMode).mockReturnValue({ type: 'ui/toggleDarkMode' } as unknown);
+    vi.mocked(uiSlice.toggleSidebar).mockReturnValue({ type: 'ui/toggleSidebar' } as unknown);
 
     // Mock auth slice actions
-    vi.mocked(authSlice.logoutAsync).mockReturnValue({ type: 'auth/logoutAsync' } as any);
+    vi.mocked(authSlice.logoutAsync).mockReturnValue({ type: 'auth/logoutAsync' } as unknown);
 
     // Setup useAppSelector mock to return default state
-    vi.mocked(useAppSelector).mockImplementation((selector: any) => {
+    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
       const selectorString = selector.toString();
       if (selectorString.includes('auth') || selectorString.includes('state => state.auth')) {
         return mockSelectorState.auth;
@@ -161,23 +160,6 @@ describe('MainLayout', () => {
     vi.clearAllMocks();
   });
 
-  // Helper to set up mock state
-  const setupMockState = (overrides: any = {}) => {
-    const state = { ...mockSelectorState, ...overrides };
-    vi.mocked(useAppSelector).mockImplementation((selector: any) => {
-      const selectorString = selector.toString();
-      if (selectorString.includes('auth') || selectorString.includes('state => state.auth')) {
-        return state.auth;
-      }
-      if (selectorString.includes('selectTheme')) {
-        return state.theme;
-      }
-      if (selectorString.includes('selectSidebarState')) {
-        return state.sidebar;
-      }
-      return {};
-    });
-  };
 
   describe('rendering', () => {
     it('should render main layout with all components', () => {
@@ -581,7 +563,7 @@ describe('MainLayout', () => {
   describe('error handling', () => {
     it('should handle missing user data gracefully', () => {
       // Mock selector to return null user
-      vi.mocked(useAppSelector).mockImplementation((selector: any) => {
+      vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
         const selectorString = selector.toString();
         if (selectorString.includes('auth') || selectorString.includes('state => state.auth')) {
           return {

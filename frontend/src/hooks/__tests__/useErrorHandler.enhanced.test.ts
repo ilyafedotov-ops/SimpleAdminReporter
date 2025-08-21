@@ -1,4 +1,4 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { message } from 'antd';
 import { useErrorHandler, useFormErrorHandler } from '../useErrorHandler';
@@ -104,7 +104,7 @@ describe('useErrorHandler Enhanced Features', () => {
       const asyncFn = vi.fn().mockResolvedValue(successValue);
       const onSuccess = vi.fn();
       
-      let resultValue: any;
+      let resultValue: unknown;
       await act(async () => {
         resultValue = await result.current.handleAsync(asyncFn, { onSuccess });
       });
@@ -121,7 +121,7 @@ describe('useErrorHandler Enhanced Features', () => {
       const asyncFn = vi.fn().mockRejectedValue(error);
       const onError = vi.fn();
       
-      let resultValue: any;
+      let resultValue: unknown;
       await act(async () => {
         resultValue = await result.current.handleAsync(asyncFn, { onError });
       });
@@ -168,7 +168,7 @@ describe('useErrorHandler Enhanced Features', () => {
       
       const retryHandler = result.current.createRetryHandler(asyncFn, 3);
       
-      let resultValue: any;
+      let resultValue: unknown;
       const promise = act(async () => {
         resultValue = await retryHandler();
       });
@@ -196,7 +196,7 @@ describe('useErrorHandler Enhanced Features', () => {
       
       const retryHandler = result.current.createRetryHandler(asyncFn, 2);
       
-      let resultValue: any;
+      let resultValue: unknown;
       const promise = act(async () => {
         resultValue = await retryHandler();
       });
@@ -223,7 +223,7 @@ describe('useErrorHandler Enhanced Features', () => {
       
       const retryHandler = result.current.createRetryHandler(asyncFn, 3);
       
-      let resultValue: any;
+      let resultValue: unknown;
       await act(async () => {
         resultValue = await retryHandler();
       });
@@ -341,7 +341,7 @@ describe('useErrorHandler Enhanced Features', () => {
         onSuccess,
       });
       
-      let resultValue: any;
+      let resultValue: unknown;
       const promise = act(async () => {
         resultValue = await retryHandler();
       });
@@ -371,7 +371,7 @@ describe('useErrorHandler Enhanced Features', () => {
         onFailure,
       });
       
-      let resultValue: any;
+      let resultValue: unknown;
       const promise = act(async () => {
         resultValue = await retryHandler();
       });
@@ -461,7 +461,7 @@ describe('useErrorHandler Enhanced Features', () => {
       const operation = vi.fn().mockResolvedValue('operation success');
       const onSuccess = vi.fn();
       
-      let resultValue: any;
+      let resultValue: unknown;
       await act(async () => {
         resultValue = await result.current.handlePreviewOperation(operation, {
           onSuccess,
@@ -483,7 +483,7 @@ describe('useErrorHandler Enhanced Features', () => {
       const onRetry = vi.fn();
       const onGoBack = vi.fn();
       
-      let resultValue: any;
+      let resultValue: unknown;
       await act(async () => {
         resultValue = await result.current.handlePreviewOperation(operation, {
           onError,
@@ -675,7 +675,7 @@ describe('useErrorHandler Enhanced Features', () => {
         result.current.handleError(error, { retryCallback });
       });
       
-      const messageCall = (message.error as any).mock.calls[0][0];
+      const messageCall = (message.error as unknown).mock.calls[0][0];
       
       act(() => {
         messageCall.onClick();

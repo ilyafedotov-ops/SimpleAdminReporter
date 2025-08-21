@@ -39,8 +39,8 @@ const CredentialSelector: React.FC<CredentialSelectorProps> = ({
     setError(null);
     try {
       const response = await credentialsAPI.getCredentials(serviceType);
-      if (response.success && ((response as any).data)) {
-        const activeCredentials = ((response as any).data).filter(c => c.isActive);
+      if (response.success && (response as { data?: ServiceCredential[] }).data) {
+        const activeCredentials = (response as { data: ServiceCredential[] }).data.filter(c => c.isActive);
         setCredentials(activeCredentials);
       
         // If no value is selected and there's a default, select it
@@ -54,7 +54,7 @@ const CredentialSelector: React.FC<CredentialSelectorProps> = ({
         setError(response.error);
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? ((error as any)?.message || String(error)) : 'Failed to load credentials';
+      const message = error instanceof Error ? (error.message || String(error)) : 'Failed to load credentials';
       setError(message);
       setCredentials([]);
     } finally {

@@ -1,9 +1,9 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Button, Space, Alert, Typography } from 'antd';
+import { Button, Space, Alert } from 'antd';
 import { AlertCircle, RefreshCw, ArrowLeft, Bug } from 'lucide-react';
 import { AppError, parseError, isRetryableError, ErrorType } from '@/utils/errorHandler';
 
-const { Text } = Typography;
+// Typography components removed (not used)
 
 // Google Analytics type declaration (extending from LogsErrorBoundary)
 declare global {
@@ -445,29 +445,6 @@ export class QueryPreviewErrorBoundary extends Component<
   }
 }
 
-// Functional component wrapper for easier use with hooks
-export const withQueryPreviewErrorBoundary = <P extends object>(
-  Component: React.ComponentType<P>
-) => {
-  return (props: P & { 
-    darkMode: boolean; 
-    onRetry?: () => void; 
-    onGoBack?: () => void;
-    maxRetries?: number;
-    showRecoveryActions?: boolean;
-    context?: string;
-  }) => (
-    <QueryPreviewErrorBoundary 
-      darkMode={props.darkMode}
-      onRetry={props.onRetry}
-      onGoBack={props.onGoBack}
-      maxRetries={props.maxRetries}
-      showRecoveryActions={props.showRecoveryActions}
-      context={props.context}
-    >
-      <Component {...props} />
-    </QueryPreviewErrorBoundary>
-  );
-};
+// HOC removed to satisfy react-refresh (components should be in separate files)
 
 export default QueryPreviewErrorBoundary;

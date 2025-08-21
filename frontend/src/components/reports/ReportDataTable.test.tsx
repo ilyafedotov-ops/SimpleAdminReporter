@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { renderWithProviders, screen, fireEvent, waitFor } from '@/utils/test-utils';
+import { renderWithProviders, screen, fireEvent } from '@/utils/test-utils';
 import { ReportDataTable } from './ReportDataTable';
 import type { ReportResult } from '@/types';
 

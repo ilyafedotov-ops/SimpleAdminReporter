@@ -58,7 +58,7 @@ export const QueryBuilderModal: React.FC<QueryBuilderModalProps> = ({
   const isMobile = !screens.md;
   
   // Enhanced error handling for preview operations
-  const { handlePreviewOperation, createPreviewRetryHandler } = useErrorHandler();
+  const { handlePreviewOperation } = useErrorHandler();
   const [selectedFields, setSelectedFields] = useState<FieldMetadata[]>([]);
   const [filters, setFilters] = useState<ReportFilter[]>([]);
   const [groupBy, setGroupBy] = useState<string | undefined>(undefined);
@@ -178,7 +178,7 @@ export const QueryBuilderModal: React.FC<QueryBuilderModalProps> = ({
   };
 
   // Helper function to find a field by name or alias
-  const findFieldByNameOrAlias = (name: string): FieldMetadata | undefined => {
+  const findFieldByNameOrAlias = useCallback((name: string): FieldMetadata | undefined => {
     const lowerName = name.toLowerCase();
     return fields.find(field => {
       // Check if it matches the field name (case-insensitive)
@@ -187,16 +187,16 @@ export const QueryBuilderModal: React.FC<QueryBuilderModalProps> = ({
       if (field.aliases?.some(alias => alias.toLowerCase() === lowerName)) return true;
       return false;
     });
-  };
+  }, [fields]);
 
   // Helper function to resolve field name to actual LDAP attribute
-  const resolveFieldName = (name: string): string => {
+  const resolveFieldName = useCallback((name: string): string => {
     const field = findFieldByNameOrAlias(name);
     return field ? field.fieldName : name;
-  };
+  }, [findFieldByNameOrAlias]);
 
   // Generate the query specification
-  const generateQuerySpec = (): DynamicQuerySpec => {
+  const generateQuerySpec = useCallback((): DynamicQuerySpec => {
     if (dataSource === 'azure') {
       // For Azure Graph queries, use Graph-specific data
       return {
@@ -236,10 +236,10 @@ export const QueryBuilderModal: React.FC<QueryBuilderModalProps> = ({
     };
 
     return baseSpec;
-  };
+  }, [dataSource, selectedFields, selectedGraphEntity, graphFilters, selectedRelationships, resolveFieldName, filters, groupBy, orderBy]);
   
   // Generate the query specification with legacy fields for execution
-  const generateQuerySpecWithLegacy = (): DynamicQuerySpec & Record<string, any> => {
+  const generateQuerySpecWithLegacy = useCallback((): DynamicQuerySpec & Record<string, any> => {
     const baseSpec = generateQuerySpec();
     
     // Add legacy aliases for backward compatibility with AD endpoints
@@ -256,7 +256,7 @@ export const QueryBuilderModal: React.FC<QueryBuilderModalProps> = ({
       // Legacy field name for data source expected by older endpoints
       source: dataSource
     };
-  };
+  }, [generateQuerySpec, selectedFields, resolveFieldName, dataSource]);
 
   // Handle save action
   const handleSave = () => {
@@ -275,7 +275,7 @@ export const QueryBuilderModal: React.FC<QueryBuilderModalProps> = ({
   };
 
   // Enhanced preview execution with comprehensive error handling and retry
-  const handlePreviewExecution = async () => {
+  const handlePreviewExecution = useCallback(async () => {
     if (selectedFields.length === 0) {
       message.error('Please select at least one field');
       return;
@@ -356,7 +356,7 @@ export const QueryBuilderModal: React.FC<QueryBuilderModalProps> = ({
       return result;
     };
 
-    const result = await handlePreviewOperation(executePreview, {
+    await handlePreviewOperation(executePreview, {
       context: `${dataSource.toUpperCase()} Query Preview`,
       maxRetries,
       enableAutoRetry: true,
@@ -418,7 +418,7 @@ export const QueryBuilderModal: React.FC<QueryBuilderModalProps> = ({
     });
 
     setPreviewLoading(false);
-  };
+  }, [selectedFields, queryName, filters, dataSource, generateQuerySpecWithLegacy, handlePreviewOperation, onExecute, maxRetries, resolveFieldName, selectedCredential]);
 
   // Enhanced retry handler for preview operations
   const handleRetryPreview = useCallback(async () => {

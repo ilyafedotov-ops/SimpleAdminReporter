@@ -15,15 +15,15 @@ export class AuthService {
       refreshToken?: string;
     }>('/auth/login', credentials);
     
-    if (response.success && ((response as any).data)) {
+    if (response.success && (response as { data: { user: User; accessToken?: string; refreshToken?: string } }).data) {
       // Store tokens in localStorage
-      if (((response as any).data).accessToken) {
-        localStorage.setItem('accessToken', ((response as any).data).accessToken);
+      if ((response as { data: { accessToken?: string } }).data.accessToken) {
+        localStorage.setItem('accessToken', (response as { data: { accessToken: string } }).data.accessToken);
       }
-      if (((response as any).data).refreshToken) {
-        localStorage.setItem('refreshToken', ((response as any).data).refreshToken);
+      if ((response as { data: { refreshToken?: string } }).data.refreshToken) {
+        localStorage.setItem('refreshToken', (response as { data: { refreshToken: string } }).data.refreshToken);
       }
-      localStorage.setItem('user', JSON.stringify(((response as any).data).user));
+      localStorage.setItem('user', JSON.stringify((response as { data: { user: User } }).data.user));
     }
     
     return response;
@@ -64,9 +64,10 @@ export class AuthService {
       refreshToken: string;
     }>('/auth/refresh', { refreshToken });
     
-    if (response.success && ((response as any).data)) {
-      localStorage.setItem('accessToken', ((response as any).data).accessToken);
-      localStorage.setItem('refreshToken', ((response as any).data).refreshToken);
+    if (response.success && (response as { data: { user: User; accessToken?: string; refreshToken?: string } }).data) {
+      const typedResponse = response as { data: { user: User; accessToken?: string; refreshToken?: string } };
+      localStorage.setItem('accessToken', typedResponse.data.accessToken || '');
+      localStorage.setItem('refreshToken', typedResponse.data.refreshToken || '');
     }
     
     return response;

@@ -79,7 +79,7 @@ export const mockApiResponses = {
           fields: ['username', 'lastLogin', 'status']
         }
       ]
-    } as ApiResponse<any[]>
+    } as ApiResponse<Record<string, unknown>[]>
   },
 
   // Query responses
@@ -94,7 +94,7 @@ export const mockApiResponses = {
           fields: ['field1', 'field2']
         }
       ]
-    } as ApiResponse<any[]>,
+    } as ApiResponse<Record<string, unknown>[]>,
 
     schema: {
       success: true,
@@ -105,7 +105,7 @@ export const mockApiResponses = {
           groups: ['id', 'name', 'description']
         }
       }
-    } as ApiResponse<any>
+    } as ApiResponse<Record<string, unknown>>
   },
 
   // Logs responses
@@ -124,7 +124,7 @@ export const mockApiResponses = {
       totalCount: 1,
       page: 1,
       pageSize: 10
-    } as PaginatedResponse<any>,
+    } as PaginatedResponse<Record<string, unknown>>,
 
     system: {
       success: true,
@@ -140,7 +140,7 @@ export const mockApiResponses = {
       totalCount: 1,
       page: 1,
       pageSize: 10
-    } as PaginatedResponse<any>
+    } as PaginatedResponse<Record<string, unknown>>
   },
 
   // Generic responses

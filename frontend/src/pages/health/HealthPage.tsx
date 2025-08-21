@@ -90,7 +90,7 @@ const HealthPage: React.FC = () => {
       setSystemHealth(health);
     } catch (error) {
       console.error('Failed to fetch health status:', error);
-      setHealthError(error instanceof Error ? ((error as any)?.message || String(error)) : 'Failed to load health data');
+      setHealthError(error instanceof Error ? (error.message || String(error)) : 'Failed to load health data');
       setSystemHealth(null);
     } finally {
       setHealthLoading(false);

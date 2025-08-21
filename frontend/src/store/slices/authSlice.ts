@@ -18,17 +18,17 @@ export const loginAsync = createAsyncThunk(
   async (credentials: LoginRequest, { rejectWithValue }) => {
     try {
       const response = await authService.login(credentials);
-      if (response.success && ((response as any).data)) {
+      if (response.success && (response as { data?: { user: User; accessToken?: string; refreshToken?: string } }).data) {
         return {
-          user: ((response as any).data).user,
-          accessToken: ((response as any).data).accessToken,
-          refreshToken: ((response as any).data).refreshToken,
+          user: (response as { data: { user: User } }).data.user,
+          accessToken: (response as { data: { accessToken?: string } }).data.accessToken,
+          refreshToken: (response as { data: { refreshToken?: string } }).data.refreshToken,
         };
       } else {
         return rejectWithValue(response.error || 'Login failed');
       }
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? ((error as any)?.message || String(error)) : 'Operation failed');
+      return rejectWithValue(error instanceof Error ? (error.message || String(error)) : 'Operation failed');
     }
   }
 );
@@ -40,7 +40,7 @@ export const logoutAsync = createAsyncThunk(
       await authService.logout();
     } catch (error) {
       // Continue with logout even if server call fails
-      console.warn('Logout server call failed:', error instanceof Error ? ((error as any)?.message || String(error)) : 'Unknown error');
+      console.warn('Logout server call failed:', error instanceof Error ? (error.message || String(error)) : 'Unknown error');
     }
   }
 );
@@ -50,16 +50,16 @@ export const refreshTokenAsync = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await authService.refreshToken();
-      if (response.success && ((response as any).data)) {
+      if (response.success && (response as { data?: { user: User; accessToken?: string; refreshToken?: string } }).data) {
         return {
-          accessToken: ((response as any).data).accessToken,
-          refreshToken: ((response as any).data).refreshToken,
+          accessToken: (response as { data: { accessToken?: string } }).data.accessToken,
+          refreshToken: (response as { data: { refreshToken?: string } }).data.refreshToken,
         };
       } else {
         return rejectWithValue(response.error || 'Token refresh failed');
       }
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? ((error as any)?.message || String(error)) : 'Operation failed');
+      return rejectWithValue(error instanceof Error ? (error.message || String(error)) : 'Operation failed');
     }
   }
 );
@@ -69,13 +69,13 @@ export const getProfileAsync = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await authService.getProfile();
-      if (response.success && ((response as any).data)) {
-        return ((response as any).data);
+      if (response.success && (response as { data?: { user: User; accessToken?: string; refreshToken?: string } }).data) {
+        return (response as { data: User }).data;
       } else {
         return rejectWithValue(response.error || 'Failed to get profile');
       }
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? ((error as any)?.message || String(error)) : 'Operation failed');
+      return rejectWithValue(error instanceof Error ? (error.message || String(error)) : 'Operation failed');
     }
   }
 );
@@ -85,13 +85,13 @@ export const updateProfileAsync = createAsyncThunk(
   async (profile: Partial<User>, { rejectWithValue }) => {
     try {
       const response = await authService.updateProfile(profile);
-      if (response.success && ((response as any).data)) {
-        return ((response as any).data);
+      if (response.success && (response as { data?: { user: User; accessToken?: string; refreshToken?: string } }).data) {
+        return (response as { data: User }).data;
       } else {
         return rejectWithValue(response.error || 'Failed to update profile');
       }
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? ((error as any)?.message || String(error)) : 'Operation failed');
+      return rejectWithValue(error instanceof Error ? (error.message || String(error)) : 'Operation failed');
     }
   }
 );
@@ -107,7 +107,7 @@ export const changePasswordAsync = createAsyncThunk(
         return rejectWithValue(response.error || 'Failed to change password');
       }
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? ((error as any)?.message || String(error)) : 'Operation failed');
+      return rejectWithValue(error instanceof Error ? (error.message || String(error)) : 'Operation failed');
     }
   }
 );

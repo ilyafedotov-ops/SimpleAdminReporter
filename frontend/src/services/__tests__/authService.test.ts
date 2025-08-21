@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { authService, AuthService } from '../authService';
 import apiService from '../api';
-import { ApiResponse, User, LoginRequest, AuthState } from '@/types';
+import { ApiResponse, User, LoginRequest } from '@/types';
 
 // Mock the API service
 vi.mock('../api', () => ({
@@ -13,10 +13,10 @@ vi.mock('../api', () => ({
 }));
 
 describe('AuthService', () => {
-  let localStorageMock: Storage;
-  let consoleLogSpy: any;
-  let consoleErrorSpy: any;
-  let setIntervalSpy: any;
+  let localStorageMock: typeof window.localStorage;
+  let consoleLogSpy: unknown;
+  let consoleErrorSpy: unknown;
+  let setIntervalSpy: unknown;
 
   beforeEach(() => {
     // Mock localStorage
@@ -38,7 +38,7 @@ describe('AuthService', () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     
     // Mock setInterval
-    setIntervalSpy = vi.spyOn(global, 'setInterval').mockImplementation(() => 123 as any);
+    setIntervalSpy = vi.spyOn(global, 'setInterval').mockImplementation(() => 123 as unknown);
 
     vi.clearAllMocks();
   });

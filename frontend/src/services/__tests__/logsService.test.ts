@@ -44,9 +44,9 @@ describe('LogsService', () => {
       click: vi.fn(),
       style: { display: '' }
     };
-    vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
-    vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink as any);
-    vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as any);
+    vi.spyOn(document, 'createElement').mockReturnValue(mockLink as unknown);
+    vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink as unknown);
+    vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as unknown);
   });
 
   afterEach(() => {
@@ -153,7 +153,7 @@ describe('LogsService', () => {
       const filters: LogFilter = {
         type: 'audit',
         level: undefined,
-        eventType: null as any,
+        eventType: null as unknown,
         search: 'test',
         page: 0
       };

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import dayjs from 'dayjs';
-import { useLogsData, FilterState, LogsData } from '../useLogsData';
+import { useLogsData, FilterState } from '../useLogsData';
 import { logsService, AuditLog, SystemLog } from '@/services/logsService';
 
 // Mock the logs service
@@ -194,7 +194,7 @@ describe('useLogsData', () => {
   describe('error handling', () => {
     it('should handle API errors and set error state', async () => {
       const error = new Error('API Error');
-      (error as any).response = { status: 400 }; // 4xx error won't retry
+      (error as unknown).response = { status: 400 }; // 4xx error won't retry
       vi.mocked(logsService.getLogs).mockRejectedValue(error);
 
       const { result } = renderHook(() => useLogsData(defaultFilters));
@@ -228,7 +228,7 @@ describe('useLogsData', () => {
       const malformedResponse = {
         success: true,
         data: null
-      } as any;
+      } as unknown;
 
       vi.mocked(logsService.getLogs).mockResolvedValue(malformedResponse);
 
@@ -294,7 +294,7 @@ describe('useLogsData', () => {
 
     it('should show isRetrying state during manual retry', async () => {
       const error = new Error('API Error');
-      let resolveRetry: (value: any) => void;
+      let resolveRetry: (value: unknown) => void;
       const retryPromise = new Promise(resolve => {
         resolveRetry = resolve;
       });
@@ -438,11 +438,11 @@ describe('useLogsData', () => {
       };
 
       vi.spyOn(global, 'AbortController').mockImplementation(
-        () => mockAbortController as any
+        () => mockAbortController as unknown
       );
 
       // Use a promise that we control to ensure request is in progress
-      let resolveRequest: (value: any) => void;
+      let resolveRequest: (value: unknown) => void;
       const pendingRequest = new Promise(resolve => {
         resolveRequest = resolve;
       });

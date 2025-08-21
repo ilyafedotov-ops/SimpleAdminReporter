@@ -60,7 +60,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       
       const filters = filter === 'unread' ? { isRead: false, isDismissed: false } : { isDismissed: false };
       const result = await notificationService.getUserNotifications(1, 20, filters);
-      setNotifications(((result as any)?.data));
+      setNotifications((result as { data?: Notification[] })?.data || []);
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
       setError('Failed to load notifications');

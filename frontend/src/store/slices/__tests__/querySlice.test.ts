@@ -57,7 +57,7 @@ vi.mock('@/utils/errorHandler', () => ({
 
 describe('querySlice', () => {
   let store: EnhancedStore;
-  let mockQueryService: any;
+  let mockQueryService: unknown;
 
   // Test data
   const mockDefinitions: QueryDefinition[] = [
@@ -894,15 +894,6 @@ describe('querySlice', () => {
 
   describe('cache management', () => {
     it('should enforce maximum cache size', async () => {
-      // Set a small max cache size for testing
-      const smallCacheState = {
-        ...store.getState().query,
-        resultsCache: {
-          ...store.getState().query.resultsCache,
-          maxCacheSize: 2
-        }
-      };
-
       // Execute multiple queries to exceed cache limit
       mockQueryService.execute.mockResolvedValue({
         success: true,
@@ -995,7 +986,7 @@ describe('querySlice', () => {
         .mockResolvedValueOnce({ success: true, data: { ...mockExecutionResult, queryId: 'query2' } });
 
       // Execute two queries concurrently
-      const [result1, result2] = await Promise.all([
+      await Promise.all([
         store.dispatch(executeQueryAsync({ queryId: 'query1' })),
         store.dispatch(executeQueryAsync({ queryId: 'query2' }))
       ]);

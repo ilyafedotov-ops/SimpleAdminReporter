@@ -46,7 +46,7 @@ class ApiService {
     this.client.interceptors.response.use(
       (response: AxiosResponse) => response,
       async (error: AxiosError) => {
-        const config = ((error as any)?.config) as CustomAxiosRequestConfig;
+        const config = error.config as CustomAxiosRequestConfig;
         
         // Handle authentication errors (401)
         if (error.response?.status === 401) {
@@ -65,14 +65,14 @@ class ApiService {
             config._retry = true; // Mark that we've tried to refresh
             try {
               const response = await this.refreshAccessToken(refreshToken);
-              localStorage.setItem('accessToken', ((response as any).data).accessToken);
-              if (((response as any).data).refreshToken) {
-                localStorage.setItem('refreshToken', ((response as any).data).refreshToken);
+              localStorage.setItem('accessToken', (response as { data: { accessToken: string; refreshToken?: string } }).data.accessToken);
+              if ((response as { data: { refreshToken?: string } }).data.refreshToken) {
+                localStorage.setItem('refreshToken', (response as { data: { refreshToken: string } }).data.refreshToken);
               }
               
               // Retry the original request
               if (config) {
-                config.headers.Authorization = `Bearer ${((response as any).data).accessToken}`;
+                config.headers.Authorization = `Bearer ${(response as { data: { accessToken: string } }).data.accessToken}`;
                 return this.client.request(config);
               }
             } catch (_refreshError) {
@@ -129,12 +129,12 @@ class ApiService {
         const response = await this.client.get(url, { params, signal });
         
         // Cache successful responses
-        if (useCache && ((response as any).data)) {
+        if (useCache && (response as ApiResponse).data) {
           const cacheKey = createCacheKey(url, params);
-          queryCache.set(cacheKey, ((response as any).data), cacheTTL);
+          queryCache.set(cacheKey, (response as ApiResponse).data, cacheTTL);
         }
         
-        return ((response as any).data);
+        return (response as ApiResponse).data;
       } catch (error) {
         throw this.handleError(error);
       }
@@ -151,17 +151,17 @@ class ApiService {
     return queueApiCall(async () => {
       try {
         const response = await this.client.post(url, data);
-        return ((response as any).data);
+        return (response as ApiResponse).data;
       } catch (error) {
         throw this.handleError(error);
       }
     }, { priority, immediate });
   }
 
-  async put<T = unknown>(url: string, data?: unknown): Promise<ApiResponse<T>> {
+  async put<T = unknown>(url: string, data?: unknown): Promise<T> {
     try {
       const response = await this.client.put(url, data);
-      return ((response as any).data);
+      return (response as { data: T }).data;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -170,7 +170,7 @@ class ApiService {
   async delete<T = unknown>(url: string): Promise<ApiResponse<T>> {
     try {
       const response = await this.client.delete(url);
-      return ((response as any).data);
+      return (response as AxiosResponse<ApiResponse<T>>).data;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -202,12 +202,12 @@ class ApiService {
         const response = await this.client.get(url, { params });
         
         // Cache successful responses
-        if (useCache && ((response as any).data)) {
+        if (useCache && (response as ApiResponse).data) {
           const cacheKey = createCacheKey(`paginated:${url}`, params);
-          queryCache.set(cacheKey, ((response as any).data), cacheTTL);
+          queryCache.set(cacheKey, (response as ApiResponse).data, cacheTTL);
         }
         
-        return ((response as any).data);
+        return (response as ApiResponse).data;
       } catch (error) {
         throw this.handleError(error);
       }
@@ -222,7 +222,7 @@ class ApiService {
       });
 
       // Create blob link to download
-      const href = URL.createObjectURL(((response as any).data));
+      const href = URL.createObjectURL((response as { data: Blob }).data);
       const link = document.createElement('a');
       link.href = href;
       link.download = filename || 'download';
@@ -253,7 +253,7 @@ class ApiService {
         },
       });
 
-      return ((response as any).data);
+      return (response as AxiosResponse<unknown>).data;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -274,7 +274,7 @@ class ApiService {
   async healthCheck(): Promise<HealthCheck | ApiResponse<HealthCheck>> {
     try {
       const response = await this.client.get('/health');
-      return ((response as any).data);
+      return (response as AxiosResponse<HealthCheck | ApiResponse<HealthCheck>>).data;
     } catch (error) {
       throw this.handleError(error);
     }
