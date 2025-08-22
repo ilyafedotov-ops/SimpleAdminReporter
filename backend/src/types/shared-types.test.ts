@@ -7,7 +7,7 @@ import type {
   PreviewResponse,
   PreviewMetadata,
   RawServiceResponse,
-  NormalizedPreviewData,
+
   DataSourceType,
   CustomQuery,
   QueryField,

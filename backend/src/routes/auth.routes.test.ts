@@ -887,7 +887,7 @@ it('should audit token storage', async () => {
   describe('Error Handling', () => {
     it('should handle controller errors gracefully', async () => {
       // Mock controller to throw error
-      (unifiedAuthController.login as jest.Mock).mockImplementationOnce((req: any, res: any) => {
+      (unifiedAuthController.login as jest.Mock).mockImplementationOnce((_req: any, _res: any) => {
         throw new Error('Controller error');
       });
 
@@ -980,7 +980,7 @@ it('should audit token storage', async () => {
 
   describe('Route Parameter Validation', () => {
     it('should handle query parameters in callback', async () => {
-      const response = await request(app)
+      await request(app)
         .get('/api/auth/azure/callback')
         .query({
           code: 'authorization-code',

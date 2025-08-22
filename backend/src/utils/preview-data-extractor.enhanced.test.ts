@@ -11,7 +11,7 @@ import {
   isGraphApiResponse,
   extractRowCount,
 } from './preview-data-extractor';
-import type { DataSourceType, NormalizedPreviewData, RawServiceResponse } from '@/types/shared-types';
+import type { DataSourceType, NormalizedPreviewData } from '@/types/shared-types';
 
 describe('Preview Data Extractor - Enhanced Coverage', () => {
   describe('Advanced Edge Cases', () => {

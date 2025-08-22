@@ -3,7 +3,7 @@
  * Testing service interactions, caching behavior, and real data flow
  */
 
-import { PreviewService, previewService } from './preview.service';
+import { PreviewService } from './preview.service';
 import { serviceFactory } from './service.factory';
 import { redis } from '@/config/redis';
 import { logger } from '@/utils/logger';

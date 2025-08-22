@@ -102,22 +102,22 @@ describe('Reports E2E Tests', () => {
       const correlationId = generateTestCorrelationId();
       
       // Mock LDAP service for report execution
-      const mockLDAPResults = [
-        {
-          dn: 'CN=Test User1,CN=Users,DC=test,DC=local',
-          sAMAccountName: 'testuser1',
-          displayName: 'Test User 1',
-          lastLogon: '133534567890123456',
-          userAccountControl: '512'
-        },
-        {
-          dn: 'CN=Test User2,CN=Users,DC=test,DC=local',
-          sAMAccountName: 'testuser2',
-          displayName: 'Test User 2',
-          lastLogon: '133534567890123456',
-          userAccountControl: '512'
-        }
-      ];
+      // const mockLDAPResults = [
+      //   {
+      //     dn: 'CN=Test User1,CN=Users,DC=test,DC=local',
+      //     sAMAccountName: 'testuser1',
+      //     displayName: 'Test User 1',
+      //     lastLogon: '133534567890123456',
+      //     userAccountControl: '512'
+      //   },
+      //   {
+      //     dn: 'CN=Test User2,CN=Users,DC=test,DC=local',
+      //     sAMAccountName: 'testuser2',
+      //     displayName: 'Test User 2',
+      //     lastLogon: '133534567890123456',
+      //     userAccountControl: '512'
+      //   }
+      // ];
 
       // Execute report
       const response = await testContext.request

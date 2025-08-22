@@ -3,11 +3,11 @@
  * Testing the complete flow from service execution to typed response generation
  */
 
-import { PreviewService, previewService } from './preview.service';
+import { previewService } from './preview.service';
 import type { 
   PreviewResponse,
   PreviewRequest,
-  DataSourceType,
+
   CustomQuery
 } from '@/types/shared-types';
 import { redis } from '@/config/redis';
@@ -470,7 +470,7 @@ describe('PreviewService - Typed Response Integration Tests', () => {
         }
       };
 
-      const result = await previewService.executePreview<ADUser>(request);
+      await previewService.executePreview<ADUser>(request);
 
       // Verify caching was called
       expect(mockRedis.setJson).toHaveBeenCalledWith(

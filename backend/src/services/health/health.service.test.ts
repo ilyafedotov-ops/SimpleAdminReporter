@@ -1,6 +1,6 @@
 // @ts-nocheck - Temporarily disable TypeScript checking for test mocks
 import { HealthService, healthService } from './health.service';
-import { HealthStatus, HealthCheckResult, SystemHealthMetrics } from './types';
+import { HealthCheckResult, SystemHealthMetrics } from './types';
 import {
   DatabaseHealthChecker,
   RedisHealthChecker,

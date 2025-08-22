@@ -133,7 +133,7 @@ class InputValidationTestRunner {
     ];
 
     describe('File Type Validation Tests', () => {
-      maliciousFileTypes.forEach(({ filename, contentType }, index) => {
+      maliciousFileTypes.forEach(({ filename, contentType }) => {
         test(`Should prevent upload of ${filename}`, async () => {
           const response = await request(app)
             .post('/api/files/upload')
@@ -456,7 +456,7 @@ class InputValidationTestRunner {
     ];
 
     describe('Content Type Validation Tests', () => {
-      invalidContentTypes.forEach((contentType, index) => {
+      invalidContentTypes.forEach((contentType) => {
         test(`Should reject dangerous content type: ${contentType}`, async () => {
           const response = await request(app)
             .post('/api/files/upload')

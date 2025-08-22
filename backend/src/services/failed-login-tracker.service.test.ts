@@ -90,7 +90,6 @@ describe('FailedLoginTracker', () => {
     });
 
     it('should lock account after MAX_ATTEMPTS (5) failed attempts', async () => {
-      const lockoutTime = new Date(Date.now() + 15 * 60 * 1000);
       
       mockDb.query
         .mockResolvedValueOnce({ rows: [] } as any) // INSERT

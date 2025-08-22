@@ -28,7 +28,9 @@ expect.extend({
 });
 
 // Enhanced error handling for E2E tests
+// eslint-disable-next-line no-console
 const originalConsoleError = console.error;
+// eslint-disable-next-line no-console
 console.error = (...args: any[]) => {
   // Filter out known non-critical E2E warnings
   const message = args[0]?.toString() || '';

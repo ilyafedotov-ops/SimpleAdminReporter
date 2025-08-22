@@ -11,7 +11,6 @@ import {
   cleanupE2ETestData,
   generateTestCorrelationId
 } from './setup';
-import { setupTestContext, teardownTestContext } from '@/test/test-helpers';
 import { createIsolatedTestDatabase, seedIsolatedTestData } from '@/test/test-db-isolation';
 import { logger } from '@/utils/logger';
 
@@ -138,7 +137,7 @@ describe('Database Stability E2E Tests', () => {
             .delete('/api/credentials')
             .query({ name: `Concurrent Test Credential ${testSuffix}-${i}` })
             .set('Authorization', `Bearer ${testContext.testToken}`);
-        } catch (error) {
+        } catch {
           // Ignore cleanup errors
         }
       }

@@ -1,7 +1,6 @@
 import express, { Application } from 'express';
 import supertest from 'supertest';
 import { Pool } from 'pg';
-import { createClient } from 'redis';
 import { logger } from '@/utils/logger';
 import { TestContext, setupTestContext, teardownTestContext } from '@/test/test-helpers';
 import { createTestToken } from '@/auth/test-utils/auth-test.utils';
@@ -49,7 +48,7 @@ export function createTestApp(): Application {
       const { healthService } = await import('@/services/health/health.service');
       const health = await healthService.getHealthStatus();
       res.status(200).json(health);
-    } catch (error) {
+    } catch {
       res.status(500).json({
         status: 'unhealthy',
         timestamp: new Date(),

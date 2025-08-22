@@ -170,12 +170,14 @@ export function validateTestEnvironment(): void {
 
   for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
+      // eslint-disable-next-line no-console
       console.warn(`Warning: Missing environment variable ${envVar} for testing`);
     }
   }
 
   // Ensure we're in test environment
   if (process.env.NODE_ENV !== 'test') {
+    // eslint-disable-next-line no-console
     console.warn('Warning: Secure test credentials should only be used in test environment');
   }
 }

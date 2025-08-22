@@ -460,7 +460,7 @@ describe('User Preferences Routes Integration', () => {
 
       (userPreferencesService.updateUserPreferences as jest.Mock).mockResolvedValue(mockServiceResponse);
 
-      const response = await request(app)
+      await request(app)
         .put('/api/user/preferences/notifications')
         .send(validNotificationUpdates)
         .expect(200);

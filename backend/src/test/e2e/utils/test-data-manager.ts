@@ -80,7 +80,7 @@ export class TestDataManager {
   /**
    * Clean up all test data
    */
-  async cleanupTestDataset(dataset?: TestDataset): Promise<void> {
+  async cleanupTestDataset(_dataset?: TestDataset): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');

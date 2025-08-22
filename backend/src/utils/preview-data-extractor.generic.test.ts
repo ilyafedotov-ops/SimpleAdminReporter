@@ -4,19 +4,13 @@
  */
 
 import { 
-  extractPreviewData, 
-  createPreviewResponse, 
   processPreviewData,
   isServiceResponse,
   isGraphApiResponse,
-  extractRowCount
 } from './preview-data-extractor';
 import type { 
   DataSourceType,
-  PreviewResponse,
-  PreviewMetadata,
   RawServiceResponse,
-  NormalizedPreviewData
 } from '@/types/shared-types';
 
 describe('Generic processPreviewData<T>() Function', () => {

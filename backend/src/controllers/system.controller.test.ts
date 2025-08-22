@@ -61,7 +61,6 @@ describe('SystemController', () => {
     azure: true
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _mockValidationResult = {
     errors: [],
     warnings: [],

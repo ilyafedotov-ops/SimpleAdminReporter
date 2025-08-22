@@ -106,7 +106,7 @@ afterEach(async () => {
         if (Database.resetInstance) {
           Database.resetInstance();
         }
-      } catch (error) {
+      } catch {
         // Ignore if module not loaded yet
       }
       
@@ -116,11 +116,11 @@ afterEach(async () => {
         if (RedisClient.resetInstance) {
           RedisClient.resetInstance();
         }
-      } catch (error) {
+      } catch {
         // Ignore if module not loaded yet
       }
     }
-  } catch (error) {
+  } catch {
     // Ignore cleanup errors in individual tests
   }
 });
@@ -143,8 +143,8 @@ beforeAll(async () => {
         logger.warn('Integration tests skipped - no database configured');
       }
     }
-  } catch (error) {
-    logger.error('Failed to setup test environment:', error);
+  } catch (_error) {
+    logger.error('Failed to setup test environment:', _error);
     // Don't exit in test mode - just warn and continue
     if (process.env.NODE_ENV === 'test') {
       logger.warn('Continuing without test context...');
@@ -167,8 +167,8 @@ afterAll(async () => {
     if (globalContext) {
       await teardownTestContext(globalContext);
     }
-  } catch (error) {
-    logger.error('Failed to cleanup test environment:', error);
+  } catch (_error) {
+    logger.error('Failed to cleanup test environment:', _error);
   }
 });
 

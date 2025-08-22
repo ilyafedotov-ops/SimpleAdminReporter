@@ -1266,7 +1266,7 @@ it('should filter templates by category', async () => {
 
   describe('Error Handling and Edge Cases', () => {
     it('should handle controller errors gracefully', async () => {
-      (reportsController.getTemplates as jest.Mock).mockImplementationOnce((req: any, res: any) => {
+      (reportsController.getTemplates as jest.Mock).mockImplementationOnce((_req: any, _res: any) => {
         throw new Error('Controller error');
       });
 

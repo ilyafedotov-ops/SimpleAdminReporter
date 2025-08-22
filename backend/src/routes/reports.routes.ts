@@ -115,7 +115,7 @@ router.get('/custom/debug',
           }
         }
       });
-    } catch (error) {
+    } catch {
       res.status(500).json({
         success: false,
         error: 'Failed to fetch debug info'

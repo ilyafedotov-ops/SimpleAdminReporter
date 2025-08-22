@@ -448,7 +448,7 @@ class AutomatedSecurityScanner {
             : undefined
         });
 
-      } catch (_error) {
+      } catch {
         // Endpoint might not exist, which is fine
         continue;
       }
@@ -752,10 +752,10 @@ if (require.main === module) {
   
   scanner.runFullScan()
     .then(report => {
-      console.log('Security scan completed');
+      logger.info('Security scan completed');
       logger.info(`Failed tests: ${report.summary.failed}`);
-      console.log(`Critical issues: ${report.summary.criticalIssues}`);
-      console.log(`High issues: ${report.summary.highIssues}`);
+      logger.info(`Critical issues: ${report.summary.criticalIssues}`);
+      logger.info(`High issues: ${report.summary.highIssues}`);
       
       // Exit with error code if critical issues found
       if (report.summary.criticalIssues > 0) {
@@ -763,7 +763,7 @@ if (require.main === module) {
       }
     })
     .catch(error => {
-      console.error('Security scan failed:', error);
+      logger.error('Security scan failed:', error);
       process.exit(1);
     });
 }
@@ -781,7 +781,7 @@ describe('Automated Security Scanner', () => {
     expect(report.summary.criticalIssues).toBe(0);
     
     // Log summary for CI/CD visibility
-    console.log('Security Scan Summary:', report.summary);
+    logger.info('Security Scan Summary:', report.summary);
     
   }, 300000); // 5 minute timeout
 });

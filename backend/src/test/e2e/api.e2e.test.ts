@@ -4,7 +4,6 @@ import {
   teardownE2ETestContext,
   createE2ETestData,
   assertApiResponse,
-  assertPaginatedResponse,
   generateTestCorrelationId,
   waitFor
 } from './setup';

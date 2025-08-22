@@ -5,18 +5,11 @@
 
 import { 
   extractPreviewData, 
-  createPreviewResponse, 
   processPreviewData,
   isServiceResponse,
   isGraphApiResponse,
   extractRowCount
 } from './preview-data-extractor';
-import type { 
-  DataSourceType,
-  PreviewResponse,
-  RawServiceResponse,
-  NormalizedPreviewData
-} from '@/types/shared-types';
 
 describe('Preview Data Extractor - Edge Cases and Error Scenarios', () => {
   

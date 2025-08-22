@@ -1,10 +1,8 @@
 import { QueryValidator } from './QueryValidator';
 import { QueryDefinition } from './types';
-import { logger } from '@/utils/logger';
 
 // Mock logger
 jest.mock('@/utils/logger');
-const _mockLogger = logger as jest.Mocked<typeof logger>;
 
 describe('QueryValidator', () => {
   let validator: QueryValidator;

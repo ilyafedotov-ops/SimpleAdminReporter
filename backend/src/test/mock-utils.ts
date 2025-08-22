@@ -6,7 +6,7 @@ import { Pool, PoolClient } from 'pg';
  */
 export function createMockPool(): jest.Mocked<Pool> {
   const mockClient: jest.Mocked<PoolClient> = {
-    query: jest.fn().mockImplementation((text: string, params?: any[]) => {
+    query: jest.fn().mockImplementation((text: string, _params?: any[]) => {
       // Mock different query responses based on query text
       if (text.includes('SELECT NOW()')) {
         return Promise.resolve({ rows: [{ current_time: new Date() }], rowCount: 1 });
@@ -234,7 +234,7 @@ export function createMockRedisClientClass() {
   });
   Object.defineProperty(healthCheckFn, 'length', { value: 0, configurable: true });
   
-  const getOrSetFn = jest.fn().mockImplementation(async (key: string, fetcher: Function, ttl?: number) => {
+  const getOrSetFn = jest.fn().mockImplementation(async (key: string, fetcher: Function, _ttl?: number) => {
     // Simulate cache miss and fetch
     return await fetcher();
   });

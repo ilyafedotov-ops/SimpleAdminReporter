@@ -10,7 +10,6 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import app from '@/app';
 import { db } from '@/config/database';
-import { cryptoService } from '@/services/crypto.service';
 import { logger } from '@/utils/logger';
 
 interface SessionTestContext {

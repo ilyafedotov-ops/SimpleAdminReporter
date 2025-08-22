@@ -233,12 +233,12 @@ describe('Authentication E2E Tests', () => {
       const mockState = 'test-oauth-state';
 
       // Mock the Azure AD token exchange
-      const mockAzureTokenResponse = {
-        access_token: 'mock-azure-access-token',
-        id_token: 'mock-azure-id-token',
-        refresh_token: 'mock-azure-refresh-token',
-        expires_in: 3600
-      };
+      // const mockAzureTokenResponse = {
+      //   access_token: 'mock-azure-access-token',
+      //   id_token: 'mock-azure-id-token',
+      //   refresh_token: 'mock-azure-refresh-token',
+      //   expires_in: 3600
+      // };
 
       // Simulate OAuth callback
       const response = await testContext.request

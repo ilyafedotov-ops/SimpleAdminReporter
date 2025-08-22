@@ -5,8 +5,7 @@ import {
   createE2ETestData,
   assertApiResponse,
   assertPaginatedResponse,
-  generateTestCorrelationId,
-  waitFor
+  generateTestCorrelationId
 } from './setup';
 import { logger } from '@/utils/logger';
 
@@ -617,7 +616,7 @@ describe('Logs API E2E Tests', () => {
         .set('Authorization', `Bearer ${testContext.adminToken}`)
         .set('X-Correlation-ID', correlationId);
 
-      const body = assertApiResponse(response, 200);
+      assertApiResponse(response, 200);
       
       expect(response.headers['content-type']).toContain('text/csv');
       expect(response.headers['content-disposition']).toContain('attachment');

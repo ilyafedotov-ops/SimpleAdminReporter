@@ -118,7 +118,7 @@ describe('PreviewService - Edge Cases and Error Conditions', () => {
       try {
         await service.executePreview(invalidRequest);
         fail('Expected executePreview to throw');
-      } catch (error) {
+      } catch {
         // Let's see what error is actually thrown
         expect(mockCreateError).toHaveBeenCalledWith('At least one field must be selected', 400);
       }
@@ -310,7 +310,7 @@ describe('PreviewService - Edge Cases and Error Conditions', () => {
         error: 'No data returned from service'
       });
 
-      const result = await service.executePreview(request);
+      await service.executePreview(request);
       expect(mockProcessPreviewData).toHaveBeenCalledWith(null, 'ad', expect.any(Number));
     });
 
@@ -700,7 +700,7 @@ describe('PreviewService - Edge Cases and Error Conditions', () => {
         limit: -10
       };
 
-      const result = await service.executePreview(request);
+      await service.executePreview(request);
       // Should use default limit when negative
       expect(mockADService.executeCustomQuery).toHaveBeenCalledWith(
         expect.objectContaining({ limit: 10 }),
@@ -728,7 +728,7 @@ describe('PreviewService - Edge Cases and Error Conditions', () => {
         limit: Number.MAX_SAFE_INTEGER
       };
 
-      const result = await service.executePreview(request);
+      await service.executePreview(request);
       // Should enforce maximum limit
       expect(mockADService.executeCustomQuery).toHaveBeenCalledWith(
         expect.objectContaining({ limit: 50 }),

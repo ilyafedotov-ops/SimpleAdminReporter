@@ -34,7 +34,7 @@ export async function initializeTestDatabase(): Promise<Pool> {
       logger.warn('Existing test pool unhealthy, recreating:', error);
       try {
         await testPool.end();
-      } catch (e) {
+      } catch {
         // Ignore cleanup errors
       }
       testPool = undefined as any;
@@ -85,7 +85,7 @@ export async function initializeTestDatabase(): Promise<Pool> {
   logger.error('Failed to connect to test database after all retries:', lastError);
   try {
     await testPool.end();
-  } catch (e) {
+  } catch {
     // Ignore cleanup errors
   }
   testPool = undefined as any;
@@ -104,7 +104,7 @@ export async function initializeTestRedis(): Promise<any> {
       logger.warn('Existing Redis client unhealthy, recreating:', error);
       try {
         await redisClient.quit();
-      } catch (e) {
+      } catch {
         // Ignore cleanup errors
       }
       redisClient = undefined as any;
@@ -144,7 +144,7 @@ export async function initializeTestRedis(): Promise<any> {
     logger.error('Failed to connect to test Redis:', error);
     try {
       await redisClient.quit();
-    } catch (e) {
+    } catch {
       // Ignore cleanup errors
     }
     redisClient = undefined as any;
@@ -387,7 +387,7 @@ export async function cleanupTestDatabase(pool: Pool): Promise<void> {
     // Re-enable foreign key checks in case of error
     try {
       await client.query('SET session_replication_role = DEFAULT');
-    } catch (e) {
+    } catch {
       // Ignore
     }
     client.release();
