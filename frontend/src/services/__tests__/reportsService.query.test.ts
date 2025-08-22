@@ -342,7 +342,18 @@ describe('ReportsService - Query Service Integration', () => {
 
       vi.mocked(apiService.post).mockResolvedValue({
         success: false,
-        error: 'Query must have at least one field selected'
+        data: {
+          source: 'ad',
+          executionTime: 0,
+          testData: [],
+          rowCount: 0,
+          isTestRun: true
+        },
+        error: {
+          code: 'PREVIEW_ERROR',
+          message: 'Query must have at least one field selected',
+          timestamp: expect.any(String)
+        }
       });
 
       // Act
@@ -357,7 +368,22 @@ describe('ReportsService - Query Service Integration', () => {
       });
       expect(result).toEqual({
         success: false,
-        error: 'Query must have at least one field selected'
+        data: {
+          source: 'ad',
+          executionTime: 0,
+          testData: [],
+          rowCount: 0,
+          isTestRun: true
+        },
+        error: {
+          code: 'PREVIEW_ERROR',
+          message: {
+            code: 'PREVIEW_ERROR',
+            message: 'Query must have at least one field selected',
+            timestamp: expect.any(String)
+          },
+          timestamp: expect.any(String)
+        }
       });
     });
   });

@@ -325,11 +325,12 @@ describe('useErrorHandler Enhanced Features', () => {
         canRetry: true,
         maxRetries: 5,
         recoveryGuidance: expect.any(String),
+        name: 'AppError'
       });
-      // The enhanced error should inherit message from the original AppError
-      expect(enhancedError).toEqual(expect.objectContaining({
-        message: expect.any(String),
-      }));
+      
+      // Check that the message is included in the enhanced error object
+      expect(enhancedError).toHaveProperty('message');
+      expect(enhancedError.message).toEqual(expect.any(String));
     });
   });
 
@@ -530,7 +531,12 @@ describe('useErrorHandler Enhanced Features', () => {
           context: 'Test Operation',
           canRetry: true,
           maxRetries: 3,
-          recoveryGuidance: expect.any(String),
+          recoveryGuidance: 'Try reducing the number of selected fields, adding more specific filters, or limiting the date range.',
+          name: 'AppError',
+          code: undefined,
+          details: undefined,
+          retryAfter: undefined,
+          statusCode: undefined
         })
       );
       expect(resultValue).toBeNull();

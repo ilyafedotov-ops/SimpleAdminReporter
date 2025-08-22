@@ -5,6 +5,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppError, ErrorType, getRetryDelay } from '@/utils/errorHandler';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { QueryPreviewErrorBoundary } from '@/components/query/QueryPreviewErrorBoundary';
+import { createMockStore } from '@/utils/test-utils';
+import { Provider } from 'react-redux';
 
 // Test component for retry scenarios
 const RetryTestComponent: React.FC<{
@@ -200,7 +202,11 @@ describe('Retry Logic Comprehensive Tests', () => {
     });
 
     it('tracks progress in createPreviewRetryHandler', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       const mockOperation = createMockAsyncOperation(2, ErrorType.TIMEOUT);
       const onProgress = vi.fn();
@@ -232,7 +238,11 @@ describe('Retry Logic Comprehensive Tests', () => {
     });
 
     it('calls failure callback when max attempts reached', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       const mockOperation = createMockAsyncOperation(5, ErrorType.SERVER);
       const onFailure = vi.fn();
@@ -403,7 +413,11 @@ describe('Retry Logic Comprehensive Tests', () => {
 
   describe('Retry Success and Failure Scenarios', () => {
     it('handles immediate success without retry', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       const mockOperation = vi.fn().mockResolvedValue('immediate success');
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
@@ -419,7 +433,11 @@ describe('Retry Logic Comprehensive Tests', () => {
     });
 
     it('handles success after first retry', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       const mockOperation = createMockAsyncOperation(1, ErrorType.NETWORK, 'success after retry');
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
@@ -442,7 +460,11 @@ describe('Retry Logic Comprehensive Tests', () => {
     });
 
     it('handles success after multiple retries', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       const mockOperation = createMockAsyncOperation(3, ErrorType.TIMEOUT, 'final success');
       const retryHandler = result.current.createRetryHandler(mockOperation, 5);
@@ -470,7 +492,11 @@ describe('Retry Logic Comprehensive Tests', () => {
     });
 
     it('handles persistent failure beyond max retries', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       const mockOperation = createMockAsyncOperation(10, ErrorType.SERVER); // More failures than max
       const retryHandler = result.current.createRetryHandler(mockOperation, 3);
@@ -497,7 +523,11 @@ describe('Retry Logic Comprehensive Tests', () => {
     });
 
     it('handles mixed error types during retries', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       let attempt = 0;
       const mockOperation = vi.fn().mockImplementation(() => {
@@ -572,7 +602,11 @@ describe('Retry Logic Comprehensive Tests', () => {
 
   describe('Advanced Retry Scenarios', () => {
     it('handles concurrent retry operations', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       const mockOperation1 = createMockAsyncOperation(1, ErrorType.NETWORK, 'result1');
       const mockOperation2 = createMockAsyncOperation(2, ErrorType.TIMEOUT, 'result2');
@@ -605,7 +639,11 @@ describe('Retry Logic Comprehensive Tests', () => {
     });
 
     it('handles retry with custom delay calculation', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       // Test with rate limit error which has different delay calculation
       const mockOperation = createMockAsyncOperation(2, ErrorType.RATE_LIMIT);
@@ -632,7 +670,11 @@ describe('Retry Logic Comprehensive Tests', () => {
     });
 
     it('handles retry with operation context preservation', async () => {
-      const { result } = renderHook(() => useErrorHandler());
+      const store = createMockStore();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      const { result } = renderHook(() => useErrorHandler(), { wrapper });
       
       const operationContext = { userId: 123, queryId: 'abc', timestamp: Date.now() };
       

@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ReportViewer } from '../ReportViewer';
-import { uiSlice } from '@/store/slices/uiSlice';
+import uiSliceReducer from '@/store/slices/uiSlice';
 import type { FieldMetadata } from '@/hooks/useFieldDiscovery';
 
 // Mock dependencies
@@ -68,7 +68,7 @@ vi.mock('./ExecutionSummary', () => ({
 const createMockStore = (initialState = {}) => {
   return configureStore({
     reducer: {
-      ui: uiSlice.reducer,
+      ui: uiSliceReducer,
     },
     preloadedState: {
       ui: {
