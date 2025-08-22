@@ -36,9 +36,9 @@ if [ "${LINT_FAILED:-false}" = "true" ]; then
     fi
     # Set component-specific warning thresholds
     if [ "${COMPONENT}" = "backend" ]; then
-        WARNING_THRESHOLD=20  # Backend should stay very clean
+        WARNING_THRESHOLD=10  # Backend should stay very clean
     else
-        WARNING_THRESHOLD=50  # Frontend: reduced from 450 to 50 for stricter standards
+        WARNING_THRESHOLD=10  # Frontend: reduced to 10 for highest code quality standards
     fi
     
     if [ "${WARNINGS}" -gt "${WARNING_THRESHOLD}" ]; then
