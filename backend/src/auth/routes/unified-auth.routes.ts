@@ -3,6 +3,12 @@ import { body } from 'express-validator';
 import { unifiedAuthController } from '../controllers/unified-auth.controller';
 import { azureAuthController } from '../controllers/azure-auth.controller';
 import { requireAuth, optionalAuth, requireCSRF } from '../middleware/unified-auth.middleware';
+import { 
+  loginRateLimiter, 
+  authEndpointsRateLimiter, 
+  refreshTokenRateLimiter,
+  passwordResetRateLimiter 
+} from '../../middleware/rate-limit.middleware';
 
 const router = Router();
 
@@ -29,24 +35,24 @@ const changePasswordValidation = [
     .withMessage('Password must contain uppercase, lowercase, number and special character')
 ];
 
-// Public routes (no auth required)
-router.post('/login', loginValidation, unifiedAuthController.login);
-router.post('/refresh', requireCSRF, unifiedAuthController.refresh);
-router.get('/csrf', unifiedAuthController.getCSRFToken);
+// Public routes (no auth required) with rate limiting
+router.post('/login', loginRateLimiter, loginValidation, unifiedAuthController.login);
+router.post('/refresh', refreshTokenRateLimiter, requireCSRF, unifiedAuthController.refresh);
+router.get('/csrf', authEndpointsRateLimiter, unifiedAuthController.getCSRFToken);
 
-// Protected routes (auth required)
-router.post('/logout', optionalAuth, unifiedAuthController.logout);
-router.post('/logout-all', requireAuth, unifiedAuthController.logoutAll);
-router.get('/profile', requireAuth, unifiedAuthController.getProfile);
-router.put('/profile', requireAuth, requireCSRF, updateProfileValidation, unifiedAuthController.updateProfile);
-router.post('/change-password', requireAuth, requireCSRF, changePasswordValidation, unifiedAuthController.changePassword);
-router.get('/verify', requireAuth, unifiedAuthController.verify);
+// Protected routes (auth required) with rate limiting
+router.post('/logout', authEndpointsRateLimiter, optionalAuth, unifiedAuthController.logout);
+router.post('/logout-all', authEndpointsRateLimiter, requireAuth, unifiedAuthController.logoutAll);
+router.get('/profile', authEndpointsRateLimiter, requireAuth, unifiedAuthController.getProfile);
+router.put('/profile', authEndpointsRateLimiter, requireAuth, requireCSRF, updateProfileValidation, unifiedAuthController.updateProfile);
+router.post('/change-password', passwordResetRateLimiter, requireAuth, requireCSRF, changePasswordValidation, unifiedAuthController.changePassword);
+router.get('/verify', authEndpointsRateLimiter, requireAuth, unifiedAuthController.verify);
 
-// Azure AD OAuth routes
-router.get('/azure/config', requireAuth, azureAuthController.getAzurePublicConfig);
-router.get('/azure/auth-url', requireAuth, azureAuthController.generateAuthUrl);
-router.post('/azure/token', requireAuth, azureAuthController.exchangeToken);
-router.post('/azure/store-token', requireAuth, azureAuthController.storeToken);
-router.get('/azure/userinfo', requireAuth, azureAuthController.getAzureUserInfo);
+// Azure AD OAuth routes with rate limiting (expensive operations)
+router.get('/azure/config', authEndpointsRateLimiter, requireAuth, azureAuthController.getAzurePublicConfig);
+router.get('/azure/auth-url', authEndpointsRateLimiter, requireAuth, azureAuthController.generateAuthUrl);
+router.post('/azure/token', authEndpointsRateLimiter, requireAuth, azureAuthController.exchangeToken);
+router.post('/azure/store-token', authEndpointsRateLimiter, requireAuth, azureAuthController.storeToken);
+router.get('/azure/userinfo', authEndpointsRateLimiter, requireAuth, azureAuthController.getAzureUserInfo);
 
 export default router;
