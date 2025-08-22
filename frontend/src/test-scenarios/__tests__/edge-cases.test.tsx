@@ -5,8 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppError, ErrorType } from '@/utils/errorHandler';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { QueryPreviewErrorBoundary } from '@/components/query/QueryPreviewErrorBoundary';
-import { createMockStore, createTestWrapper } from '@/utils/test-utils';
-import { Provider } from 'react-redux';
+import { createTestWrapper } from '@/utils/test-utils';
 
 // Test component for edge case scenarios
 const EdgeCaseTestComponent: React.FC<{
@@ -803,14 +802,6 @@ describe('Edge Cases and Boundary Conditions', () => {
         throw new AppError('Operation A failed due to B', ErrorType.SERVER);
       });
 
-      const operationB = vi.fn().mockImplementation(async () => {
-        callDepth++;
-        if (callDepth > MAX_DEPTH) {
-          throw new AppError('Max call depth reached', ErrorType.VALIDATION);
-        }
-        // Simulate dependency on A but break cycle after max depth
-        throw new AppError('Operation B failed due to A', ErrorType.NETWORK);
-      });
 
       // Test operation A with depth protection
       let circularResult: unknown;

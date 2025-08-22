@@ -4,32 +4,12 @@ import { Provider } from 'react-redux';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import { configureStore } from '@reduxjs/toolkit';
-import { vi } from 'vitest';
+import { 
+  createMockStore,
+  MockStoreState 
+} from './test-helpers';
 import { mockStoreState } from './test-mocks';
 
-// Create simple mock reducers for testing
-const createMockReducer = (initialState: unknown) => (state = initialState, action: { type: string; payload?: unknown }) => {
-  // Handle common Redux Toolkit action types
-  switch (action.type) {
-    case 'auth/login/pending':
-      return { ...state, isLoading: true, error: null };
-    case 'auth/login/fulfilled':
-      return { ...state, isLoading: false, isAuthenticated: true, user: action.payload.user, token: action.payload.accessToken };
-    case 'auth/login/rejected':
-      return { ...state, isLoading: false, error: action.payload };
-    case 'auth/logout':
-      return { ...state, user: null, token: null, isAuthenticated: false };
-    case 'ui/toggleSidebar':
-      return { ...state, sidebar: { ...state.sidebar, collapsed: !state.sidebar.collapsed } };
-    case 'ui/setTheme':
-      return { ...state, theme: { ...state.theme, ...action.payload } };
-    default:
-      return state;
-  }
-};
-
-// Mock store state type
-type MockStoreState = typeof mockStoreState;
 
 interface ExtendedRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   route?: string;
@@ -37,29 +17,6 @@ interface ExtendedRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   useMemoryRouter?: boolean;
 }
 
-export function createMockStore(initialState: Partial<MockStoreState> = {}) {
-  const preloadedState = {
-    auth: { ...mockStoreState.auth, ...initialState.auth },
-    ui: { ...mockStoreState.ui, ...initialState.ui },
-    reports: { ...mockStoreState.reports, ...initialState.reports },
-    query: { ...mockStoreState.query, ...initialState.query },
-  };
-
-  return configureStore({
-    reducer: {
-      auth: createMockReducer(preloadedState.auth),
-      ui: createMockReducer(preloadedState.ui),
-      reports: createMockReducer(preloadedState.reports),
-      query: createMockReducer(preloadedState.query),
-    },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({
-        serializableCheck: {
-          ignoredActions: ['persist/PERSIST'],
-        },
-      }),
-  });
-}
 
 export function renderWithProviders(
   ui: React.ReactElement,
@@ -100,7 +57,6 @@ export function renderWithProviders(
   return { store, ...render(ui, { wrapper: Wrapper, ...renderOptions }) };
 }
 
-// Re-export specific testing utilities for convenience
 // Test wrapper component for hook testing
 export function TestWrapper({ 
   children, 
@@ -133,16 +89,9 @@ export function createTestWrapper(initialState: Partial<MockStoreState> = {}) {
   );
 }
 
-export { 
-  screen, 
-  fireEvent, 
-  waitFor, 
-  waitForElementToBeRemoved,
-  within,
-  cleanup,
-  act
-} from '@testing-library/react';
-export { default as userEvent } from '@testing-library/user-event';
+
+// Re-export testing utilities from separate file
+export * from './test-exports';
 
 /**
  * Enhanced hook testing utility with proper Redux context and error handling
@@ -153,19 +102,18 @@ export function renderHookEnhanced<TProps, TResult>(
     initialProps?: TProps;
     initialState?: Partial<MockStoreState>;
     withErrorBoundary?: boolean;
-    isolateHook?: boolean;
   } = {}
 ) {
-  const { initialProps, initialState = {}, withErrorBoundary = false, isolateHook = true } = options;
+  const { initialProps, initialState = {}, withErrorBoundary = false } = options;
   
   // Create a fresh store for each test to avoid interference
   // Use simplified state structure that matches what the hook expects
   const store = configureStore({
     reducer: {
-      auth: (state = mockStoreState.auth, action) => state,
-      ui: (state = mockStoreState.ui, action) => state,
-      reports: (state = mockStoreState.reports, action) => state,
-      query: (state = mockStoreState.query, action) => state,
+      auth: (state = mockStoreState.auth, _action: { type: string; payload?: unknown }) => state,
+      ui: (state = mockStoreState.ui, _action: { type: string; payload?: unknown }) => state,
+      reports: (state = mockStoreState.reports, _action: { type: string; payload?: unknown }) => state,
+      query: (state = mockStoreState.query, _action: { type: string; payload?: unknown }) => state,
     },
     preloadedState: {
       auth: { ...mockStoreState.auth, ...initialState.auth },
@@ -206,8 +154,6 @@ export function renderHookEnhanced<TProps, TResult>(
     initialProps
   });
   
-  // Debug logging removed
-  
   // Add store to result for test access
   return {
     ...result,
@@ -222,9 +168,6 @@ export function renderHookEnhanced<TProps, TResult>(
   };
 }
 
-/**
- * Custom hook testing utility with built-in error boundary
- */
 // Export enhanced renderHook as the default renderHook for our tests
 export const renderHook = renderHookEnhanced;
 
@@ -336,202 +279,10 @@ export function renderWithThemes(
   return { lightTheme, darkTheme };
 }
 
-/**
- * Utility for testing accessibility
- */
-export async function checkAccessibility(container: HTMLElement) {
-  // Check for basic accessibility requirements
-  const form = container.querySelector('form');
-  if (form) {
-    const inputs = form.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-      const label = form.querySelector(`label[for="${input.id}"]`);
-      const ariaLabel = input.getAttribute('aria-label');
-      const ariaLabelledBy = input.getAttribute('aria-labelledby');
-      
-      expect(
-        label || ariaLabel || ariaLabelledBy,
-        `Input ${input.id || input.className} should have an associated label`
-      ).toBeTruthy();
-    });
-  }
-  
-  // Check for required ARIA attributes on buttons
-  const buttons = container.querySelectorAll('button[aria-expanded]');
-  buttons.forEach(button => {
-    expect(button.getAttribute('aria-controls')).toBeTruthy();
-  });
-}
 
-/**
- * Utility to simulate network conditions
- */
-export const networkConditions = {
-  offline: () => {
-    Object.defineProperty(navigator, 'onLine', {
-      writable: true,
-      value: false,
-    });
-    window.dispatchEvent(new Event('offline'));
-  },
-  
-  online: () => {
-    Object.defineProperty(navigator, 'onLine', {
-      writable: true,
-      value: true,
-    });
-    window.dispatchEvent(new Event('online'));
-  },
-  
-  slowNetwork: () => {
-    // Mock slow network by adding delays to fetch
-    global.fetch = vi.fn().mockImplementation(async (...args) => {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return new Response('{}', { status: 200 });
-    });
-  },
-};
 
-/**
- * Comprehensive error testing utilities
- */
-export const errorTestUtils = {
-  mockNetworkError: () => new Error('Network Error'),
-  mockTimeoutError: () => {
-    const error = new Error('Timeout');
-    (error as any).code = 'TIMEOUT';
-    return error;
-  },
-  mockValidationError: (fields: Record<string, string>) => {
-    const error = new Error('Validation Error');
-    (error as any).details = fields;
-    return error;
-  },
-  mockAppError: (type: string, message: string, code?: string, details?: any) => {
-    const error = new Error(message);
-    (error as any).type = type;
-    (error as any).code = code || 'TEST_ERROR';
-    (error as any).details = details;
-    return error;
-  },
-};
 
-/**
- * Test isolation utilities
- */
-export const testIsolation = {
-  // Clean up all timers and async operations
-  cleanupTimers: () => {
-    vi.clearAllTimers();
-    vi.runOnlyPendingTimers();
-  },
-  
-  // Reset all mocks
-  resetAllMocks: () => {
-    vi.clearAllMocks();
-    vi.restoreAllMocks();
-  },
-  
-  // Wait for async operations to complete
-  waitForAsync: async (timeout = 100) => {
-    await new Promise(resolve => setTimeout(resolve, timeout));
-  },
-  
-  // Flush all promises
-  flushPromises: async () => {
-    await new Promise(resolve => process.nextTick(resolve));
-  }
-};
 
-/**
- * Mock management utilities
- */
-export const mockUtils = {
-  createMockFunction: <T extends (...args: any[]) => any>(impl?: T) => {
-    return vi.fn(impl);
-  },
-  
-  createMockPromise: <T,>(result: T, shouldReject = false, delay = 0) => {
-    return vi.fn().mockImplementation(() => 
-      new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (shouldReject) {
-            reject(result);
-          } else {
-            resolve(result);
-          }
-        }, delay);
-      })
-    );
-  },
-  
-  verifyMockCalled: (mock: any, times?: number, args?: any[]) => {
-    if (times !== undefined) {
-      expect(mock).toHaveBeenCalledTimes(times);
-    } else {
-      expect(mock).toHaveBeenCalled();
-    }
-    
-    if (args) {
-      expect(mock).toHaveBeenCalledWith(...args);
-    }
-  }
-};
 
-/**
- * Advanced component testing utilities
- */
-export const componentTestUtils = {
-  // Wait for component to stabilize after state changes
-  waitForStabilization: async (timeout = 500) => {
-    await new Promise(resolve => setTimeout(resolve, timeout));
-    try {
-      await waitFor(() => {}, { timeout: 100 });
-    } catch {
-      // Ignore timeout errors, just ensure we wait
-    }
-  },
-  
-  // Simulate user interactions with proper timing
-  simulateUserInteraction: async (interaction: () => void | Promise<void>, delay = 50) => {
-    await interaction();
-    await new Promise(resolve => setTimeout(resolve, delay));
-  },
-  
-  // Find element with retry mechanism
-  findElementWithRetry: async (selector: () => HTMLElement, maxAttempts = 10, delay = 100) => {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const element = selector();
-        if (element) return element;
-      } catch {
-        // Element not found, continue retrying
-      }
-      
-      if (attempt < maxAttempts - 1) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-    throw new Error(`Element not found after ${maxAttempts} attempts`);
-  },
-  
-  // Check if text exists with flexible matching
-  findTextWithRetry: async (text: string | RegExp, maxAttempts = 10, delay = 100) => {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const element = typeof text === 'string' 
-          ? screen.getByText(text)
-          : screen.getByText(text);
-        if (element) return element;
-      } catch {
-        // Text not found, continue retrying
-      }
-      
-      if (attempt < maxAttempts - 1) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-    throw new Error(`Text ${text} not found after ${maxAttempts} attempts`);
-  }
-};
+
 

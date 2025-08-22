@@ -10,7 +10,7 @@
     "build": "vite build",
     "build-with-types": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 10",
     "lint:fix": "eslint src --ext ts,tsx --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest --exclude='e2e/**'",

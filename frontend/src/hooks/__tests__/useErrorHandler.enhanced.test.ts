@@ -23,8 +23,8 @@ vi.mock('@/store', () => ({
 }));
 
 // Import test utilities for Redux wrapper
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
+// import { Provider } from 'react-redux';
+// import { configureStore } from '@reduxjs/toolkit';
 import { createTestWrapper } from '@/utils/test-utils';
 
 describe('useErrorHandler Enhanced Features', () => {

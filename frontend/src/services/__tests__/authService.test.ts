@@ -115,7 +115,7 @@ describe('AuthService', () => {
     });
 
     it('should handle login failure', async () => {
-      const mockResponse: ApiResponse<any> = {
+      const mockResponse: ApiResponse<never> = {
         success: false,
         error: 'Invalid credentials'
       };
@@ -201,7 +201,7 @@ describe('AuthService', () => {
 
     it('should handle refresh failure', async () => {
       const refreshToken = 'invalid-refresh-token';
-      const mockResponse: ApiResponse<any> = {
+      const mockResponse: ApiResponse<never> = {
         success: false,
         error: 'Invalid refresh token'
       };
