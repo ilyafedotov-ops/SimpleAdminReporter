@@ -377,7 +377,8 @@ export function useFormErrorHandler() {
       form.setFields(fieldErrors);
     } else {
       // Show general error message
-      message.error(getUserFriendlyMessage(appError));
+      const friendlyMessage = getUserFriendlyMessage(appError);
+      message.error(friendlyMessage);
     }
   }, [handleError]);
 

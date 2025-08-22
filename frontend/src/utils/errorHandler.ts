@@ -48,6 +48,11 @@ export class AppError extends Error {
  * Parse error response and return a structured AppError
  */
 export function parseError(error: unknown): AppError {
+  // Handle AppError objects directly
+  if (error instanceof AppError) {
+    return error;
+  }
+  
   // Handle Axios errors
   if (error && typeof error === 'object' && 'isAxiosError' in error) {
     const axiosError = error as AxiosError<Record<string, unknown>>;
@@ -225,7 +230,7 @@ export function getUserFriendlyMessage(error: AppError): string {
     case ErrorType.AUTHORIZATION:
       return 'You do not have permission to perform this action.';
     case ErrorType.VALIDATION:
-      return error.message || String(error); // Validation errors are usually already user-friendly
+      return error.message; // Validation errors are usually already user-friendly
     case ErrorType.QUERY_VALIDATION:
       return 'The query contains errors. Please check your query and try again.';
     case ErrorType.QUERY_EXECUTION:
@@ -237,7 +242,7 @@ export function getUserFriendlyMessage(error: AppError): string {
     case ErrorType.SERVER:
       return 'Server error occurred. Please try again later or contact support.';
     default:
-      return error.message || String(error) || 'An unexpected error occurred. Please try again.';
+      return error.message || 'An unexpected error occurred. Please try again.';
   }
 }
 
