@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import { unifiedAuthController } from '@/auth/controllers/unified-auth.controller';
 import { requireAuth as authMiddleware } from '@/auth/middleware/unified-auth.middleware';
 import { csrfProtection } from '@/middleware/csrf.middleware';
+import { loginRateLimiter, authEndpointsRateLimiter } from '@/middleware/rate-limit.middleware';
 import { db } from '@/config/database';
 import bcrypt from 'bcryptjs';
 
@@ -99,11 +100,11 @@ describe('Cookie Authentication System', () => {
       }
     }));
 
-    // Auth routes
-    app.post('/api/auth/login', (req, res, _next) => unifiedAuthController.login(req, res, _next));
-    app.post('/api/auth/logout', authMiddleware, (req, res, _next) => unifiedAuthController.logout(req, res, _next));
-    app.get('/api/auth/profile', authMiddleware, (req, res, _next) => unifiedAuthController.getProfile(req, res, _next));
-    app.get('/api/auth/csrf', (req, res, _next) => unifiedAuthController.getCSRFToken(req, res, _next));
+    // Auth routes with rate limiting
+    app.post('/api/auth/login', loginRateLimiter, (req, res, _next) => unifiedAuthController.login(req, res, _next));
+    app.post('/api/auth/logout', authEndpointsRateLimiter, authMiddleware, (req, res, _next) => unifiedAuthController.logout(req, res, _next));
+    app.get('/api/auth/profile', authEndpointsRateLimiter, authMiddleware, (req, res, _next) => unifiedAuthController.getProfile(req, res, _next));
+    app.get('/api/auth/csrf', authEndpointsRateLimiter, (req, res, _next) => unifiedAuthController.getCSRFToken(req, res, _next));
     
     // Protected test route with CSRF
     app.post('/api/test/protected', authMiddleware, csrfProtection, (req, res) => {
@@ -397,6 +398,72 @@ describe('Cookie Authentication System', () => {
       // When cookie auth is enabled, tokens should not be in response body
       expect(loginResponse.body.data.accessToken).toBeUndefined();
       expect(loginResponse.body.data.refreshToken).toBeUndefined();
+    });
+  });
+
+  describe('Rate Limiting Security', () => {
+    it('should enforce rate limiting on login attempts', async () => {
+      if (skipIfSetupFailed()) return;
+
+      // Make 5 failed login attempts (the limit for login rate limiter)
+      const failedAttempts = [];
+      for (let i = 0; i < 5; i++) {
+        failedAttempts.push(
+          request(app)
+            .post('/api/auth/login')
+            .send({
+              username: 'nonexistent',
+              password: 'wrongpassword',
+              authSource: 'local'
+            })
+        );
+      }
+
+      // Execute all failed attempts
+      const responses = await Promise.all(failedAttempts);
+      
+      // All should fail with 401 (unauthorized)
+      responses.forEach(response => {
+        expect(response.status).toBe(401);
+      });
+
+      // 6th attempt should be rate limited (429 Too Many Requests)
+      const rateLimitedResponse = await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: 'nonexistent',
+          password: 'wrongpassword',
+          authSource: 'local'
+        });
+
+      expect(rateLimitedResponse.status).toBe(429);
+      expect(rateLimitedResponse.body.error).toBe('Too many requests');
+      expect(rateLimitedResponse.headers['retry-after']).toBeDefined();
+    });
+
+    it('should enforce rate limiting on auth endpoints', async () => {
+      if (skipIfSetupFailed()) return;
+
+      // Make multiple requests to CSRF endpoint (30 is the limit for auth endpoints)
+      const requests = [];
+      for (let i = 0; i < 31; i++) {
+        requests.push(request(app).get('/api/auth/csrf'));
+      }
+
+      // Execute requests in batches to avoid overwhelming the server
+      const batchSize = 10;
+      const results = [];
+      
+      for (let i = 0; i < requests.length; i += batchSize) {
+        const batch = requests.slice(i, i + batchSize);
+        const batchResults = await Promise.all(batch);
+        results.push(...batchResults);
+      }
+
+      // Last request should be rate limited
+      const lastResponse = results[results.length - 1];
+      expect(lastResponse.status).toBe(429);
+      expect(lastResponse.body.error).toBe('Too many requests');
     });
   });
 });
