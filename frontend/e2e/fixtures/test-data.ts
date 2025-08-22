@@ -278,8 +278,9 @@ export class TestDataHelper {
    * Generate random test data using cryptographically secure randomness
    */
   static generateRandomUser(): TestUser {
-    // Use cryptographically secure random bytes to generate unique ID
-    const randomId = randomBytes(4).readUInt32BE(0) % 10000;
+    // Use rejection sampling to ensure uniform distribution
+    // Generate random ID between 0-9999 without bias
+    const randomId = this.generateUniformRandom(10000);
     return {
       username: `testuser${randomId}@testdomain.local`,
       password: `TestPass${randomId}!`,
@@ -289,6 +290,27 @@ export class TestDataHelper {
       roles: ['user'],
       permissions: ['read:reports']
     };
+  }
+
+  /**
+   * Generate uniform random number in range [0, max) using rejection sampling
+   * This prevents bias that occurs with modulo operations on random bytes
+   */
+  private static generateUniformRandom(max: number): number {
+    if (max <= 0 || max > 0xFFFFFFFF) {
+      throw new Error('Max value must be between 1 and 2^32-1');
+    }
+
+    // Calculate the largest multiple of max that fits in 32-bit range
+    const maxValidValue = Math.floor(0xFFFFFFFF / max) * max;
+    
+    let randomValue: number;
+    do {
+      // Generate 4 random bytes and convert to 32-bit unsigned integer
+      randomValue = randomBytes(4).readUInt32BE(0);
+    } while (randomValue >= maxValidValue);
+    
+    return randomValue % max;
   }
 
   /**
