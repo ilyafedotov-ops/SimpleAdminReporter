@@ -470,8 +470,8 @@ describe('ReportsController', () => {
       (db.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [] }) // Name check
         .mockResolvedValueOnce({
-          rows: [{ id: 'new-report-id', created_at: new Date() }]
-        }); // Insert
+          rows: [{ id: '550e8400-e29b-41d4-a716-446655440000', created_at: new Date() }]
+        }); // Insert with valid UUID
     });
 
     it('should create a custom report successfully', async () => {

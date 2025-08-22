@@ -7,11 +7,86 @@ import { Request, Response, NextFunction } from 'express';
 import { ReportsController } from './reports.controller';
 import { serviceFactory } from '@/services/service.factory';
 import { createError } from '@/middleware/error.middleware';
+import { db } from '@/config/database';
+import { fieldDiscoveryService } from '@/services/fieldDiscovery.service';
+import { reportExecutor } from '@/services/report-executor.service';
 
 // Mock dependencies
+jest.mock('@/config/database');
+jest.mock('@/services/fieldDiscovery.service');
+jest.mock('@/services/report-executor.service');
 jest.mock('@/services/service.factory');
-jest.mock('@/middleware/error.middleware');
+jest.mock('@/middleware/error.middleware', () => {
+  const createErrorMock = jest.fn((message, statusCode) => {
+    const error = new Error(message) as any;
+    error.statusCode = statusCode;
+    return error;
+  });
+  
+  return {
+    asyncHandler: (fn: any) => async (req: any, res: any, next: any) => {
+      try {
+        const result = await fn(req, res, next);
+        return result;
+      } catch (error) {
+        return next(error);
+      }
+    },
+    createError: createErrorMock
+  };
+});
 jest.mock('@/utils/logger');
+jest.mock('express-validator', () => ({
+  validationResult: jest.fn(() => ({
+    isEmpty: () => true,
+    array: () => []
+  })),
+  body: jest.fn(() => ({
+    isLength: jest.fn().mockReturnThis(),
+    withMessage: jest.fn().mockReturnThis(),
+    trim: jest.fn().mockReturnThis(),
+    escape: jest.fn().mockReturnThis(),
+    optional: jest.fn().mockReturnThis(),
+    isObject: jest.fn().mockReturnThis(),
+    isArray: jest.fn().mockReturnThis(),
+    isBoolean: jest.fn().mockReturnThis(),
+    isIn: jest.fn().mockReturnThis(),
+    isUUID: jest.fn().mockReturnThis()
+  })),
+  param: jest.fn(() => ({
+    isUUID: jest.fn().mockReturnThis(),
+    withMessage: jest.fn().mockReturnThis()
+  })),
+  query: jest.fn(() => ({
+    optional: jest.fn().mockReturnThis(),
+    isObject: jest.fn().mockReturnThis(),
+    withMessage: jest.fn().mockReturnThis(),
+    isIn: jest.fn().mockReturnThis()
+  }))
+}));
+jest.mock('@/config/redis', () => ({
+  redis: {
+    del: jest.fn(),
+    invalidatePattern: jest.fn().mockResolvedValue(5)
+  }
+}));
+jest.mock('@/services/adSchemaDiscovery.service', () => ({
+  adSchemaDiscovery: {
+    discoverFullSchema: jest.fn(),
+    convertToFieldMetadata: jest.fn()
+  }
+}));
+jest.mock('@/services/graph-field-discovery.service', () => ({
+  GraphFieldDiscoveryService: jest.fn().mockImplementation(() => ({
+    discoverFields: jest.fn()
+  }))
+}));
+jest.mock('@/utils/encryption', () => ({
+  getCredentialEncryption: jest.fn(() => ({
+    decrypt: jest.fn((_data) => 'decrypted-password'),
+    decryptWithSalt: jest.fn((_data, _salt) => 'decrypted-password-with-salt')
+  }))
+}));
 
 describe('ReportsController - testCustomQuery API Tests', () => {
   let reportsController: ReportsController;
@@ -81,6 +156,11 @@ describe('ReportsController - testCustomQuery API Tests', () => {
     jest.clearAllMocks();
 
     reportsController = new ReportsController();
+    
+    // Ensure the method is bound correctly
+    if (typeof reportsController.testCustomQuery === 'function') {
+      reportsController.testCustomQuery = reportsController.testCustomQuery.bind(reportsController);
+    }
     
     mockServiceFactory = serviceFactory as jest.Mocked<typeof serviceFactory>;
     mockCreateError = createError as jest.MockedFunction<typeof createError>;
