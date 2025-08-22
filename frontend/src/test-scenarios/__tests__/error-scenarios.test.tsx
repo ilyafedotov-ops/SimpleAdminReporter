@@ -6,6 +6,7 @@ import { AppError, ErrorType, parseError, isRetryableError, getRecoveryGuidance 
 import { QueryPreviewErrorBoundary } from '@/components/query/QueryPreviewErrorBoundary';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { renderHook } from '@testing-library/react';
+import { createTestWrapper } from '@/utils/test-utils';
 
 // Test component that can throw different types of errors
 const ErrorTestComponent: React.FC<{
@@ -146,7 +147,8 @@ describe('Error Scenarios - Comprehensive Testing', () => {
     });
 
     it('provides network-specific recovery guidance', () => {
-      renderHook(() => useErrorHandler());
+      const wrapper = createTestWrapper();
+      renderHook(() => useErrorHandler(), { wrapper });
       
       const networkError = new AppError('Network failed', ErrorType.NETWORK);
       const guidance = getRecoveryGuidance(networkError);

@@ -207,13 +207,17 @@ export function useErrorHandler() {
     }
 
     // Return the parsed error with additional preview context
-    return {
+    // Ensure all original AppError properties are preserved
+    const enhancedError = {
       ...appError,
+      message: appError.message || getUserFriendlyMessage(appError), // Ensure message property is always present
       context,
       canRetry: isRetryableError(appError),
       maxRetries,
       recoveryGuidance: getRecoveryGuidance(appError)
     };
+    
+    return enhancedError;
   }, []);
 
   /**
