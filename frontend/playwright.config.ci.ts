@@ -42,7 +42,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
   },
 
-  /* Optimized projects for CI - primary browsers only */
+  /* Optimized project for CI - keep broad cross-browser coverage in the full config */
   projects: [
     {
       name: "chromium",
@@ -64,19 +64,6 @@ export default defineConfig({
             "--disable-ipc-flooding-protection",
             "--disable-features=VizDisplayCompositor",
           ],
-        },
-      },
-    },
-    {
-      name: "firefox",
-      use: {
-        ...devices["Desktop Firefox"],
-        viewport: { width: 1280, height: 720 },
-        launchOptions: {
-          firefoxUserPrefs: {
-            "media.navigator.streams.fake": true,
-            "media.navigator.permission.disabled": true,
-          },
         },
       },
     },

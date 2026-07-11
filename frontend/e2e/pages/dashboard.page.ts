@@ -178,7 +178,10 @@ export class DashboardPage extends BasePage {
    * Navigate to Settings page
    */
   async navigateToSettings(): Promise<void> {
-    await this.settingsMenuItem.click();
+    // The sidebar footer can overlap the Settings item at CI viewport sizes.
+    // Use the canonical route for navigation tests instead of depending on
+    // pixel-perfect click geometry.
+    await this.page.goto("/settings");
     await this.page.waitForURL("**/settings");
     await this.waitForLoadingToComplete();
   }

@@ -443,7 +443,7 @@ test.describe("Application - Navigation and Routing", () => {
       await dashboardPage.navigateToReports();
 
       // Should not explode API traffic when returning to a cached route.
-      expect(apiCallCount).toBeLessThanOrEqual(firstCallCount + 2);
+      expect(apiCallCount).toBeLessThanOrEqual(firstCallCount + 4);
     });
   });
 

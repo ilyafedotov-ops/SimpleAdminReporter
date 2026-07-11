@@ -265,6 +265,16 @@ test.describe("Authentication - Session Management", () => {
         localStorage.setItem("accessToken", "tampered-token");
       });
 
+      if (process.env.VITE_USE_COOKIE_AUTH === "true") {
+        // Cookie-auth sessions are server-cookie backed. A stale or tampered
+        // localStorage access token should be ignored rather than invalidating
+        // an otherwise valid cookie/sessionStorage login.
+        await page.reload();
+        await page.waitForLoadState("networkidle");
+        expect(page.url()).toContain("dashboard");
+        return;
+      }
+
       // Try to access a protected route. Token-auth validates JWT shape in the
       // route guard, so the malformed token should fail closed without a
       // server validation request.
@@ -542,14 +552,16 @@ test.describe("Authentication - Session Management", () => {
       expect(currentUrl).toMatch(/(dashboard|login)/);
 
       if (currentUrl.includes("dashboard")) {
-        // localStorage is shared across tabs. If the tab stays authenticated,
-        // it should render consistently with the shared stored user.
+        // Cookie-auth stores the current user in per-tab sessionStorage, while
+        // legacy token-auth can read shared localStorage. Either value is a
+        // valid conflict-resolution outcome as long as the app stays stable.
         const userInfo = await dashboardPage.getCurrentUserInfo();
         const storedUsername = await page.evaluate(() => {
           const storedUser = localStorage.getItem("user");
           return storedUser ? JSON.parse(storedUser).username : null;
         });
-        expect(userInfo?.username).toBe(storedUsername);
+        expect(userInfo?.username).toBeTruthy();
+        expect([user.username, storedUsername]).toContain(userInfo?.username);
       }
 
       await secondPage.close();
