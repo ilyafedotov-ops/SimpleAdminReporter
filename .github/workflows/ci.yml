@@ -493,8 +493,78 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check production deployment configuration
+        id: production-config
+        env:
+          CI_REGISTRY_IMAGE: ${{ secrets.CI_REGISTRY_IMAGE }}
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          REDIS_URL: ${{ secrets.PRODUCTION_REDIS_URL }}
+          JWT_SECRET: ${{ secrets.PRODUCTION_JWT_SECRET }}
+          PRODUCTION_SERVER: ${{ secrets.PRODUCTION_SERVER }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+          PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+        run: |
+          missing=()
+          for var in CI_REGISTRY_IMAGE DATABASE_URL REDIS_URL JWT_SECRET PRODUCTION_SERVER PRODUCTION_USER PRODUCTION_SSH_PRIVATE_KEY; do
+            if [ -z "${!var}" ]; then
+              missing+=("$var")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping production deployment. Missing production configuration: ${missing[*]}"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write production environment file
+        if: steps.production-config.outputs.configured == 'true'
+        env:
+          CI_REGISTRY_IMAGE: ${{ secrets.CI_REGISTRY_IMAGE }}
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          REDIS_URL: ${{ secrets.PRODUCTION_REDIS_URL }}
+          JWT_SECRET: ${{ secrets.PRODUCTION_JWT_SECRET }}
+          PRODUCTION_SERVER: ${{ secrets.PRODUCTION_SERVER }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+          PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          AD_SERVER: ${{ secrets.PRODUCTION_AD_SERVER }}
+          AD_BASE_DN: ${{ secrets.PRODUCTION_AD_BASE_DN }}
+          AD_USERNAME: ${{ secrets.PRODUCTION_AD_USERNAME }}
+          AD_PASSWORD: ${{ secrets.PRODUCTION_AD_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.PRODUCTION_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.PRODUCTION_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.PRODUCTION_AZURE_CLIENT_SECRET }}
+        run: |
+          write_env() {
+            printf '%s=%q\n' "$1" "${!1}"
+          }
+
+          for var in \
+            CI_REGISTRY_IMAGE \
+            DATABASE_URL \
+            REDIS_URL \
+            JWT_SECRET \
+            PRODUCTION_SERVER \
+            PRODUCTION_USER \
+            PRODUCTION_SSH_PRIVATE_KEY \
+            AD_SERVER \
+            AD_BASE_DN \
+            AD_USERNAME \
+            AD_PASSWORD \
+            AZURE_TENANT_ID \
+            AZURE_CLIENT_ID \
+            AZURE_CLIENT_SECRET; do
+            write_env "$var"
+          done > .env.production
+
       - name: Deploy to production
+        if: steps.production-config.outputs.configured == 'true'
         run: |
           bash ./scripts/deploy.sh production
           bash ./scripts/health-check.sh
           bash ./scripts/verify-backups.sh || echo "Backup verification skipped in CI"
+
+      - name: Skip production deployment
+        if: steps.production-config.outputs.configured != 'true'
+        run: echo "Production deployment skipped because required production secrets are not configured."
