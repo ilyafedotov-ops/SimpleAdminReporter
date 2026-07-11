@@ -74,14 +74,27 @@
 
       const statusDiv = document.getElementById("status");
 
+      const replaceStatus = (className, heading, lines) => {
+        statusDiv.replaceChildren();
+        const container = document.createElement("div");
+        container.className = className;
+        const title = document.createElement("h3");
+        title.textContent = heading;
+        container.appendChild(title);
+        for (const line of lines) {
+          const paragraph = document.createElement("p");
+          paragraph.textContent = line;
+          container.appendChild(paragraph);
+        }
+        statusDiv.appendChild(container);
+      };
+
       if (error) {
         const errorText = errorDescription || error;
-        statusDiv.innerHTML =
-          '<div class="error"><h3>Authentication Failed</h3><p id="error-message"></p><p>This window will close in 5 seconds...</p></div>';
-        const errorMessage = document.getElementById("error-message");
-        if (errorMessage) {
-          errorMessage.textContent = errorText;
-        }
+        replaceStatus("error", "Authentication Failed", [
+          errorText,
+          "This window will close in 5 seconds...",
+        ]);
 
         // Notify parent window
         if (window.opener && !window.opener.closed) {
@@ -100,13 +113,10 @@
         }, 5000);
       } else if (code && state) {
         // Success - send code and state to parent window
-        statusDiv.innerHTML = `
-                <div class="success">
-                    <h3>✓ Authentication Successful</h3>
-                    <p>Completing secure authentication...</p>
-                    <p class="lock-icon">🔒 PKCE verification in progress</p>
-                </div>
-            `;
+        replaceStatus("success", "✓ Authentication Successful", [
+          "Completing secure authentication...",
+          "🔒 PKCE verification in progress",
+        ]);
 
         // Notify parent window
         if (window.opener && !window.opener.closed) {
@@ -124,18 +134,18 @@
             window.close();
           }, 1500);
         } else {
-          statusDiv.innerHTML +=
-            '<p class="error">Parent window not found. Please close this window and try again.</p>';
+          const parentWindowError = document.createElement("p");
+          parentWindowError.className = "error";
+          parentWindowError.textContent =
+            "Parent window not found. Please close this window and try again.";
+          statusDiv.appendChild(parentWindowError);
         }
       } else {
         // No code or error - invalid callback
-        statusDiv.innerHTML = `
-                <div class="error">
-                    <h3>Invalid Response</h3>
-                    <p>No authentication code received.</p>
-                    <p>Please close this window and try again.</p>
-                </div>
-            `;
+        replaceStatus("error", "Invalid Response", [
+          "No authentication code received.",
+          "Please close this window and try again.",
+        ]);
       }
     </script>
   </body>

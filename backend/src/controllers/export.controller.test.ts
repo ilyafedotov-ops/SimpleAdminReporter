@@ -213,6 +213,26 @@ describe("ExportController", () => {
       });
     });
 
+    it("should confine exported files to the configured export directory", async () => {
+      mockReq.params = { templateId: "test-template" };
+      mockReq.body = { format: "excel", parameters: {} };
+      (exportService.exportData as jest.Mock).mockResolvedValue({
+        ...mockExportResult,
+        filename: "../../admin-report.xlsx",
+      });
+
+      await exportController.exportReport(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext,
+      );
+
+      const writtenPath = (fs.writeFile as jest.Mock).mock
+        .calls[0][0] as string;
+      expect(writtenPath).not.toContain("..");
+      expect(path.basename(writtenPath)).toMatch(/^admin-report_/);
+    });
+
     it("should export report to CSV successfully", async () => {
       mockReq.params = { templateId: "test-template" };
       mockReq.body = { format: "csv", parameters: {} };

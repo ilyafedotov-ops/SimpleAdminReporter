@@ -56,7 +56,20 @@ export class ExportController {
 
       // Save export file to filesystem
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const filename = `${exportResult.filename.replace(/\.[^.]+$/, "")}_${timestamp}${path.extname(exportResult.filename)}`;
+      const originalFileName = path.basename(exportResult.filename);
+      const extension = path.extname(originalFileName);
+      const nameWithoutExtension = extension
+        ? originalFileName.slice(0, -extension.length)
+        : originalFileName;
+      const baseName =
+        nameWithoutExtension.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) ||
+        "export";
+      const safeExtension = [".xlsx", ".csv", ".pdf"].includes(
+        extension.toLowerCase(),
+      )
+        ? extension.toLowerCase()
+        : `.${format}`;
+      const filename = `${baseName}_${timestamp}${safeExtension}`;
       // Better container detection - check for actual container patterns
       const isRunningInContainer = () => {
         // Check for .dockerenv file (most reliable)
@@ -86,10 +99,14 @@ export class ExportController {
 
       const isInContainer =
         process.env.REPORT_EXPORT_PATH || isRunningInContainer();
-      const exportBasePath =
+      const exportBasePath = path.resolve(
         process.env.REPORT_EXPORT_PATH ||
-        (isInContainer ? "/app/exports" : "./exports");
-      const filePath = path.join(exportBasePath, filename);
+          (isInContainer ? "/app/exports" : "./exports"),
+      );
+      const filePath = path.resolve(exportBasePath, filename);
+      if (!filePath.startsWith(`${exportBasePath}${path.sep}`)) {
+        throw createError("Invalid export file path", 400);
+      }
 
       // Ensure export directory exists
       await fs.mkdir(path.dirname(filePath), { recursive: true });
