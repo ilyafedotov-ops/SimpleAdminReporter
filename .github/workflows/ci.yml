@@ -388,7 +388,7 @@ jobs:
         run: |
           cd frontend
           npm ci --prefer-offline
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium firefox
 
       - name: Run E2E tests
         run: |
@@ -400,6 +400,10 @@ jobs:
           JWT_SECRET: test-jwt-secret
           NODE_ENV: test
           CI: true
+          VITE_API_URL: ${{ env.VITE_API_URL }}
+          VITE_USE_COOKIE_AUTH: ${{ env.VITE_USE_COOKIE_AUTH }}
+          VITE_AZURE_CLIENT_ID: test-client-id
+          VITE_AZURE_TENANT_ID: test-tenant-id
         timeout-minutes: 30
 
       - name: Upload E2E results
@@ -436,7 +440,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Scan backend image (Trivy)
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: simpleadminreporter-backend:${{ github.sha }}
           format: table
@@ -458,7 +462,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Scan frontend image (Trivy)
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: simpleadminreporter-frontend:${{ github.sha }}
           format: table
