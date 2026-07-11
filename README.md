@@ -89,9 +89,15 @@ _Comprehensive audit and system log viewing_
 ![Global Settings](AppDemo/GlobalSettings.png)
 _Configure application settings and integrations_
 
-## 📊 Executive Presentation
+## 📊 Current Status and Documentation
 
-For a complete overview of SimpleAdminReporter's capabilities, architecture, and business value, view our comprehensive executive presentation:
+The current implementation status, CI/security baseline, and open dependency PR triage are maintained in:
+
+- **[Project Status](docs/PROJECT_STATUS.md)** — current implementation and post-merge hardening status
+- **[Dependency PR Triage](docs/DEPENDENCY_PR_TRIAGE.md)** — open Dependabot PR inventory and merge/fix order
+- **[Documentation Index](docs/README.md)** — refreshed documentation entry point
+
+For a complete executive overview of SimpleAdminReporter's capabilities, architecture, and business value, see the presentation:
 
 **[📋 Enterprise Identity Reporting Platform Presentation](docs/SimpleAdminReporter_Enterprise_Identity_Reporting_Platform.pptx)**
 

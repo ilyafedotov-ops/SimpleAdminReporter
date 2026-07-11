@@ -1,112 +1,43 @@
-# Simple Admin Reporter
+# SimpleAdminReporter Documentation Index
 
-A containerized AD/Azure AD/O365 reporting application designed for Docker/WSL deployment with GitLab CI/CD integration.
+SimpleAdminReporter is a GitHub-hosted, Docker Compose based AD / Azure AD / Office 365 reporting application.
 
-## Quick Start
+> **Status note (2026-07-11):** This documentation set has been partially refreshed after PR #2 and the post-merge security/Dependabot audit. Some deep-dive documents still contain older implementation notes; prefer the status and triage docs below when they conflict.
 
-### Prerequisites
-- Docker and Docker Compose
-- Git
-- GitLab server access
-- Node.js 18+ (for local development, containers use Node.js 22)
-- npm 10+ (for local development)
+## Start here
 
-### Initial Setup
+| Document                                                                   | Purpose                                                     |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [`PROJECT_STATUS.md`](PROJECT_STATUS.md)                                   | Current implementation, security, CI, and open-work status. |
+| [`DEPENDENCY_PR_TRIAGE.md`](DEPENDENCY_PR_TRIAGE.md)                       | Open Dependabot PR inventory and recommended merge order.   |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md)                                       | System architecture and component breakdown.                |
+| [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md)                             | REST API reference.                                         |
+| [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md)                               | Docker Compose deployment guidance.                         |
+| [`SECURITY_TESTING_GUIDE.md`](SECURITY_TESTING_GUIDE.md)                   | Security test strategy and verification commands.           |
+| [`SECRETS_MANAGEMENT_ARCHITECTURE.md`](SECRETS_MANAGEMENT_ARCHITECTURE.md) | Secret storage and operational secret handling.             |
 
-1. **Clone the repository:**
-   ```bash
-   git clone http://192.168.88.33/root/SimpleAdminReporter.git
-   cd SimpleAdminReporter
-   ```
+## Current development workflow
 
-2. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your specific configuration
-   ```
-
-3. **Build and start services:**
-   ```bash
-   docker-compose build
-   docker-compose up -d
-   ```
-
-## GitLab CI/CD Setup
-
-### Required GitLab Variables
-Configure these in GitLab Project Settings > CI/CD > Variables:
-
-- `CI_REGISTRY_PASSWORD` - GitLab registry password
-- `DATABASE_URL` - Production database connection string
-- `REDIS_URL` - Production Redis connection string
-- `JWT_SECRET` - JWT signing secret
-- `AD_SERVER` - Active Directory server
-- `AD_USERNAME` - AD service account
-- `AD_PASSWORD` - AD service account password (Masked)
-- `AZURE_TENANT_ID` - Azure AD tenant ID
-- `AZURE_CLIENT_ID` - Azure AD application ID
-- `AZURE_CLIENT_SECRET` - Azure AD application secret (Masked)
-
-### Deployment
-- **Staging**: Automatic deployment on push to `develop` branch
-- **Production**: Manual deployment trigger on `main` branch
-
-## Architecture
-
-This enterprise-grade reporting application provides:
-- **Pre-built Reports**: 45+ modular LDAP query definitions across AD, Azure AD, and O365
-- **Custom Report Builder**: Visual query builder with drag-and-drop interface
-- **Unified Authentication**: Multi-source auth with OAuth 2.0, JWT tokens, and progressive lockout
-- **Enhanced Security**: Token family rotation, CSRF protection, and encrypted credential storage
-- **Advanced Query System**: SQL query builder with injection protection and full-text search
-- **Performance Optimization**: Redis caching, materialized views, and real-time metrics
-- **Background Processing**: Bull Queue for report generation and scheduling
-- **Export Capabilities**: Excel and CSV formats with rate limiting
-
-## Documentation
-
-- See `CLAUDE.md` for development guidelines and LEVER framework
-- See `ARCHITECTURE.md` for detailed system architecture
-- See `PROJECT_STATUS.md` for implementation status and features
-- CI/CD pipeline configuration in `.gitlab-ci.yml` and `.gitlab/` directory
-
-## Development
-
-### Local Development
-
-**Note**: Requires Node.js 18+ and npm 10+ for Vite 6 compatibility.
+The repository now uses GitHub and GitHub Actions, not GitLab CI.
 
 ```bash
-# Frontend development
-cd frontend && npm install && npm run dev
+# Install dependencies
+npm ci --prefer-offline
+cd backend && npm ci --prefer-offline
+cd ../frontend && npm ci --prefer-offline
 
-# Backend development  
-cd backend && npm install && npm run dev
-
-# Database only for local dev
-docker-compose up postgres redis
-```
-
-### Testing
-```bash
-# Run tests
-docker-compose exec backend npm test
-docker-compose exec frontend npm test
-
-# Code quality
+# Local verification
+npm run type-check
 npm run lint
-npm run typecheck
+cd backend && npm test -- encryption.test.ts validation.middleware.test.ts export.controller.test.ts --runInBand
 ```
 
-### Deployment
-```bash
-# Deploy to staging
-./scripts/deploy.sh staging
+## CI/CD
 
-# Deploy to production
-./scripts/deploy.sh production
-```
+GitHub Actions runs validation, backend/frontend builds, backend/frontend tests, security scan, GitGuardian, and repo-managed CodeQL. Deployment/image jobs are conditional and can be skipped when their trigger conditions are not met.
 
-## Support
+## Known stale areas to keep auditing
 
-For issues and feature requests, please use the GitLab issue tracker.
+- Older docs may still mention GitLab, `develop` branch deployment, Node 18, or Vite 6; those are stale.
+- Some roadmap sections still reference Q3 2025 / Q4 2025 phases and should be re-baselined against the current GitHub state.
+- Feature completion percentages in older status reports should not be treated as authoritative unless they match `PROJECT_STATUS.md`.
