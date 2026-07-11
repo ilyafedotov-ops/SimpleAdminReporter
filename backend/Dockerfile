@@ -7,12 +7,15 @@ WORKDIR /app/backend
 # Install build dependencies
 RUN apk add --no-cache python3 make g++ curl
 
+# Update npm bundled with the base image to pick up security fixes for npm's dependencies.
+RUN npm install -g npm@12.0.1
+
 # Copy package files
 COPY backend/package*.json ./
 COPY backend/tsconfig.json ./
 
 # Install all dependencies (including devDependencies for building)
-RUN npm ci --prefer-offline
+RUN npm ci --prefer-offline --allow-remote=all
 
 # Copy source files
 COPY backend/src ./src
@@ -28,13 +31,16 @@ WORKDIR /app/backend
 # Install test dependencies
 RUN apk add --no-cache python3 make g++ curl postgresql-client
 
+# Update npm bundled with the base image to pick up security fixes for npm's dependencies.
+RUN npm install -g npm@12.0.1
+
 # Copy package files
 COPY backend/package*.json ./
 COPY backend/tsconfig.json ./
 COPY backend/jest.config.js* ./
 
 # Install all dependencies
-RUN npm ci
+RUN npm ci --allow-remote=all
 
 # Copy backend and database for testing
 COPY backend/ .
@@ -59,6 +65,9 @@ RUN apk add --no-cache \
     postgresql-client \
     && rm -rf /var/cache/apk/*
 
+# Update npm bundled with the base image to pick up security fixes for npm's dependencies.
+RUN npm install -g npm@12.0.1
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs
@@ -67,7 +76,7 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY backend/package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production --prefer-offline && \
+RUN npm ci --omit=dev --prefer-offline --allow-remote=all && \
     npm cache clean --force
 
 # Copy built application from builder stage
@@ -105,12 +114,15 @@ WORKDIR /app/backend
 # Install build dependencies including nodemon
 RUN apk add --no-cache python3 make g++ curl postgresql-client
 
+# Update npm bundled with the base image to pick up security fixes for npm's dependencies.
+RUN npm install -g npm@12.0.1
+
 # Copy package files
 COPY backend/package*.json ./
 COPY backend/tsconfig.json ./
 
 # Install all dependencies
-RUN npm ci
+RUN npm ci --allow-remote=all
 
 # Copy source files (will be overridden by volume mount in dev)
 COPY backend/src ./src
