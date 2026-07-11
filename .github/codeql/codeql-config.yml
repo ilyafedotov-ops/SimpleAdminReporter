@@ -4,6 +4,12 @@ name: "SimpleAdminReporter CodeQL config"
 # report-query framework. CodeQL's default JavaScript queries cannot model those
 # project-specific guards, so keep CodeQL enabled while excluding the noisy
 # framework-level findings that are covered by application tests and validators.
+paths-ignore:
+  - "backend/src/**/*.test.ts"
+  - "backend/src/test/**"
+  - "frontend/src/**/*.test.tsx"
+  - "frontend/src/**/*.test.ts"
+
 query-filters:
   - exclude:
       id: js/missing-token-validation

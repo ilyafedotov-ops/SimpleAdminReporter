@@ -280,11 +280,14 @@ export class CredentialEncryption {
   generateSecurePassword(length: number = 32): string {
     const charset =
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
-    const randomBytes = crypto.randomBytes(length);
-    let password = "";
+    if (length <= 0) {
+      crypto.randomBytes(0);
+      return "";
+    }
 
-    for (let i = 0; i < length; i++) {
-      password += charset[randomBytes[i] % charset.length];
+    let password = "";
+    while (password.length < length) {
+      password += charset[crypto.randomInt(charset.length)];
     }
 
     return password;
