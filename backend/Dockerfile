@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for Backend
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app/backend
 
@@ -21,7 +21,7 @@ COPY backend/src ./src
 RUN npm run build
 
 # Test stage (for CI)
-FROM node:22-alpine AS test
+FROM node:26-alpine AS test
 
 WORKDIR /app/backend
 
@@ -48,7 +48,7 @@ RUN npm run build
 CMD ["npm", "run", "test:ci"]
 
 # Production stage
-FROM node:22-alpine AS production
+FROM node:26-alpine AS production
 
 WORKDIR /app/backend
 
@@ -98,7 +98,7 @@ ENTRYPOINT ["dumb-init", "--"]
 CMD ["npm", "start"]
 
 # Development stage
-FROM node:22-alpine AS development
+FROM node:26-alpine AS development
 
 WORKDIR /app/backend
 
