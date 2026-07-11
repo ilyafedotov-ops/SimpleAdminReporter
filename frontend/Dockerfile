@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for Frontend
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 
 # Build arguments for environment variables
 ARG VITE_AZURE_CLIENT_ID
@@ -41,7 +41,7 @@ RUN echo "Build info:" > build/build-info.txt && \
     echo "NPM version: $(npm --version)" >> build/build-info.txt
 
 # Development stage
-FROM node:22-alpine AS development
+FROM node:26-alpine AS development
 
 WORKDIR /app
 
@@ -69,7 +69,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # Test stage (for CI)
-FROM node:22-alpine AS test
+FROM node:26-alpine AS test
 
 WORKDIR /app
 
