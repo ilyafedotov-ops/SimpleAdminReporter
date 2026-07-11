@@ -95,6 +95,7 @@ export class CookieAuthService {
         // Store CSRF token for future requests
         this.csrfToken = authData.csrfToken;
         this.user = authData.user;
+        localStorage.removeItem("auth:logout");
         localStorage.removeItem("sessionId");
 
         // Store user in sessionStorage for page refreshes
