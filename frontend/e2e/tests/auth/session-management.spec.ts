@@ -265,18 +265,9 @@ test.describe("Authentication - Session Management", () => {
         localStorage.setItem("accessToken", "tampered-token");
       });
 
-      // Mock token validation failure
-      await page.route("**/api/auth/validate", (route) => {
-        route.fulfill({
-          status: 401,
-          contentType: "application/json",
-          body: JSON.stringify({
-            error: "Invalid token",
-          }),
-        });
-      });
-
-      // Try to access protected resource
+      // Try to access a protected route. Token-auth validates JWT shape in the
+      // route guard, so the malformed token should fail closed without a
+      // server validation request.
       await page.reload();
 
       // Should redirect to login due to invalid token
