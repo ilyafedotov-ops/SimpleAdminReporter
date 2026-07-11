@@ -482,8 +482,8 @@ jobs:
 
       - name: Deploy to staging
         run: |
-          ./scripts/deploy.sh staging
-          ./scripts/health-check.sh
+          bash ./scripts/deploy.sh staging
+          bash ./scripts/health-check.sh
 
   deploy-production:
     runs-on: ubuntu-latest
@@ -495,6 +495,6 @@ jobs:
 
       - name: Deploy to production
         run: |
-          ./scripts/deploy.sh production
-          ./scripts/health-check.sh
-          ./scripts/verify-backups.sh || echo "Backup verification skipped in CI"
+          bash ./scripts/deploy.sh production
+          bash ./scripts/health-check.sh
+          bash ./scripts/verify-backups.sh || echo "Backup verification skipped in CI"
