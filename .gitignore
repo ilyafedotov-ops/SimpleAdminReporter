@@ -126,6 +126,9 @@ docker-compose.override.yml
 
 # Test artifacts
 test-results/
+playwright-report/
+blob-report/
+junit.xml
 coverage/
 .nyc_output/
 
