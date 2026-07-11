@@ -95,7 +95,7 @@ RUN npm run type-check
 CMD ["npm", "run", "type-check"]
 
 # Production stage
-FROM nginx:1.27-alpine AS production
+FROM nginx:1.31-alpine AS production
 
 # Install curl for health checks
 RUN apk add --no-cache curl
