@@ -1,22 +1,96 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit from "express-rate-limit";
+import { RedisStore, type SendCommandFn } from "rate-limit-redis";
+import { redis } from "@/config/redis";
+
+let sharedRateLimitStore: RedisStore | undefined;
 
 /**
- * Redis-based rate limiting store for distributed systems
- * Falls back to memory store if Redis is unavailable
+ * Redis-based rate limiting store for distributed systems.
+ * Falls back to memory store if Redis is unavailable.
  */
 const createRateLimitStore = () => {
-  // For now, use memory store to ensure compatibility
-  // TODO: Implement proper Redis store with correct client interface
-  return undefined;
+  if (
+    process.env.NODE_ENV === "test" &&
+    process.env.USE_REDIS_RATE_LIMIT_STORE !== "true"
+  ) {
+    return undefined;
+  }
+
+  try {
+    if (!sharedRateLimitStore) {
+      const client = redis.getClient();
+      if (!client) {
+        return undefined;
+      }
+
+      const sendCommand: SendCommandFn = async (...args: string[]) => {
+        const [command, ...commandArgs] = args;
+        if (typeof client.call !== "function") {
+          throw new Error("Redis client does not support call()");
+        }
+        return client.call(
+          command,
+          ...commandArgs,
+        ) as ReturnType<SendCommandFn>;
+      };
+
+      sharedRateLimitStore = new RedisStore({
+        sendCommand,
+        prefix: "rl:",
+      });
+    }
+
+    return sharedRateLimitStore;
+  } catch {
+    return undefined;
+  }
 };
 
 /**
  * Standard error message for rate limiting
  */
 const rateLimitMessage = {
-  error: 'Too many requests',
-  message: 'Rate limit exceeded. Please try again later.',
-  retryAfter: 'Check Retry-After header for wait time'
+  error: "Too many requests",
+  message: "Rate limit exceeded. Please try again later.",
+  retryAfter: "Check Retry-After header for wait time",
+};
+
+const getLoginRateLimitMax = (): number => {
+  if (
+    process.env.NODE_ENV === "test" &&
+    process.env.E2E_STRICT_RATE_LIMIT !== "true"
+  ) {
+    return 500;
+  }
+  return 5;
+};
+
+const getAuthEndpointRateLimitMax = (): number => {
+  if (process.env.NODE_ENV === "test") {
+    return 1000;
+  }
+  return 30;
+};
+
+const getRefreshTokenRateLimitMax = (): number => {
+  if (process.env.NODE_ENV === "test") {
+    return 1000;
+  }
+  return 20;
+};
+
+const getLogsQueryRateLimitMax = (): number => {
+  if (process.env.NODE_ENV === "test") {
+    return 10000;
+  }
+  return 25;
+};
+
+const getLogsExportRateLimitMax = (): number => {
+  if (process.env.NODE_ENV === "test") {
+    return 1000;
+  }
+  return 5;
 };
 
 /**
@@ -25,7 +99,7 @@ const rateLimitMessage = {
  */
 export const loginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
+  max: getLoginRateLimitMax,
   message: rateLimitMessage,
   standardHeaders: true,
   legacyHeaders: false,
@@ -81,13 +155,13 @@ export const reportRateLimiter = rateLimit({
 export const createLoginRateLimiter = (customOptions?: any) => {
   return rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 attempts per window
+    max: getLoginRateLimitMax,
     message: rateLimitMessage,
     standardHeaders: true,
     legacyHeaders: false,
     store: createRateLimitStore(),
     // Use default keyGenerator which handles IPv6 properly,
-    ...customOptions
+    ...customOptions,
   });
 };
 
@@ -97,7 +171,7 @@ export const createLoginRateLimiter = (customOptions?: any) => {
  */
 export const refreshTokenRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 refreshes per window
+  max: getRefreshTokenRateLimitMax,
   message: rateLimitMessage,
   standardHeaders: true,
   legacyHeaders: false,
@@ -111,7 +185,7 @@ export const refreshTokenRateLimiter = rateLimit({
  */
 export const authEndpointsRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // 30 requests per window
+  max: getAuthEndpointRateLimitMax,
   message: rateLimitMessage,
   standardHeaders: true,
   legacyHeaders: false,
@@ -139,7 +213,7 @@ export const adminRateLimiter = rateLimit({
  */
 export const logsQueryRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 25, // 25 queries per window
+  max: getLogsQueryRateLimitMax,
   message: rateLimitMessage,
   standardHeaders: true,
   legacyHeaders: false,
@@ -153,7 +227,7 @@ export const logsQueryRateLimiter = rateLimit({
  */
 export const logsExportRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 exports per window
+  max: getLogsExportRateLimitMax,
   message: rateLimitMessage,
   standardHeaders: true,
   legacyHeaders: false,

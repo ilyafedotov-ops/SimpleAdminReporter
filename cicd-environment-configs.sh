@@ -6,9 +6,8 @@ CI_REGISTRY_USER=gitlab-ci-token
 CI_REGISTRY_PASSWORD=$CI_JOB_TOKEN  # Automatically provided by GitLab
 
 # Deployment SSH Keys (Protected, Masked)
-SSH_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
-<your-deployment-private-key>
------END RSA PRIVATE KEY-----"
+# Set SSH_PRIVATE_KEY in GitLab CI/CD variables — never commit private keys.
+SSH_PRIVATE_KEY=<deployment-private-key>
 
 # Staging Environment Variables
 STAGING_HOST=staging.example.com
@@ -25,9 +24,9 @@ SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
 TEAMS_WEBHOOK=https://outlook.office.com/webhook/YOUR/TEAMS/WEBHOOK
 
 # Application Secrets (Protected, Masked)
-JWT_SECRET=your-super-secret-jwt-key-for-production
-AD_PASSWORD=your-ad-service-account-password
-AZURE_CLIENT_SECRET=your-azure-app-client-secret
+JWT_SECRET=<set-in-ci-variables>
+AD_PASSWORD=<set-in-ci-variables>
+AZURE_CLIENT_SECRET=<set-in-ci-variables>
 
 # ==================== .env.example ====================
 # Example environment file for local development

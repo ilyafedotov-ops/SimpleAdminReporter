@@ -1,96 +1,112 @@
-import { Request, Response, NextFunction } from 'express';
-import { body, param, validationResult } from 'express-validator';
-import { credentialsService } from '@/services/credentials.service';
-import { logger } from '@/utils/logger';
+import { Request, Response, NextFunction } from "express";
+import { body, param, validationResult } from "express-validator";
+import { credentialsService } from "@/services/credentials.service";
+import { logger } from "@/utils/logger";
 
 // Validation rules
 export const createCredentialValidation = [
-  body('serviceType')
-    .isIn(['ad', 'azure', 'o365'])
-    .withMessage('Invalid service type'),
-  body('credentialName')
+  body("serviceType")
+    .isIn(["ad", "azure", "o365"])
+    .withMessage("Invalid service type")
+    .custom((serviceType, { req }) => {
+      const { username, password, tenantId, clientId, clientSecret } = req.body;
+
+      if (serviceType === "ad" && (!username || !password)) {
+        throw new Error(
+          "Username and password are required for AD credentials",
+        );
+      }
+
+      if (
+        (serviceType === "azure" || serviceType === "o365") &&
+        (!tenantId || !clientId || !clientSecret)
+      ) {
+        throw new Error(
+          "Tenant ID, Client ID, and Client Secret are required for Azure/O365 credentials",
+        );
+      }
+
+      return true;
+    }),
+  body("credentialName")
     .trim()
     .notEmpty()
-    .withMessage('Credential name is required')
+    .withMessage("Credential name is required")
     .isLength({ max: 255 })
-    .withMessage('Credential name too long'),
-  body('username')
+    .withMessage("Credential name too long"),
+  body("username")
     .optional()
     .trim()
     .isLength({ max: 255 })
-    .withMessage('Username too long'),
-  body('password')
+    .withMessage("Username too long"),
+  body("password")
     .optional()
     .isString()
-    .withMessage('Password must be a string'),
-  body('tenantId')
+    .withMessage("Password must be a string"),
+  body("tenantId")
     .optional()
     .trim()
     .isLength({ max: 255 })
-    .withMessage('Tenant ID too long'),
-  body('clientId')
+    .withMessage("Tenant ID too long"),
+  body("clientId")
     .optional()
     .trim()
     .isLength({ max: 255 })
-    .withMessage('Client ID too long'),
-  body('clientSecret')
+    .withMessage("Client ID too long"),
+  body("clientSecret")
     .optional()
     .isString()
-    .withMessage('Client secret must be a string'),
-  body('isDefault')
+    .withMessage("Client secret must be a string"),
+  body("isDefault")
     .optional()
     .isBoolean()
-    .withMessage('isDefault must be a boolean')
+    .withMessage("isDefault must be a boolean"),
 ];
 
 export const updateCredentialValidation = [
-  param('id')
-    .isInt()
-    .withMessage('Invalid credential ID'),
-  body('credentialName')
+  param("id").isInt().withMessage("Invalid credential ID"),
+  body("credentialName")
     .optional()
     .trim()
     .notEmpty()
-    .withMessage('Credential name cannot be empty')
+    .withMessage("Credential name cannot be empty")
     .isLength({ max: 255 })
-    .withMessage('Credential name too long'),
-  body('username')
+    .withMessage("Credential name too long"),
+  body("username")
     .optional()
     .trim()
     .isLength({ max: 255 })
-    .withMessage('Username too long'),
-  body('password')
+    .withMessage("Username too long"),
+  body("password")
     .optional()
     .isString()
-    .withMessage('Password must be a string'),
-  body('tenantId')
+    .withMessage("Password must be a string"),
+  body("tenantId")
     .optional()
     .trim()
     .isLength({ max: 255 })
-    .withMessage('Tenant ID too long'),
-  body('clientId')
+    .withMessage("Tenant ID too long"),
+  body("clientId")
     .optional()
     .trim()
     .isLength({ max: 255 })
-    .withMessage('Client ID too long'),
-  body('clientSecret')
+    .withMessage("Client ID too long"),
+  body("clientSecret")
     .optional()
     .isString()
-    .withMessage('Client secret must be a string'),
-  body('isDefault')
+    .withMessage("Client secret must be a string"),
+  body("isDefault")
     .optional()
     .isBoolean()
-    .withMessage('isDefault must be a boolean'),
-  body('isActive')
+    .withMessage("isDefault must be a boolean"),
+  body("isActive")
     .optional()
     .isBoolean()
-    .withMessage('isActive must be a boolean')
+    .withMessage("isActive must be a boolean"),
 ];
 
 export const credentialIdValidation = [
-  param('id')
-    .isInt()
-    .withMessage('Invalid credential ID')
+  param("id").isInt().withMessage("Invalid credential ID"),
 ];
 
 class CredentialsController {
@@ -102,11 +118,14 @@ class CredentialsController {
       const userId = req.user!.id;
       const serviceType = req.query.serviceType as string | undefined;
 
-      const credentials = await credentialsService.getUserCredentials(userId, serviceType);
-      
+      const credentials = await credentialsService.getUserCredentials(
+        userId,
+        serviceType,
+      );
+
       res.json({
         success: true,
-        data: credentials
+        data: credentials,
       });
     } catch (error) {
       _next(error);
@@ -121,18 +140,21 @@ class CredentialsController {
       const userId = req.user!.id;
       const credentialId = parseInt(req.params.id);
 
-      const credential = await credentialsService.getCredential(credentialId, userId);
-      
+      const credential = await credentialsService.getCredential(
+        credentialId,
+        userId,
+      );
+
       if (!credential) {
         return res.status(404).json({
           success: false,
-          error: 'Credential not found'
+          error: "Credential not found",
         });
       }
 
       res.json({
         success: true,
-        data: credential
+        data: credential,
       });
     } catch (error) {
       _next(error);
@@ -148,18 +170,21 @@ class CredentialsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          errors: errors.array()
+          errors: errors.array(),
         });
       }
 
       const userId = req.user!.id;
-      const credential = await credentialsService.createCredential(userId, req.body);
-      
+      const credential = await credentialsService.createCredential(
+        userId,
+        req.body,
+      );
+
       logger.info(`User ${userId} created credential ${credential.id}`);
-      
+
       res.status(201).json({
         success: true,
-        data: credential
+        data: credential,
       });
     } catch (error) {
       _next(error);
@@ -175,7 +200,7 @@ class CredentialsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          errors: errors.array()
+          errors: errors.array(),
         });
       }
 
@@ -183,16 +208,16 @@ class CredentialsController {
       const credentialId = parseInt(req.params.id);
 
       const credential = await credentialsService.updateCredential(
-        credentialId, 
-        userId, 
-        req.body
+        credentialId,
+        userId,
+        req.body,
       );
-      
+
       logger.info(`User ${userId} updated credential ${credentialId}`);
-      
+
       res.json({
         success: true,
-        data: credential
+        data: credential,
       });
     } catch (error) {
       _next(error);
@@ -208,12 +233,12 @@ class CredentialsController {
       const credentialId = parseInt(req.params.id);
 
       await credentialsService.deleteCredential(credentialId, userId);
-      
+
       logger.info(`User ${userId} deleted credential ${credentialId}`);
-      
+
       res.json({
         success: true,
-        message: 'Credential deleted successfully'
+        message: "Credential deleted successfully",
       });
     } catch (error) {
       _next(error);
@@ -228,13 +253,18 @@ class CredentialsController {
       const userId = req.user!.id;
       const credentialId = parseInt(req.params.id);
 
-      const result = await credentialsService.testCredential(credentialId, userId);
-      
-      logger.info(`User ${userId} tested credential ${credentialId}: ${result.success}`);
-      
+      const result = await credentialsService.testCredential(
+        credentialId,
+        userId,
+      );
+
+      logger.info(
+        `User ${userId} tested credential ${credentialId}: ${result.success}`,
+      );
+
       res.json({
         success: true,
-        data: result
+        data: result,
       });
     } catch (error) {
       _next(error);
@@ -250,12 +280,12 @@ class CredentialsController {
       const credentialId = parseInt(req.params.id);
 
       await credentialsService.setDefaultCredential(credentialId, userId);
-      
+
       logger.info(`User ${userId} set credential ${credentialId} as default`);
-      
+
       res.json({
         success: true,
-        message: 'Default credential updated successfully'
+        message: "Default credential updated successfully",
       });
     } catch (error) {
       _next(error);
@@ -265,14 +295,18 @@ class CredentialsController {
   /**
    * Get default credentials for all service types
    */
-  async getDefaultCredentials(req: Request, res: Response, _next: NextFunction) {
+  async getDefaultCredentials(
+    req: Request,
+    res: Response,
+    _next: NextFunction,
+  ) {
     try {
       const userId = req.user!.id;
-      
+
       const [adDefault, azureDefault, o365Default] = await Promise.all([
-        credentialsService.getDefaultCredential(userId, 'ad'),
-        credentialsService.getDefaultCredential(userId, 'azure'),
-        credentialsService.getDefaultCredential(userId, 'o365')
+        credentialsService.getDefaultCredential(userId, "ad"),
+        credentialsService.getDefaultCredential(userId, "azure"),
+        credentialsService.getDefaultCredential(userId, "o365"),
       ]);
 
       res.json({
@@ -280,8 +314,8 @@ class CredentialsController {
         data: {
           ad: adDefault,
           azure: azureDefault,
-          o365: o365Default
-        }
+          o365: o365Default,
+        },
       });
     } catch (error) {
       _next(error);

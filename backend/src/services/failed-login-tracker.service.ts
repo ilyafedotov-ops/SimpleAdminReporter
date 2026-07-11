@@ -1,13 +1,18 @@
-import { db } from '@/config/database';
-import { redis } from '@/config/redis';
-import { logger } from '@/utils/logger';
+import { db } from "@/config/database";
+import { redis } from "@/config/redis";
+import { logger } from "@/utils/logger";
 
 export interface FailedLoginAttempt {
   username: string;
   ipAddress: string;
   userAgent?: string;
   authSource?: string;
-  errorType: 'invalid_credentials' | 'account_locked' | 'user_not_found' | 'user_inactive' | 'service_error';
+  errorType:
+    | "invalid_credentials"
+    | "account_locked"
+    | "user_not_found"
+    | "user_inactive"
+    | "service_error";
 }
 
 export interface LockoutInfo {
@@ -19,14 +24,14 @@ export interface LockoutInfo {
 
 export class FailedLoginTracker {
   private static instance: FailedLoginTracker;
-  
+
   // Configuration
   private readonly MAX_ATTEMPTS = 5;
   private readonly ATTEMPT_WINDOW_MINUTES = 15;
   private readonly LOCKOUT_DURATIONS_MINUTES = [15, 30, 60]; // Progressive lockout
-  private readonly REDIS_KEY_PREFIX = 'failed_login:';
-  private readonly REDIS_LOCKOUT_PREFIX = 'lockout:';
-  
+  private readonly REDIS_KEY_PREFIX = "failed_login:";
+  private readonly REDIS_LOCKOUT_PREFIX = "lockout:";
+
   private constructor() {}
 
   public static getInstance(): FailedLoginTracker {
@@ -42,24 +47,27 @@ export class FailedLoginTracker {
   async recordFailedAttempt(attempt: FailedLoginAttempt): Promise<LockoutInfo> {
     try {
       const { username, ipAddress, userAgent, authSource, errorType } = attempt;
-      
+
       // Record in database
       await db.query(
         `INSERT INTO failed_login_attempts 
          (username, ip_address, user_agent, auth_source, error_type)
          VALUES ($1, $2, $3, $4, $5)`,
-        [username, ipAddress, userAgent, authSource, errorType]
+        [username, ipAddress, userAgent, authSource, errorType],
       );
 
       // Check current failed attempts count
-      const attemptCount = await this.getFailedAttemptCount(username, ipAddress);
-      
-      logger.warn('Failed login attempt recorded', {
+      const attemptCount = await this.getFailedAttemptCount(
+        username,
+        ipAddress,
+      );
+
+      logger.warn("Failed login attempt recorded", {
         username,
         ipAddress,
         errorType,
         attemptCount,
-        maxAttempts: this.MAX_ATTEMPTS
+        maxAttempts: this.MAX_ATTEMPTS,
       });
 
       // Check if we need to lock the account
@@ -72,11 +80,10 @@ export class FailedLoginTracker {
 
       return {
         isLocked: false,
-        failedAttempts: attemptCount
+        failedAttempts: attemptCount,
       };
-
     } catch (error) {
-      logger.error('Error recording failed login attempt:', error);
+      logger.error("Error recording failed login attempt:", error);
       throw error;
     }
   }
@@ -84,7 +91,10 @@ export class FailedLoginTracker {
   /**
    * Check if an account is currently locked
    */
-  async checkLockoutStatus(username: string, ipAddress?: string): Promise<LockoutInfo> {
+  async checkLockoutStatus(
+    username: string,
+    ipAddress?: string,
+  ): Promise<LockoutInfo> {
     try {
       // Check Redis cache first for performance
       const cachedLockout = await this.getCachedLockout(username, ipAddress);
@@ -96,32 +106,38 @@ export class FailedLoginTracker {
       const result = await db.query(
         `SELECT is_locked, lockout_expires_at, lockout_reason 
          FROM is_account_locked($1, $2)`,
-        [username, ipAddress]
+        [username, ipAddress],
       );
 
       if (result.rows.length > 0 && result.rows[0].is_locked) {
+        const lockoutExpiresAt = result.rows[0].lockout_expires_at
+          ? new Date(result.rows[0].lockout_expires_at)
+          : undefined;
+
         const lockoutInfo: LockoutInfo = {
           isLocked: true,
-          lockoutExpiresAt: result.rows[0].lockout_expires_at,
-          lockoutReason: result.rows[0].lockout_reason
+          lockoutExpiresAt,
+          lockoutReason: result.rows[0].lockout_reason,
         };
 
         // Cache the lockout info
         await this.cacheLockout(username, ipAddress, lockoutInfo);
-        
+
         return lockoutInfo;
       }
 
       // Get current failed attempts for informational purposes
-      const attemptCount = await this.getFailedAttemptCount(username, ipAddress || '');
-      
+      const attemptCount = await this.getFailedAttemptCount(
+        username,
+        ipAddress || "",
+      );
+
       return {
         isLocked: false,
-        failedAttempts: attemptCount
+        failedAttempts: attemptCount,
       };
-
     } catch (error) {
-      logger.error('Error checking lockout status:', error);
+      logger.error("Error checking lockout status:", error);
       // Return safe default in case of error
       return { isLocked: false };
     }
@@ -130,23 +146,25 @@ export class FailedLoginTracker {
   /**
    * Clear failed attempts on successful login
    */
-  async clearFailedAttempts(username: string, ipAddress: string): Promise<void> {
+  async clearFailedAttempts(
+    username: string,
+    ipAddress: string,
+  ): Promise<void> {
     try {
       // Clear from database
       await db.query(
         `DELETE FROM failed_login_attempts 
          WHERE username = $1 AND ip_address = $2 
          AND attempt_time > CURRENT_TIMESTAMP - INTERVAL '${this.ATTEMPT_WINDOW_MINUTES} minutes'`,
-        [username, ipAddress]
+        [username, ipAddress],
       );
 
       // Clear Redis counters
       await this.clearRedisCounters(username, ipAddress);
 
-      logger.info('Cleared failed login attempts', { username, ipAddress });
-
+      logger.info("Cleared failed login attempts", { username, ipAddress });
     } catch (error) {
-      logger.error('Error clearing failed attempts:', error);
+      logger.error("Error clearing failed attempts:", error);
     }
   }
 
@@ -154,14 +172,14 @@ export class FailedLoginTracker {
    * Manually unlock an account (admin action)
    */
   async unlockAccount(
-    username: string, 
-    unlockedBy: number, 
-    reason: string = 'Manual unlock by administrator'
+    username: string,
+    unlockedBy: number,
+    reason: string = "Manual unlock by administrator",
   ): Promise<void> {
     const client = await db.getClient();
-    
+
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
 
       // Update lockout record
       await client.query(
@@ -172,26 +190,29 @@ export class FailedLoginTracker {
          WHERE username = $1 
          AND unlocked_at IS NULL 
          AND expires_at > CURRENT_TIMESTAMP`,
-        [username, unlockedBy, reason]
+        [username, unlockedBy, reason],
       );
 
       // Clear all failed attempts for this user
       await client.query(
         `DELETE FROM failed_login_attempts 
          WHERE username = $1`,
-        [username]
+        [username],
       );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       // Clear Redis cache
       await this.clearAllLockoutCache(username);
 
-      logger.info('Account manually unlocked', { username, unlockedBy, reason });
-
+      logger.info("Account manually unlocked", {
+        username,
+        unlockedBy,
+        reason,
+      });
     } catch (error) {
-      await client.query('ROLLBACK');
-      logger.error('Error unlocking account:', error);
+      await client.query("ROLLBACK");
+      logger.error("Error unlocking account:", error);
       throw error;
     } finally {
       client.release();
@@ -201,17 +222,19 @@ export class FailedLoginTracker {
   /**
    * Get failed attempt count within the time window
    */
-  private async getFailedAttemptCount(username: string, ipAddress: string): Promise<number> {
+  private async getFailedAttemptCount(
+    username: string,
+    ipAddress: string,
+  ): Promise<number> {
     try {
       const result = await db.query(
-        'SELECT get_failed_attempt_count($1, $2, $3) as count',
-        [username, ipAddress, this.ATTEMPT_WINDOW_MINUTES]
+        "SELECT get_failed_attempt_count($1, $2, $3) as count",
+        [username, ipAddress, this.ATTEMPT_WINDOW_MINUTES],
       );
 
       return result.rows[0]?.count || 0;
-
     } catch (error) {
-      logger.error('Error getting failed attempt count:', error);
+      logger.error("Error getting failed attempt count:", error);
       return 0;
     }
   }
@@ -220,9 +243,9 @@ export class FailedLoginTracker {
    * Lock an account after too many failed attempts
    */
   private async lockAccount(
-    username: string, 
-    ipAddress: string, 
-    failedAttempts: number
+    username: string,
+    ipAddress: string,
+    failedAttempts: number,
   ): Promise<LockoutInfo> {
     try {
       // Determine lockout duration based on previous lockouts
@@ -240,32 +263,31 @@ export class FailedLoginTracker {
           `Too many failed login attempts (${failedAttempts} attempts in ${this.ATTEMPT_WINDOW_MINUTES} minutes)`,
           failedAttempts,
           lockoutDuration,
-          expiresAt
-        ]
+          expiresAt,
+        ],
       );
 
       const lockoutInfo: LockoutInfo = {
         isLocked: true,
         lockoutExpiresAt: expiresAt,
         lockoutReason: `Account locked due to ${failedAttempts} failed login attempts`,
-        failedAttempts
+        failedAttempts,
       };
 
       // Cache lockout info
       await this.cacheLockout(username, ipAddress, lockoutInfo);
 
-      logger.warn('Account locked due to failed login attempts', {
+      logger.warn("Account locked due to failed login attempts", {
         username,
         ipAddress,
         failedAttempts,
         lockoutDurationMinutes: lockoutDuration,
-        expiresAt
+        expiresAt,
       });
 
       return lockoutInfo;
-
     } catch (error) {
-      logger.error('Error locking account:', error);
+      logger.error("Error locking account:", error);
       throw error;
     }
   }
@@ -281,17 +303,19 @@ export class FailedLoginTracker {
          FROM account_lockouts 
          WHERE username = $1 
          AND locked_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'`,
-        [username]
+        [username],
       );
 
       const lockoutCount = result.rows[0]?.lockout_count || 0;
-      
-      // Progressive lockout: 15min -> 30min -> 60min -> 60min...
-      const durationIndex = Math.min(lockoutCount, this.LOCKOUT_DURATIONS_MINUTES.length - 1);
-      return this.LOCKOUT_DURATIONS_MINUTES[durationIndex];
 
+      // Progressive lockout: 15min -> 30min -> 60min -> 60min...
+      const durationIndex = Math.min(
+        lockoutCount,
+        this.LOCKOUT_DURATIONS_MINUTES.length - 1,
+      );
+      return this.LOCKOUT_DURATIONS_MINUTES[durationIndex];
     } catch (error) {
-      logger.error('Error calculating lockout duration:', error);
+      logger.error("Error calculating lockout duration:", error);
       return this.LOCKOUT_DURATIONS_MINUTES[0]; // Default to first duration
     }
   }
@@ -299,41 +323,47 @@ export class FailedLoginTracker {
   /**
    * Update Redis counter for real-time tracking
    */
-  private async updateRedisCounter(username: string, ipAddress: string): Promise<void> {
+  private async updateRedisCounter(
+    username: string,
+    ipAddress: string,
+  ): Promise<void> {
     try {
       const key = `${this.REDIS_KEY_PREFIX}${username}:${ipAddress}`;
       const exists = await redis.exists(key);
-      
+
       if (exists) {
         await redis.getClient().incr(key);
       } else {
-        await redis.set(key, '1', this.ATTEMPT_WINDOW_MINUTES * 60);
+        await redis.set(key, "1", this.ATTEMPT_WINDOW_MINUTES * 60);
       }
     } catch (error) {
-      logger.error('Error updating Redis counter:', error);
+      logger.error("Error updating Redis counter:", error);
     }
   }
 
   /**
    * Clear Redis counters
    */
-  private async clearRedisCounters(username: string, ipAddress: string): Promise<void> {
+  private async clearRedisCounters(
+    username: string,
+    ipAddress: string,
+  ): Promise<void> {
     try {
       const keys = [
         `${this.REDIS_KEY_PREFIX}${username}:${ipAddress}`,
         `${this.REDIS_KEY_PREFIX}${username}:*`,
-        `${this.REDIS_KEY_PREFIX}*:${ipAddress}`
+        `${this.REDIS_KEY_PREFIX}*:${ipAddress}`,
       ];
 
       for (const pattern of keys) {
-        if (pattern.includes('*')) {
+        if (pattern.includes("*")) {
           await redis.invalidatePattern(pattern);
         } else {
           await redis.del(pattern);
         }
       }
     } catch (error) {
-      logger.error('Error clearing Redis counters:', error);
+      logger.error("Error clearing Redis counters:", error);
     }
   }
 
@@ -341,21 +371,22 @@ export class FailedLoginTracker {
    * Cache lockout information in Redis
    */
   private async cacheLockout(
-    username: string, 
-    ipAddress: string | undefined, 
-    lockoutInfo: LockoutInfo
+    username: string,
+    ipAddress: string | undefined,
+    lockoutInfo: LockoutInfo,
   ): Promise<void> {
     try {
       if (!lockoutInfo.lockoutExpiresAt) return;
 
-      const ttl = Math.floor((lockoutInfo.lockoutExpiresAt.getTime() - Date.now()) / 1000);
+      const ttl = Math.floor(
+        (lockoutInfo.lockoutExpiresAt.getTime() - Date.now()) / 1000,
+      );
       if (ttl <= 0) return;
 
-      const key = `${this.REDIS_LOCKOUT_PREFIX}${username}${ipAddress ? ':' + ipAddress : ''}`;
+      const key = `${this.REDIS_LOCKOUT_PREFIX}${username}${ipAddress ? ":" + ipAddress : ""}`;
       await redis.setJson(key, lockoutInfo, ttl);
-
     } catch (error) {
-      logger.error('Error caching lockout info:', error);
+      logger.error("Error caching lockout info:", error);
     }
   }
 
@@ -363,8 +394,8 @@ export class FailedLoginTracker {
    * Get cached lockout information
    */
   private async getCachedLockout(
-    username: string, 
-    ipAddress?: string
+    username: string,
+    ipAddress?: string,
   ): Promise<LockoutInfo | null> {
     try {
       // Check with IP-specific key first
@@ -377,9 +408,8 @@ export class FailedLoginTracker {
       // Check username-only key
       const userKey = `${this.REDIS_LOCKOUT_PREFIX}${username}`;
       return await redis.getJson<LockoutInfo>(userKey);
-
     } catch (error) {
-      logger.error('Error getting cached lockout:', error);
+      logger.error("Error getting cached lockout:", error);
       return null;
     }
   }
@@ -391,27 +421,29 @@ export class FailedLoginTracker {
     try {
       await redis.invalidatePattern(`${this.REDIS_LOCKOUT_PREFIX}${username}*`);
     } catch (error) {
-      logger.error('Error clearing lockout cache:', error);
+      logger.error("Error clearing lockout cache:", error);
     }
   }
 
   /**
    * Get lockout history for a user (for admin interface)
    */
-  async getLockoutHistory(username: string, limit: number = 10): Promise<any[]> {
+  async getLockoutHistory(
+    username: string,
+    limit: number = 10,
+  ): Promise<any[]> {
     try {
       const result = await db.query(
         `SELECT * FROM account_lockouts 
          WHERE username = $1 
          ORDER BY locked_at DESC 
          LIMIT $2`,
-        [username, limit]
+        [username, limit],
       );
 
       return result.rows;
-
     } catch (error) {
-      logger.error('Error getting lockout history:', error);
+      logger.error("Error getting lockout history:", error);
       return [];
     }
   }

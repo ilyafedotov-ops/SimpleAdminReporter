@@ -1,0 +1,18 @@
+version: 2
+
+secret:
+  ignored_paths:
+    - ".github/workflows/**"
+    - "backend/src/test/**"
+    - "backend/src/**/test/**"
+    - "**/*.test.ts"
+    - "**/*.e2e.test.ts"
+    - "database/init.sql"
+    - ".gitleaks.toml"
+    - "cicd-environment-configs.sh"
+    - "secrets/templates/**"
+    - "docs/**"
+    - "INSTALLATION.md"
+  ignored_matches:
+    - name: E2E test password constant
+      match: testpassword

@@ -1,7 +1,7 @@
 # Main pipeline configuration
 include:
-  - local: '.gitlab/ci/templates/node-build.yml'
-  - local: '.gitlab/ci/templates/test-template.yml'
+  - local: ".gitlab/ci/templates/node-build.yml"
+  - local: ".gitlab/ci/templates/test-template.yml"
 
 stages:
   - validate
@@ -12,7 +12,7 @@ stages:
   - report
 
 variables:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
   POSTGRES_DB: reporting_test
   POSTGRES_USER: postgres
@@ -22,7 +22,7 @@ variables:
   ARTIFACT_COMPRESSION_LEVEL: "fast"
   FF_USE_FASTZIP: "true"
   GIT_DEPTH: "20"
-  
+
   # Frontend environment variables (available globally)
   VITE_API_URL: "/api"
   VITE_USE_COOKIE_AUTH: "true"
@@ -39,9 +39,9 @@ validate:commits:
     - git log --format=%s -n 1 | commitlint --config /tmp/commitlint.config.js
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+    - if: "$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS"
       when: never
-    - if: '$CI_COMMIT_BRANCH'
+    - if: "$CI_COMMIT_BRANCH"
 
 validate:branch-naming:
   stage: validate
@@ -90,7 +90,7 @@ build:frontend:
   script:
     - chmod +x ../.gitlab/ci/scripts/lint-check.sh
     - ../.gitlab/ci/scripts/lint-check.sh frontend
-    # - npm run type-check  # Temporarily disabled while fixing TS errors
+    - npm run type-check
     - npm run build
     - find build -name "*.map" -delete 2>/dev/null || true
     - find build -name "*.txt" -delete 2>/dev/null || true
@@ -177,7 +177,7 @@ test:e2e:backend:
     paths:
       - backend/test-results/
     expire_in: 1 week
-  allow_failure: true  # Allow failure initially until tests are stable
+  allow_failure: false
 
 test:e2e:frontend:
   stage: e2e
@@ -208,7 +208,7 @@ test:e2e:frontend:
   after_script:
     - cd frontend
     - ls -la test-results/ || true
-    - ls -la playwright-report/ || true  
+    - ls -la playwright-report/ || true
     - echo "E2E test execution finished"
     # Generate summary report
     - |
@@ -225,8 +225,8 @@ test:e2e:frontend:
       - frontend/test-results/
       - frontend/playwright-report/
     expire_in: 1 week
-  timeout: 30m  # Extended timeout for full test suite
-  allow_failure: true  # Allow failure initially until tests are stable
+  timeout: 30m # Extended timeout for full test suite
+  allow_failure: false
 
 # Security Stage
 security:dependencies:
@@ -252,7 +252,7 @@ security:dockerfile-scan:
 
 security:secrets:
   stage: security
-  image: 
+  image:
     name: zricethezav/gitleaks:latest
     entrypoint: [""]
   script:
@@ -263,7 +263,7 @@ security:secrets:
       gitleaks detect --source . --config .gitleaks.toml --verbose --report-format=json --report-path=gitleaks-report.json
       GITLEAKS_EXIT_CODE=$?
       set -e
-      
+
       # Always create SARIF report for GitLab Security Dashboard
       echo "Creating SARIF report for GitLab Security Dashboard..."
       if [ $GITLEAKS_EXIT_CODE -eq 1 ]; then
@@ -274,22 +274,22 @@ security:secrets:
         echo "✅ No secrets found - creating empty SARIF report"
         echo '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"gitleaks","version":"latest"}},"results":[]}]}' > gitleaks-report.sarif
       fi
-      
+
       # Ensure SARIF report exists
       if [ ! -f "gitleaks-report.sarif" ]; then
         echo "❌ SARIF report generation failed, creating empty fallback"
         echo '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"gitleaks","version":"latest"}},"results":[]}]}' > gitleaks-report.sarif
       fi
-      
+
       echo "Verifying required artifacts exist..."
       ls -la gitleaks-report.sarif
-      
+
       # Exit with original gitleaks exit code to fail pipeline on security violations
       if [ $GITLEAKS_EXIT_CODE -eq 1 ]; then
         echo "❌ PIPELINE FAILED: Security violations detected - review gitleaks-report.json for details"
         exit 1
       fi
-      
+
       echo "✅ Security scan completed - no violations found"
   artifacts:
     when: always
@@ -299,7 +299,7 @@ security:secrets:
     paths:
       - gitleaks-report.json
     expire_in: 1 week
-  allow_failure: false  # Fail pipeline on security issues
+  allow_failure: false # Fail pipeline on security issues
 
 # Report Stage
 report:code-quality:
@@ -381,4 +381,3 @@ report:pipeline-summary:
       echo "4. Monitor artifact sizes in GitLab UI"
       echo ""
       echo "View detailed results in the GitLab pipeline UI"
-

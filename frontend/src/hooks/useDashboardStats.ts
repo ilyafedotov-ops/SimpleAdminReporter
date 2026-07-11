@@ -1,7 +1,6 @@
- 
-import { useState, useEffect, useCallback } from 'react';
-import { ApiResponse } from '@/types';
-import { apiClient } from '@/utils/apiClient';
+import { useState, useEffect, useCallback } from "react";
+import { ApiResponse } from "@/types";
+import { apiClient } from "@/utils/apiClient";
 
 interface DashboardStats {
   totalReports: number;
@@ -43,22 +42,23 @@ export const useDashboardStats = (): UseDashboardStatsReturn => {
     try {
       setLoading(true);
       setError(null);
-      
-      const result: ApiResponse<DashboardStats> = await apiClient.get<DashboardStats>(
-        '/reports/stats',
-        undefined,
-        { useCache: true, cacheTTL: 60 * 5 }
-      );
-      
-      if (result.success && (result as { data?: Record<string, unknown> }).data) {
-        setStats((result as { data: Record<string, unknown> }).data);
+
+      const result: ApiResponse<DashboardStats> =
+        await apiClient.get<DashboardStats>("/reports/stats", undefined, {
+          useCache: true,
+          cacheTTL: 60 * 5,
+        });
+
+      if (result.success && result.data) {
+        setStats(result.data);
       } else {
-        throw new Error(result.error || 'Failed to load dashboard statistics');
+        throw new Error(result.error || "Failed to load dashboard statistics");
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
       setError(errorMessage);
-      console.error('Dashboard stats fetch error:', err);
+      console.error("Dashboard stats fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -76,7 +76,7 @@ export const useDashboardStats = (): UseDashboardStatsReturn => {
     stats,
     loading,
     error,
-    refetch
+    refetch,
   };
 };
 

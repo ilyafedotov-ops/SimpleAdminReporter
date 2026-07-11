@@ -10,26 +10,29 @@
     "lint:fix": "npm run lint:fix:frontend && npm run lint:fix:backend",
     "lint:fix:frontend": "cd frontend && npm run lint:fix",
     "lint:fix:backend": "cd backend && npm run lint:fix",
+    "type-check": "npm run type-check:frontend && npm run type-check:backend",
+    "type-check:frontend": "cd frontend && npm run type-check",
+    "type-check:backend": "cd backend && npm run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "npm run test:frontend && npm run test:backend",
     "test:frontend": "cd frontend && npm test",
     "test:backend": "cd backend && npm test",
+    "test:precommit": "cd backend && npm test -- socket.service.test.ts --runInBand && npm test -- hardening-regression.test.ts --runInBand && cd .. && bash tests/verify-backups.test.sh",
     "build": "npm run build:backend && npm run build:frontend",
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npm run build",
     "clean": "./scripts/cleanup-artifacts.sh",
     "clean:full": "./scripts/cleanup-artifacts.sh --full",
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "devDependencies": {
-    "husky": "^8.0.3",
-    "lint-staged": "^15.2.0"
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.9.5"
   },
-  "lint-staged": {
-    "frontend/**/*.{ts,tsx}": [
-      "cd frontend && npx eslint --fix --max-warnings 0"
-    ],
-    "backend/**/*.{ts,tsx}": [
-      "cd backend && npx eslint --fix"
-    ]
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
   }
 }

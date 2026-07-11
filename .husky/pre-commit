@@ -1,53 +1,6 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+#!/usr/bin/env sh
+set -e
 
-echo "🔍 Running pre-commit checks..."
-
-# Check for ESLint errors in staged files
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx)$' || true)
-
-if [ -n "$STAGED_FILES" ]; then
-    echo "📋 Checking ESLint on staged files..."
-    echo "Files: $STAGED_FILES"
-    
-    # Check backend files (if backend directory exists)
-    if [ -d "backend" ]; then
-        BACKEND_FILES=$(echo "$STAGED_FILES" | grep "^backend/" || true)
-        if [ -n "$BACKEND_FILES" ]; then
-            echo "Checking backend files: $BACKEND_FILES"
-            cd backend || exit 1
-            # Remove "backend/" prefix from file paths for ESLint
-            BACKEND_FILES_RELATIVE=$(echo "$BACKEND_FILES" | sed 's/^backend\///')
-            npx eslint $BACKEND_FILES_RELATIVE --max-warnings 100
-            BACKEND_EXIT_CODE=$?
-            cd .. || exit 1
-            if [ $BACKEND_EXIT_CODE -ne 0 ]; then
-                echo "❌ ESLint errors found in backend. Please fix them before committing."
-                exit 1
-            fi
-        fi
-    fi
-    
-    # Check frontend files (if frontend directory exists)
-    if [ -d "frontend" ]; then
-        FRONTEND_FILES=$(echo "$STAGED_FILES" | grep "^frontend/" || true)
-        if [ -n "$FRONTEND_FILES" ]; then
-            echo "Checking frontend files: $FRONTEND_FILES"
-            cd frontend || exit 1
-            # Remove "frontend/" prefix from file paths for ESLint
-            FRONTEND_FILES_RELATIVE=$(echo "$FRONTEND_FILES" | sed 's/^frontend\///')
-            npx eslint $FRONTEND_FILES_RELATIVE --max-warnings 10
-            FRONTEND_EXIT_CODE=$?
-            cd .. || exit 1
-            if [ $FRONTEND_EXIT_CODE -ne 0 ]; then
-                echo "❌ ESLint errors found in frontend. Please fix them before committing."
-                exit 1
-            fi
-        fi
-    fi
-else
-    echo "✅ No TypeScript/JavaScript files staged"
-fi
-
-echo "✅ Pre-commit checks passed!"
-exit 0
+npx lint-staged
+npm run type-check
+npm run test:precommit

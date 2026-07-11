@@ -4,7 +4,7 @@ export interface User {
   username: string;
   displayName: string;
   email: string;
-  authSource: 'ad' | 'azure' | 'local';
+  authSource: "ad" | "azure" | "local";
   roles: string[];
   permissions: string[];
   lastLogin?: string;
@@ -24,7 +24,7 @@ export interface AuthState {
 export interface LoginRequest {
   username: string;
   password: string;
-  authSource: 'ad' | 'azure' | 'local';
+  authSource: "ad" | "azure" | "local";
 }
 
 // Report Types
@@ -32,7 +32,7 @@ export interface ReportTemplate {
   id: string;
   name: string;
   description: string;
-  category: 'AD' | 'AzureAD' | 'O365';
+  category: "AD" | "AzureAD" | "O365";
   reportType: string;
   queryTemplate: Record<string, unknown>;
   requiredParameters: string[];
@@ -43,7 +43,14 @@ export interface ReportTemplate {
 export interface ReportParameter {
   name: string;
   displayName: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'select' | 'multiselect';
+  type:
+    | "string"
+    | "number"
+    | "boolean"
+    | "date"
+    | "datetime"
+    | "select"
+    | "multiselect";
   required: boolean;
   defaultValue?: string | number | boolean | string[];
   min?: number;
@@ -56,7 +63,7 @@ export interface CustomReportTemplate {
   id: string;
   name: string;
   description: string;
-  source: 'ad' | 'azure' | 'o365';
+  source: "ad" | "azure" | "o365";
   query: CustomReportQuery;
   createdBy: string;
   createdAt: string;
@@ -78,7 +85,7 @@ export interface CustomReportQuery {
   groupBy?: string;
   orderBy?: {
     field: string;
-    direction: 'asc' | 'desc';
+    direction: "asc" | "desc";
   }[];
   limit?: number;
 }
@@ -86,17 +93,29 @@ export interface CustomReportQuery {
 export interface ReportField {
   name: string;
   displayName: string;
-  type: 'string' | 'number' | 'boolean' | 'datetime' | 'array';
+  type: "string" | "number" | "boolean" | "datetime" | "array";
   category: string;
   isSelected?: boolean;
 }
 
 export interface ReportFilter {
   field: string;
-  operator: 'equals' | 'notEquals' | 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'greaterThanOrEqual' | 'lessThanOrEqual' | 'isEmpty' | 'isNotEmpty';
+  operator:
+    | "equals"
+    | "notEquals"
+    | "contains"
+    | "notContains"
+    | "startsWith"
+    | "endsWith"
+    | "greaterThan"
+    | "lessThan"
+    | "greaterThanOrEqual"
+    | "lessThanOrEqual"
+    | "isEmpty"
+    | "isNotEmpty";
   value: string | number | boolean | null;
-  dataType: 'string' | 'number' | 'boolean' | 'datetime';
-  logic?: 'AND' | 'OR';
+  dataType: "string" | "number" | "boolean" | "datetime";
+  logic?: "AND" | "OR";
 }
 
 export interface ReportExecution {
@@ -107,13 +126,13 @@ export interface ReportExecution {
   report_name?: string;
   template_name?: string;
   report_id?: string;
-  source?: 'ad' | 'azure' | 'o365';
+  source?: "ad" | "azure" | "o365";
   executed_at: string;
   executedAt?: string;
   generated_at: string;
   started_at?: string;
   completed_at?: string;
-  status: 'pending' | 'running' | 'completed' | 'error' | 'success';
+  status: "pending" | "running" | "completed" | "error" | "success";
   parameters?: Record<string, unknown>;
   result_count?: number;
   execution_time_ms?: number;
@@ -158,10 +177,10 @@ export interface ReportResult {
 
 // Field Discovery Types
 export interface FieldMetadata {
-  source: 'ad' | 'azure' | 'o365';
+  source: "ad" | "azure" | "o365";
   fieldName: string;
   displayName: string;
-  dataType: 'string' | 'number' | 'boolean' | 'datetime' | 'array';
+  dataType: "string" | "number" | "boolean" | "datetime" | "array";
   category: string;
   description?: string;
   isSearchable: boolean;
@@ -182,7 +201,7 @@ export interface ApiResponse<T = unknown> {
 export interface PreviewResponse<T = Record<string, unknown>> {
   success: boolean;
   data: {
-    source: 'ad' | 'azure' | 'o365' | 'postgres';
+    source: "ad" | "azure" | "o365" | "postgres" | "unknown";
     executionTime: number;
     testData: T[];
     rowCount: number;
@@ -247,12 +266,12 @@ export interface ChartData {
 export interface ReportSchedule {
   id: string;
   reportId: string;
-  reportType: 'template' | 'custom';
+  reportType: "template" | "custom";
   templateId?: string;
   customTemplateId?: string;
   parameters?: Record<string, string | number | boolean | string[]>;
   schedule: {
-    frequency: 'daily' | 'weekly' | 'monthly';
+    frequency: "daily" | "weekly" | "monthly";
     time: string;
     dayOfWeek?: number;
     dayOfMonth?: number;
@@ -267,7 +286,7 @@ export interface ReportSchedule {
 }
 
 // Export Types
-export type ExportFormat = 'excel' | 'csv' | 'pdf' | 'json';
+export type ExportFormat = "excel" | "csv" | "pdf" | "json";
 
 export interface ExportOptions {
   includeCharts?: boolean;
@@ -284,21 +303,21 @@ export interface ExportRequest {
 
 // System Types
 export interface HealthCheck {
-  status: 'healthy' | 'unhealthy';
+  status: "healthy" | "unhealthy";
   timestamp: string;
   uptime: number;
   version: string;
   environment: string;
   services: {
-    database: 'ok' | 'error';
-    redis: 'ok' | 'error';
-    ldap: 'ok' | 'error';
-    azure: 'ok' | 'error';
+    database: "ok" | "error";
+    redis: "ok" | "error";
+    ldap: "ok" | "error";
+    azure: "ok" | "error";
   };
 }
 
 export interface HealthCheckResult {
-  status: 'healthy' | 'unhealthy' | 'degraded';
+  status: "healthy" | "unhealthy" | "degraded";
   responseTime?: number;
   message?: string;
   timestamp: string;
@@ -313,7 +332,7 @@ export interface SystemHealthMetrics {
 
 // Logs Types
 export interface AuditLog {
-  _type?: 'audit';
+  _type?: "audit";
   _timestamp?: string;
   id: string;
   event_type: string;
@@ -332,7 +351,7 @@ export interface AuditLog {
 }
 
 export interface SystemLog {
-  _type?: 'system';
+  _type?: "system";
   _timestamp?: string;
   id: string;
   level: string;
@@ -352,7 +371,7 @@ export interface SystemLog {
 }
 
 export interface FilterState {
-  type?: 'audit' | 'system';
+  type?: "audit" | "system";
   search?: string;
   startDate?: string;
   endDate?: string;
@@ -361,7 +380,7 @@ export interface FilterState {
 // Notification Types
 export interface Notification {
   id: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: "info" | "success" | "warning" | "error";
   priority: 1 | 2 | 3 | 4 | 5;
   title: string;
   message: string;
@@ -394,10 +413,10 @@ export interface EnhancedColumn<T = Record<string, unknown>> {
   dataIndex: string;
   title: string;
   enableFilter?: boolean;
-  filterType?: 'text' | 'select' | 'dateRange';
+  filterType?: "text" | "select" | "dateRange";
   width?: number;
   sorter?: boolean;
-  defaultSortOrder?: 'ascend' | 'descend';
+  defaultSortOrder?: "ascend" | "descend";
   render?: (value: unknown, record: T, index: number) => React.ReactNode;
   filterOptions?: Array<{ label: string; value: string | number }>;
 }
@@ -410,7 +429,7 @@ export interface EnhancedDataTableProps<T = Record<string, unknown>> {
   description?: string;
   formatCellValue?: (value: unknown, columnKey: string) => string;
   onPageChange?: (page: number, pageSize: number) => void;
-  onSort?: (sortBy: string, sortOrder: 'asc' | 'desc') => void;
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onFilter?: (filters: Record<string, unknown>) => void;
   onExport?: (format: ExportFormat, visibleColumns?: string[]) => void;
   pageSize?: number;
@@ -421,7 +440,7 @@ export interface EnhancedDataTableProps<T = Record<string, unknown>> {
 }
 
 export interface ColumnFilter {
-  type: 'text' | 'select' | 'dateRange';
+  type: "text" | "select" | "dateRange";
   value: string | string[] | [string, string];
 }
 
@@ -429,7 +448,7 @@ export interface ColumnFilter {
 export interface ServiceCredential {
   id: number;
   userId: number;
-  serviceType: 'ad' | 'azure' | 'o365';
+  serviceType: "ad" | "azure" | "o365";
   credentialName: string;
   username?: string;
   tenantId?: string;
@@ -443,7 +462,7 @@ export interface ServiceCredential {
   updatedAt: string;
   // Enhanced metadata for Azure credentials
   metadata?: {
-    authType?: 'application' | 'delegated';
+    authType?: "application" | "delegated";
     multiTenant?: boolean;
     supportedTenants?: string[];
     allowUserContext?: boolean;
@@ -454,7 +473,7 @@ export interface ServiceCredential {
 }
 
 export interface CreateCredentialDto {
-  serviceType: 'ad' | 'azure' | 'o365';
+  serviceType: "ad" | "azure" | "o365";
   credentialName: string;
   username?: string;
   password?: string;
@@ -462,7 +481,7 @@ export interface CreateCredentialDto {
   clientId?: string;
   clientSecret?: string;
   isDefault?: boolean;
-  authType?: 'oauth' | 'app';
+  authType?: "oauth" | "app";
 }
 
 export interface UpdateCredentialDto {
@@ -474,7 +493,7 @@ export interface UpdateCredentialDto {
   clientSecret?: string;
   isDefault?: boolean;
   isActive?: boolean;
-  authType?: 'oauth' | 'app';
+  authType?: "oauth" | "app";
 }
 
 export interface TestCredentialResult {
@@ -518,7 +537,7 @@ export interface QueryDefinition {
 export interface QueryParameter {
   name: string;
   displayName?: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
+  type: "string" | "number" | "boolean" | "date" | "array" | "object";
   required?: boolean;
   default?: unknown;
   defaultValue?: unknown;
@@ -535,16 +554,19 @@ export interface QueryParameter {
 
 export interface QueryResultMapping {
   fields?: ReportField[];
-  fieldMappings?: Record<string, {
-    targetField?: string;
-    type?: string;
-    transform?: string;
-  }>;
+  fieldMappings?: Record<
+    string,
+    {
+      targetField?: string;
+      type?: string;
+      transform?: string;
+    }
+  >;
   postProcess?: {
     filter?: unknown[];
     sort?: Array<{
       field: string;
-      direction: 'asc' | 'desc';
+      direction: "asc" | "desc";
     }>;
     limit?: number;
   };
@@ -609,20 +631,26 @@ export interface QueryValidationResult {
 }
 
 export interface QueryHealthStatus {
-  status: 'healthy' | 'unhealthy' | 'degraded';
+  status: "healthy" | "unhealthy" | "degraded";
   message?: string;
-  components: Record<string, {
-    status: 'healthy' | 'unhealthy' | 'degraded';
-    latency?: number;
-    error?: string;
-  }>;
-  dataSources: Record<string, {
-    status: 'healthy' | 'unhealthy';
-    lastCheck: string;
-    error?: string;
-  }>;
+  components: Record<
+    string,
+    {
+      status: "healthy" | "unhealthy" | "degraded";
+      latency?: number;
+      error?: string;
+    }
+  >;
+  dataSources: Record<
+    string,
+    {
+      status: "healthy" | "unhealthy";
+      lastCheck: string;
+      error?: string;
+    }
+  >;
   cache: {
-    status: 'healthy' | 'unhealthy';
+    status: "healthy" | "unhealthy";
     size: number;
     hitRate: number;
   };
@@ -682,7 +710,7 @@ export interface GraphQueryDefinition {
   // Graph-specific properties
   query: {
     endpoint: string;
-    method?: 'GET' | 'POST';
+    method?: "GET" | "POST";
     select?: string[];
     expand?: string[];
     filter?: string;
@@ -694,32 +722,38 @@ export interface GraphQueryDefinition {
     headers?: Record<string, string>;
     body?: Record<string, unknown>;
   };
-  parameters?: Record<string, {
-    type: 'string' | 'number' | 'boolean' | 'select' | 'multiselect';
-    required?: boolean;
-    default?: unknown;
-    description?: string;
-    displayName?: string;
-    options?: string[];
-    transform?: string;
-    validation?: {
-      pattern?: string;
-      min?: number;
-      max?: number;
-      message?: string;
-    };
-  }>;
+  parameters?: Record<
+    string,
+    {
+      type: "string" | "number" | "boolean" | "select" | "multiselect";
+      required?: boolean;
+      default?: unknown;
+      description?: string;
+      displayName?: string;
+      options?: string[];
+      transform?: string;
+      validation?: {
+        pattern?: string;
+        min?: number;
+        max?: number;
+        message?: string;
+      };
+    }
+  >;
   postProcess?: {
     filter?: Record<string, unknown>;
-    sort?: { field: string; direction: 'asc' | 'desc' };
+    sort?: { field: string; direction: "asc" | "desc" };
     limit?: number;
     transform?: string;
   };
-  fieldMappings?: Record<string, {
-    displayName: string;
-    type?: string;
-    transform?: string;
-  }>;
+  fieldMappings?: Record<
+    string,
+    {
+      displayName: string;
+      type?: string;
+      transform?: string;
+    }
+  >;
 }
 
 export interface DynamicQuerySpec {
@@ -730,10 +764,10 @@ export interface DynamicQuerySpec {
     field: string;
     operator: string;
     value: unknown;
-    logic?: 'AND' | 'OR';
+    logic?: "AND" | "OR";
   }>;
   joins?: Array<{
-    type: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
+    type: "INNER" | "LEFT" | "RIGHT" | "FULL";
     table: string;
     on: string;
   }>;
@@ -741,7 +775,7 @@ export interface DynamicQuerySpec {
   having?: string;
   orderBy?: {
     field: string;
-    direction: 'asc' | 'desc';
+    direction: "asc" | "desc";
   };
   limit?: number;
   offset?: number;

@@ -6,15 +6,15 @@ services:
     container_name: reporting-nginx
     ports:
       - "80:80"
-      - "443:443"  # SECURITY: Added HTTPS port
+      - "443:443" # SECURITY: Added HTTPS port
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/ssl/certs:ro  # SECURITY: SSL certificates volume
+      - ./ssl:/etc/ssl/certs:ro # SECURITY: SSL certificates volume
     depends_on:
       - frontend
       - backend
     networks:
-      - frontend-tier  # SECURITY: Frontend network tier
+      - frontend-tier # SECURITY: Frontend network tier
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -37,7 +37,7 @@ services:
       - GENERATE_SOURCEMAP=false
     # No volumes needed for production build
     networks:
-      - frontend-tier  # SECURITY: Frontend network tier
+      - frontend-tier # SECURITY: Frontend network tier
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -47,15 +47,16 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       target: production
     container_name: reporting-backend
     healthcheck:
-      test: ["CMD", "true"]  # Temporarily disable health check
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=${PORT:-5000}
@@ -94,14 +95,14 @@ services:
       - DB_LOG_LEVEL=warn
       - CORS_ORIGIN=${CORS_ORIGIN}
     volumes:
-      - ./reports:/app/reports
-      - ./exports:/app/exports
+      - ./reports:/app/backend/reports
+      - ./exports:/app/backend/exports
     depends_on:
       - postgres
       - redis
     networks:
-      - frontend-tier  # SECURITY: Access to nginx
-      - backend-tier   # SECURITY: Access to databases
+      - frontend-tier # SECURITY: Access to nginx
+      - backend-tier # SECURITY: Access to databases
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -121,7 +122,7 @@ services:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     # SECURITY: Removed exposed port - database only accessible within Docker network
     networks:
-      - backend-tier  # Changed to secure backend network
+      - backend-tier # Changed to secure backend network
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -132,12 +133,12 @@ services:
   redis:
     image: redis:7-alpine
     container_name: reporting-redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set (no default)}
     volumes:
       - redis-data:/data
     # SECURITY: Removed exposed port - Redis only accessible within Docker network
     networks:
-      - backend-tier  # Changed to secure backend network
+      - backend-tier # Changed to secure backend network
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -159,10 +160,10 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/24
-  
+
   backend-tier:
     driver: bridge
-    internal: true  # SECURITY: No external internet access
+    internal: true # SECURITY: No external internet access
     # Internal only - databases and backend services
     ipam:
       config:

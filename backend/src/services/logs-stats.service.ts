@@ -1,23 +1,25 @@
-import { db } from '@/config/database';
+import { db } from "@/config/database";
 
 export class LogsStatsService {
   /**
    * Get log statistics for a given time period
    */
   async getLogStats(hours: number = 24): Promise<any> {
-    const [auditStats, systemStats, errorTrends, topErrors] = await Promise.all([
-      this.getAuditStats(hours),
-      this.getSystemStats(hours),
-      this.getErrorTrends(hours),
-      this.getTopErrors(hours)
-    ]);
+    const [auditStats, systemStats, errorTrends, topErrors] = await Promise.all(
+      [
+        this.getAuditStats(hours),
+        this.getSystemStats(hours),
+        this.getErrorTrends(hours),
+        this.getTopErrors(hours),
+      ],
+    );
 
     return {
       auditStats,
       systemStats,
       errorTrends,
       topErrors,
-      period: `${hours} hours`
+      period: `${hours} hours`,
     };
   }
 
@@ -34,12 +36,12 @@ export class LogsStatsService {
         COUNT(DISTINCT user_id) as unique_users,
         COUNT(DISTINCT ip_address) as unique_ips
       FROM audit_logs
-      WHERE created_at > CURRENT_TIMESTAMP - INTERVAL $1
+      WHERE created_at > CURRENT_TIMESTAMP - $1::interval
       GROUP BY event_type, event_action
       ORDER BY count DESC
       LIMIT 20
     `;
-    
+
     const result = await db.query(sql, [`${hours} hours`]);
     return result.rows;
   }
@@ -58,12 +60,12 @@ export class LogsStatsService {
         MIN(duration_ms) as min_duration,
         PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms) as p95_duration
       FROM system_logs
-      WHERE timestamp > CURRENT_TIMESTAMP - INTERVAL $1
+      WHERE timestamp > CURRENT_TIMESTAMP - $1::interval
       GROUP BY level, module
       ORDER BY count DESC
       LIMIT 20
     `;
-    
+
     const result = await db.query(sql, [`${hours} hours`]);
     return result.rows;
   }
@@ -79,11 +81,11 @@ export class LogsStatsService {
         COUNT(DISTINCT module) as affected_modules
       FROM system_logs
       WHERE level = 'error'
-      AND timestamp > CURRENT_TIMESTAMP - INTERVAL $1
+      AND timestamp > CURRENT_TIMESTAMP - $1::interval
       GROUP BY DATE_TRUNC('hour', timestamp)
       ORDER BY hour
     `;
-    
+
     const result = await db.query(sql, [`${hours} hours`]);
     return result.rows;
   }
@@ -100,12 +102,12 @@ export class LogsStatsService {
         MAX(timestamp) as last_occurrence
       FROM system_logs
       WHERE level = 'error'
-      AND timestamp > CURRENT_TIMESTAMP - INTERVAL $1
+      AND timestamp > CURRENT_TIMESTAMP - $1::interval
       GROUP BY message, module
       ORDER BY count DESC
       LIMIT 10
     `;
-    
+
     const result = await db.query(sql, [`${hours} hours`]);
     return result.rows;
   }
@@ -123,7 +125,7 @@ export class LogsStatsService {
         (SELECT COUNT(*) FROM audit_logs WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '1 hour') as audit_logs_last_hour,
         (SELECT COUNT(*) FROM system_logs WHERE timestamp > CURRENT_TIMESTAMP - INTERVAL '1 hour') as system_logs_last_hour
     `;
-    
+
     const result = await db.query(sql);
     return result.rows[0];
   }
@@ -136,15 +138,19 @@ export class LogsStatsService {
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
     const [auditResult, systemResult] = await Promise.all([
-      db.query('SELECT COUNT(*) FROM audit_logs WHERE created_at < $1', [cutoffDate]),
-      db.query('SELECT COUNT(*) FROM system_logs WHERE timestamp < $1', [cutoffDate])
+      db.query("SELECT COUNT(*) FROM audit_logs WHERE created_at < $1", [
+        cutoffDate,
+      ]),
+      db.query("SELECT COUNT(*) FROM system_logs WHERE timestamp < $1", [
+        cutoffDate,
+      ]),
     ]);
 
     return {
       auditLogsToDelete: parseInt(auditResult.rows[0].count),
       systemLogsToDelete: parseInt(systemResult.rows[0].count),
       cutoffDate,
-      retentionDays
+      retentionDays,
     };
   }
 
@@ -156,15 +162,15 @@ export class LogsStatsService {
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
     const [auditResult, systemResult] = await Promise.all([
-      db.query('DELETE FROM audit_logs WHERE created_at < $1', [cutoffDate]),
-      db.query('DELETE FROM system_logs WHERE timestamp < $1', [cutoffDate])
+      db.query("DELETE FROM audit_logs WHERE created_at < $1", [cutoffDate]),
+      db.query("DELETE FROM system_logs WHERE timestamp < $1", [cutoffDate]),
     ]);
 
     return {
       auditLogsDeleted: auditResult.rowCount || 0,
       systemLogsDeleted: systemResult.rowCount || 0,
       cutoffDate,
-      retentionDays
+      retentionDays,
     };
   }
 }

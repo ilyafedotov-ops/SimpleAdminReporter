@@ -1,14 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Steps, Button, Space, Typography, message, Alert, Spin } from 'antd';
-import { ApiOutlined, RightOutlined, LeftOutlined, PlayCircleOutlined, SaveOutlined, LockOutlined } from '@ant-design/icons';
-import { GraphEntitySelector, GraphEntity } from './GraphEntitySelector';
-import { ODataFilterBuilder, ODataFilter } from './ODataFilterBuilder';
-import { GraphRelationshipExplorer } from './GraphRelationshipExplorer';
-import { GraphQueryPreview } from './GraphQueryPreview';
-import { FieldExplorer } from '../reports/FieldExplorer';
-import { MsalAzureAuthFlow } from '../auth/MsalAzureAuthFlow';
-import { graphService } from '@/services/graphService';
-import type { FieldMetadata } from '@/types';
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  Steps,
+  Button,
+  Space,
+  Typography,
+  message,
+  Alert,
+  Spin,
+} from "antd";
+import {
+  ApiOutlined,
+  RightOutlined,
+  LeftOutlined,
+  PlayCircleOutlined,
+  SaveOutlined,
+  LockOutlined,
+} from "@ant-design/icons";
+import { GraphEntitySelector, GraphEntity } from "./GraphEntitySelector";
+import { ODataFilterBuilder, ODataFilter } from "./ODataFilterBuilder";
+import { GraphRelationshipExplorer } from "./GraphRelationshipExplorer";
+import { GraphQueryPreview } from "./GraphQueryPreview";
+import { FieldExplorer } from "../reports/FieldExplorer";
+import { MsalAzureAuthFlow } from "../auth/MsalAzureAuthFlow";
+import { graphService } from "@/services/graphService";
+import type { GraphFieldMetadata } from "@/services/graphService";
+import type { FieldMetadata } from "@/types";
 
 const { Title, Text } = Typography;
 const { Step } = Steps;
@@ -28,7 +45,7 @@ interface GraphQuerySpec {
   relationships: string[];
   orderBy?: {
     field: string;
-    direction: 'asc' | 'desc';
+    direction: "asc" | "desc";
   };
   top?: number;
   skip?: number;
@@ -39,14 +56,16 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
   onExecute,
   onClose,
   initialQuery,
-  disabled = false
+  disabled = false,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedEntity, setSelectedEntity] = useState<string>('');
+  const [selectedEntity, setSelectedEntity] = useState<string>("");
   const [availableFields, setAvailableFields] = useState<FieldMetadata[]>([]);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [filters, setFilters] = useState<ODataFilter[]>([]);
-  const [selectedRelationships, setSelectedRelationships] = useState<string[]>([]);
+  const [selectedRelationships, setSelectedRelationships] = useState<string[]>(
+    [],
+  );
   const [fieldsLoading, setFieldsLoading] = useState(false);
   const [fieldsError, setFieldsError] = useState<string | null>(null);
   const [isAuthRequired, setIsAuthRequired] = useState(false);
@@ -57,13 +76,13 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
     selectedFields,
     filters,
     relationships: selectedRelationships,
-    top: 100 // Default limit
+    top: 100, // Default limit
   };
 
   useEffect(() => {
     if (initialQuery) {
       // Load initial query if provided
-      setSelectedEntity(initialQuery.entityType || '');
+      setSelectedEntity(initialQuery.entityType || "");
       setSelectedFields(initialQuery.selectedFields || []);
       setFilters(initialQuery.filters || []);
       setSelectedRelationships(initialQuery.relationships || []);
@@ -87,47 +106,63 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
   const loadEntityFields = async () => {
     if (!selectedEntity) return;
 
-    console.log('Loading fields for entity:', selectedEntity);
+    console.log("Loading fields for entity:", selectedEntity);
     try {
       setFieldsLoading(true);
       setFieldsError(null);
       setIsAuthRequired(false);
-      
+
       const response = await graphService.discoverFields(selectedEntity);
-      console.log('Field discovery response:', response);
-      
+      console.log("Field discovery response:", response);
+
       if (response.success && response.data) {
         // Transform Graph fields to FieldMetadata format
-        const transformedFields: FieldMetadata[] = (response.data as { fields: Array<{ name: string; displayName: string; type: string; required: boolean }> }).fields.map(field => ({
-          source: 'azure' as const,
-          fieldName: field.name,
-          displayName: field.displayName,
-          dataType: mapGraphTypeToFieldType(field.type),
-          category: field.category || 'General',
-          description: field.description || '',
-          isSearchable: field.isSearchable !== false,
-          isSortable: field.isSortable !== false,
-          isExportable: field.isFilterable !== false,
-          isSensitive: false
-        }));
-        
+        const transformedFields: FieldMetadata[] = response.data.fields.map(
+          (field: GraphFieldMetadata) => ({
+            source: "azure" as const,
+            fieldName: field.name,
+            displayName: field.displayName,
+            dataType: mapGraphTypeToFieldType(field.type),
+            category: field.category || "General",
+            description: field.description || "",
+            isSearchable: field.isSearchable !== false,
+            isSortable: field.isSortable !== false,
+            isExportable: field.isFilterable !== false,
+            isSensitive: false,
+          }),
+        );
+
         setAvailableFields(transformedFields);
       } else {
         // Check if it's an authentication error
-        if (response.error && (response.error.includes('authentication') || ('code' in response && response.code === 'AUTH_REQUIRED'))) {
+        if (
+          response.error &&
+          (response.error.includes("authentication") ||
+            ("code" in response && response.code === "AUTH_REQUIRED"))
+        ) {
           setIsAuthRequired(true);
-          setFieldsError('Azure AD authentication required. Please authenticate to access Microsoft Graph API.');
+          setFieldsError(
+            "Azure AD authentication required. Please authenticate to access Microsoft Graph API.",
+          );
         } else {
-          throw new Error(response.error || 'Failed to load fields');
+          throw new Error(response.error || "Failed to load fields");
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
       // Check if it's an authentication error from the network request
-      if (error && typeof error === 'object' && 'status' in error && (error as { status: number }).status === 401) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        (error as { status: number }).status === 401
+      ) {
         setIsAuthRequired(true);
-        setFieldsError('Azure AD authentication required. Please authenticate to access Microsoft Graph API.');
+        setFieldsError(
+          "Azure AD authentication required. Please authenticate to access Microsoft Graph API.",
+        );
       } else {
         setFieldsError(errorMessage);
         message.error(`Failed to load fields: ${errorMessage}`);
@@ -137,34 +172,36 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
     }
   };
 
-  const mapGraphTypeToFieldType = (graphType: string): FieldMetadata['dataType'] => {
-    const typeMap: Record<string, FieldMetadata['dataType']> = {
-      'string': 'string',
-      'boolean': 'boolean',
-      'int32': 'number',
-      'int64': 'number',
-      'datetime': 'datetime',
-      'datetimeoffset': 'datetime',
-      'collection': 'array',
-      'object': 'string' as const // Map reference to string for now
+  const mapGraphTypeToFieldType = (
+    graphType: string,
+  ): FieldMetadata["dataType"] => {
+    const typeMap: Record<string, FieldMetadata["dataType"]> = {
+      string: "string",
+      boolean: "boolean",
+      int32: "number",
+      int64: "number",
+      datetime: "datetime",
+      datetimeoffset: "datetime",
+      collection: "array",
+      object: "string" as const, // Map reference to string for now
     };
-    
-    return typeMap[graphType.toLowerCase()] || 'string';
+
+    return typeMap[graphType.toLowerCase()] || "string";
   };
 
   const handleFieldSelect = (field: FieldMetadata) => {
-    setSelectedFields(prev => [...prev, field.fieldName]);
+    setSelectedFields((prev) => [...prev, field.fieldName]);
   };
-  
+
   const handleFieldDeselect = (field: FieldMetadata) => {
-    setSelectedFields(prev => prev.filter(f => f !== field.fieldName));
+    setSelectedFields((prev) => prev.filter((f) => f !== field.fieldName));
   };
 
   const handleAuthSuccess = () => {
     setShowAuthFlow(false);
     setIsAuthRequired(false);
-    message.success('Successfully authenticated with Azure AD');
-    
+    message.success("Successfully authenticated with Azure AD");
+
     // Retry loading fields
     loadEntityFields();
   };
@@ -201,24 +238,24 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
 
   const steps = [
     {
-      title: 'Entity',
-      description: 'Select Graph entity type',
+      title: "Entity",
+      description: "Select Graph entity type",
       content: (
         <GraphEntitySelector
           selectedEntity={selectedEntity}
           onEntityChange={handleEntityChange}
           disabled={disabled}
         />
-      )
+      ),
     },
     {
-      title: 'Fields',
-      description: 'Choose fields to retrieve',
+      title: "Fields",
+      description: "Choose fields to retrieve",
       content: (
         <div>
           {fieldsLoading ? (
             <Card>
-              <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div style={{ textAlign: "center", padding: "40px" }}>
                 <Spin size="large" />
                 <div style={{ marginTop: 16 }}>
                   <Text>Loading available fields...</Text>
@@ -227,7 +264,11 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
             </Card>
           ) : fieldsError ? (
             <Alert
-              message={isAuthRequired ? "Authentication Required" : "Failed to load fields"}
+              message={
+                isAuthRequired
+                  ? "Authentication Required"
+                  : "Failed to load fields"
+              }
               description={fieldsError}
               type={isAuthRequired ? "warning" : "error"}
               showIcon
@@ -235,7 +276,11 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
               action={
                 isAuthRequired ? (
                   <Space>
-                    <Button type="primary" size="small" onClick={() => setShowAuthFlow(true)}>
+                    <Button
+                      type="primary"
+                      size="small"
+                      onClick={() => setShowAuthFlow(true)}
+                    >
                       Authenticate
                     </Button>
                     <Button size="small" onClick={loadEntityFields}>
@@ -256,7 +301,11 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
               type="info"
               showIcon
               action={
-                <Button type="primary" size="small" onClick={() => setShowAuthFlow(true)}>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => setShowAuthFlow(true)}
+                >
                   Authenticate with Azure AD
                 </Button>
               }
@@ -272,28 +321,28 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
             />
           )}
         </div>
-      )
+      ),
     },
     {
-      title: 'Filters',
-      description: 'Add OData filters',
+      title: "Filters",
+      description: "Add OData filters",
       content: (
         <ODataFilterBuilder
-          availableFields={availableFields.map(f => ({
+          availableFields={availableFields.map((f) => ({
             name: f.fieldName,
             displayName: f.displayName,
             type: f.dataType,
-            description: f.description
+            description: f.description,
           }))}
           filters={filters}
           onChange={setFilters}
           disabled={disabled}
         />
-      )
+      ),
     },
     {
-      title: 'Relationships',
-      description: 'Explore entity relationships',
+      title: "Relationships",
+      description: "Explore entity relationships",
       content: (
         <GraphRelationshipExplorer
           selectedEntity={selectedEntity}
@@ -301,39 +350,47 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
           onRelationshipChange={setSelectedRelationships}
           onExpandRelationship={(rel, expand) => {
             // Handle relationship expansion logic
-            console.log(`${expand ? 'Expand' : 'Collapse'} relationship: ${rel}`);
+            console.log(
+              `${expand ? "Expand" : "Collapse"} relationship: ${rel}`,
+            );
           }}
           disabled={disabled}
         />
-      )
+      ),
     },
     {
-      title: 'Preview',
-      description: 'Review and execute query',
+      title: "Preview",
+      description: "Review and execute query",
       content: (
         <GraphQueryPreview
           querySpec={querySpec}
           onExecuteQuery={handleExecuteQuery}
           disabled={disabled}
         />
-      )
-    }
+      ),
+    },
   ];
 
   const canProceed = () => {
     switch (currentStep) {
-      case 0: return selectedEntity !== '';
-      case 1: return selectedFields.length > 0;
-      case 2: return true; // Filters are optional
-      case 3: return true; // Relationships are optional
-      case 4: return true;
-      default: return false;
+      case 0:
+        return selectedEntity !== "";
+      case 1:
+        return selectedFields.length > 0;
+      case 2:
+        return true; // Filters are optional
+      case 3:
+        return true; // Relationships are optional
+      case 4:
+        return true;
+      default:
+        return false;
     }
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '24px' }}>
+    <div style={{ padding: "24px" }}>
+      <div style={{ marginBottom: "24px" }}>
         <Title level={3}>
           <Space>
             <ApiOutlined />
@@ -345,26 +402,34 @@ export const GraphQueryBuilder: React.FC<GraphQueryBuilderProps> = ({
         </Text>
       </div>
 
-      <Steps current={currentStep} style={{ marginBottom: '32px' }}>
+      <Steps current={currentStep} style={{ marginBottom: "32px" }}>
         {steps.map((step, index) => (
           <Step
             key={index}
             title={step.title}
             description={step.description}
             status={
-              index < currentStep ? 'finish' :
-              index === currentStep ? 'process' :
-              'wait'
+              index < currentStep
+                ? "finish"
+                : index === currentStep
+                  ? "process"
+                  : "wait"
             }
           />
         ))}
       </Steps>
 
-      <Card style={{ minHeight: '500px', marginBottom: '24px' }}>
+      <Card style={{ minHeight: "500px", marginBottom: "24px" }}>
         {steps[currentStep].content}
       </Card>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div>
           {currentStep > 0 && (
             <Button

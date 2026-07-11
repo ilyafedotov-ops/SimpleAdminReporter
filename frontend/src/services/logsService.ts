@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import { apiClient } from '@/utils/apiClient';
+import { apiClient } from "@/utils/apiClient";
+import { getAuthHeaders } from "@/utils/authToken";
 
 export interface LogFilter {
-  type?: 'audit' | 'system' | 'all';
+  type?: "audit" | "system" | "all";
   level?: string;
   eventType?: string;
   eventAction?: string;
@@ -14,7 +15,7 @@ export interface LogFilter {
   page?: number;
   pageSize?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
   signal?: AbortSignal;
 }
 
@@ -82,7 +83,7 @@ export interface LogStats {
 }
 
 export interface RealtimeLog {
-  log_type: 'audit' | 'system';
+  log_type: "audit" | "system";
   id: string;
   timestamp: string;
   type: string;
@@ -97,7 +98,7 @@ class LogsService {
    */
   async getLogs(filters: LogFilter = {}) {
     const { signal, ...filterParams } = filters;
-    
+
     // Convert filter params to Record<string, unknown> for apiClient
     const params: Record<string, unknown> = {};
     Object.entries(filterParams).forEach(([key, value]) => {
@@ -106,9 +107,9 @@ class LogsService {
       }
     });
 
-    const response = await apiClient.get('/logs', params, {
+    const response = await apiClient.get("/logs", params, {
       signal,
-      useCache: false // Disable caching for logs to get real-time data
+      useCache: false, // Disable caching for logs to get real-time data
     });
     return response;
   }
@@ -131,14 +132,14 @@ class LogsService {
     const response = await apiClient.get<{
       success: boolean;
       data: RealtimeLog[];
-    }>('/logs/realtime');
+    }>("/logs/realtime");
     return response;
   }
 
   /**
    * Get specific log details
    */
-  async getLogDetails(id: string, type: 'audit' | 'system') {
+  async getLogDetails(id: string, type: "audit" | "system") {
     const response = await apiClient.get<{
       success: boolean;
       data: AuditLog | SystemLog;
@@ -149,39 +150,42 @@ class LogsService {
   /**
    * Export logs
    */
-  async exportLogs(filters: LogFilter = {}, format: 'csv' | 'json' = 'csv') {
+  async exportLogs(filters: LogFilter = {}, format: "csv" | "json" = "csv") {
     const { signal, ...filterParams } = filters;
     const params = new URLSearchParams();
-    
+
     Object.entries(filterParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         params.append(key, String(value));
       }
     });
-    
-    params.append('format', format);
+
+    params.append("format", format);
 
     // For file downloads, we need to handle the response differently
-    const response = await fetch(`${(apiClient as any).defaults.baseURL}/logs/export?${params.toString()}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+    const response = await fetch(
+      `${(apiClient as any).defaults.baseURL}/logs/export?${params.toString()}`,
+      {
+        method: "GET",
+        headers: getAuthHeaders(),
       },
-    });
+    );
 
     if (!response.ok) {
-      throw new Error('Failed to export logs');
+      throw new Error("Failed to export logs");
     }
 
     // Get filename from Content-Disposition header
-    const contentDisposition = response.headers.get('Content-Disposition');
+    const contentDisposition = response.headers.get("Content-Disposition");
     const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
-    const filename = filenameMatch ? filenameMatch[1] : `logs_export_${Date.now()}.${format}`;
+    const filename = filenameMatch
+      ? filenameMatch[1]
+      : `logs_export_${Date.now()}.${format}`;
 
     // Create blob and download
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
@@ -197,19 +201,19 @@ class LogsService {
    */
   getLogLevelColor(level: string): string {
     switch (level.toLowerCase()) {
-      case 'error':
-        return '#ef4444';
-      case 'warn':
-      case 'warning':
-        return '#f59e0b';
-      case 'info':
-        return '#3b82f6';
-      case 'debug':
-        return '#8b5cf6';
-      case 'verbose':
-        return '#6b7280';
+      case "error":
+        return "#ef4444";
+      case "warn":
+      case "warning":
+        return "#f59e0b";
+      case "info":
+        return "#3b82f6";
+      case "debug":
+        return "#8b5cf6";
+      case "verbose":
+        return "#6b7280";
       default:
-        return '#6b7280';
+        return "#6b7280";
     }
   }
 
@@ -218,20 +222,20 @@ class LogsService {
    */
   getEventTypeColor(type: string): string {
     switch (type.toLowerCase()) {
-      case 'auth':
-        return '#10b981';
-      case 'access':
-        return '#3b82f6';
-      case 'admin':
-        return '#f59e0b';
-      case 'security':
-        return '#ef4444';
-      case 'data':
-        return '#8b5cf6';
-      case 'system':
-        return '#6b7280';
+      case "auth":
+        return "#10b981";
+      case "access":
+        return "#3b82f6";
+      case "admin":
+        return "#f59e0b";
+      case "security":
+        return "#ef4444";
+      case "data":
+        return "#8b5cf6";
+      case "system":
+        return "#6b7280";
       default:
-        return '#6b7280';
+        return "#6b7280";
     }
   }
 
@@ -239,9 +243,9 @@ class LogsService {
    * Format log message for display
    */
   formatLogMessage(log: AuditLog | SystemLog): string {
-    if ('event_action' in log) {
+    if ("event_action" in log) {
       // Audit log
-      return `${log.event_action.replace(/_/g, ' ')}${log.resource_type ? ` - ${log.resource_type}` : ''}`;
+      return `${log.event_action.replace(/_/g, " ")}${log.resource_type ? ` - ${log.resource_type}` : ""}`;
     } else {
       // System log
       return log.message;
@@ -252,39 +256,39 @@ class LogsService {
    * Get log icon based on type/level
    */
   getLogIcon(log: AuditLog | SystemLog): string {
-    if ('event_type' in log) {
+    if ("event_type" in log) {
       // Audit log icons
       switch (log.event_type) {
-        case 'auth':
-          return 'Key';
-        case 'access':
-          return 'Shield';
-        case 'admin':
-          return 'Settings';
-        case 'security':
-          return 'Lock';
-        case 'data':
-          return 'Database';
-        case 'system':
-          return 'Server';
+        case "auth":
+          return "Key";
+        case "access":
+          return "Shield";
+        case "admin":
+          return "Settings";
+        case "security":
+          return "Lock";
+        case "data":
+          return "Database";
+        case "system":
+          return "Server";
         default:
-          return 'FileText';
+          return "FileText";
       }
     } else {
       // System log icons
       switch (log.level) {
-        case 'error':
-          return 'AlertCircle';
-        case 'warn':
-          return 'AlertTriangle';
-        case 'info':
-          return 'Info';
-        case 'debug':
-          return 'Bug';
-        case 'verbose':
-          return 'MessageSquare';
+        case "error":
+          return "AlertCircle";
+        case "warn":
+          return "AlertTriangle";
+        case "info":
+          return "Info";
+        case "debug":
+          return "Bug";
+        case "verbose":
+          return "MessageSquare";
         default:
-          return 'FileText';
+          return "FileText";
       }
     }
   }

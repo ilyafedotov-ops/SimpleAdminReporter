@@ -58,8 +58,6 @@ log "Backing up database $DB_NAME to $BACKUP_DIR/$BACKUP_FILE"
 
 if pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
     --no-owner --no-acl --clean --if-exists \
-    --exclude-table=audit_log \
-    --exclude-table=report_history \
     | gzip > "$BACKUP_DIR/$BACKUP_FILE"; then
     
     # Get backup file size
