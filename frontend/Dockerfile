@@ -97,8 +97,9 @@ CMD ["npm", "run", "type-check"]
 # Production stage
 FROM nginx:1.31-alpine AS production
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Install available Alpine security updates and curl for health checks
+RUN apk upgrade --no-cache && \
+    apk add --no-cache curl
 
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf

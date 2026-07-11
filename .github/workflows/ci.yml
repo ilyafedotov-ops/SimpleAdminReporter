@@ -453,7 +453,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          file: Dockerfile
+          file: frontend/Dockerfile
           target: production
           push: false
           load: true
