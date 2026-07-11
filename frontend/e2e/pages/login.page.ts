@@ -1,5 +1,5 @@
-import { Page, Locator } from '@playwright/test';
-import { BasePage } from './base.page';
+import { Page, Locator } from "@playwright/test";
+import { BasePage } from "./base.page";
 
 /**
  * Page Object Model for Login Page
@@ -20,25 +20,45 @@ export class LoginPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    
+
     // Initialize selectors
-    this.authSourceSelect = page.locator('[data-testid="auth-source-select"], .ant-select-selection-search-input').first();
-    this.usernameInput = page.locator('input[name="username"], [placeholder*="username"], [placeholder*="domain"]').first();
-    this.passwordInput = page.locator('input[name="password"], input[type="password"]').first();
-    this.loginButton = page.locator('button[type="submit"], button:has-text("Sign In"), button:has-text("Sign in with Microsoft")').first();
-    this.rememberMeCheckbox = page.locator('input[type="checkbox"]:has-text("Remember"), .ant-checkbox').first();
+    this.authSourceSelect = page
+      .locator(
+        '[data-testid="auth-source-select"], .ant-select-selection-search-input',
+      )
+      .first();
+    this.usernameInput = page
+      .locator(
+        'input[name="username"], [placeholder*="username"], [placeholder*="domain"]',
+      )
+      .first();
+    this.passwordInput = page
+      .locator('input[name="password"], input[type="password"]')
+      .first();
+    this.loginButton = page
+      .locator(
+        'button[type="submit"], button:has-text("Sign In"), button:has-text("Sign in with Microsoft")',
+      )
+      .first();
+    this.rememberMeCheckbox = page
+      .locator('input[type="checkbox"]:has-text("Remember"), .ant-checkbox')
+      .first();
     this.errorAlert = page.locator('.ant-alert-error, [role="alert"]').first();
-    this.loadingSpinner = page.locator('.ant-spin, [data-testid="loading"]').first();
-    this.azureSignInButton = page.locator('button:has-text("Sign in with Microsoft")');
-    this.pageTitle = page.locator('h1, h2, h3').first();
-    this.authSourceDescription = page.locator('.ant-typography, p').first();
+    this.loadingSpinner = page
+      .locator('.ant-spin, [data-testid="loading"]')
+      .first();
+    this.azureSignInButton = page.locator(
+      'button:has-text("Sign in with Microsoft")',
+    );
+    this.pageTitle = page.locator("h1, h2, h3").first();
+    this.authSourceDescription = page.locator(".ant-typography, p").first();
   }
 
   /**
    * Navigate to login page
    */
   async goto(): Promise<void> {
-    await this.navigate('/login');
+    await this.navigate("/login");
     await this.waitForPageLoad();
   }
 
@@ -47,8 +67,8 @@ export class LoginPage extends BasePage {
    */
   async isLoaded(): Promise<boolean> {
     try {
-      await this.waitForElement('form', 10000);
-      return await this.isElementVisible('form');
+      await this.waitForElement("form", 10000);
+      return await this.isElementVisible("form");
     } catch {
       return false;
     }
@@ -57,28 +77,31 @@ export class LoginPage extends BasePage {
   /**
    * Select authentication source
    */
-  async selectAuthSource(authSource: 'ad' | 'azure' | 'local'): Promise<void> {
+  async selectAuthSource(authSource: "ad" | "azure" | "local"): Promise<void> {
+    const optionLabels = {
+      ad: "Active Directory",
+      azure: "Azure Active Directory",
+      local: "Local Account",
+    } satisfies Record<typeof authSource, string>;
+
     // Click the select dropdown
-    await this.page.locator('.ant-select-selector').click();
-    
+    await this.page.locator(".ant-select-selector").click();
+
     // Wait for dropdown options to appear
-    await this.page.waitForSelector('.ant-select-dropdown', { state: 'visible' });
-    
-    // Select the appropriate option based on auth source
-    switch (authSource) {
-      case 'ad':
-        await this.page.locator('.ant-select-item:has-text("Active Directory")').click();
-        break;
-      case 'azure':
-        await this.page.locator('.ant-select-item:has-text("Azure Active Directory")').click();
-        break;
-      case 'local':
-        await this.page.locator('.ant-select-item:has-text("Local Account")').click();
-        break;
-    }
-    
+    await this.page.waitForSelector(".ant-select-dropdown", {
+      state: "visible",
+    });
+
+    // Select by exact Ant Design option label. Text substring matching is ambiguous
+    // because "Azure Active Directory" also contains "Active Directory".
+    await this.page
+      .locator(`.ant-select-item-option[label="${optionLabels[authSource]}"]`)
+      .click();
+
     // Wait for dropdown to close
-    await this.page.waitForSelector('.ant-select-dropdown', { state: 'hidden' });
+    await this.page.waitForSelector(".ant-select-dropdown", {
+      state: "hidden",
+    });
   }
 
   /**
@@ -114,15 +137,19 @@ export class LoginPage extends BasePage {
   /**
    * Perform LDAP login
    */
-  async loginWithAD(username: string, password: string, rememberMe: boolean = false): Promise<void> {
-    await this.selectAuthSource('ad');
+  async loginWithAD(
+    username: string,
+    password: string,
+    rememberMe: boolean = false,
+  ): Promise<void> {
+    await this.selectAuthSource("ad");
     await this.enterUsername(username);
     await this.enterPassword(password);
-    
+
     if (rememberMe) {
       await this.toggleRememberMe();
     }
-    
+
     await this.clickLogin();
   }
 
@@ -130,7 +157,7 @@ export class LoginPage extends BasePage {
    * Perform Azure AD login (OAuth flow)
    */
   async loginWithAzureAD(): Promise<void> {
-    await this.selectAuthSource('azure');
+    await this.selectAuthSource("azure");
     await this.clickLogin();
     // Note: This will trigger Azure AD OAuth flow
     // Actual authentication would need to be handled in test setup
@@ -140,7 +167,7 @@ export class LoginPage extends BasePage {
    * Perform local account login
    */
   async loginWithLocal(username: string, password: string): Promise<void> {
-    await this.selectAuthSource('local');
+    await this.selectAuthSource("local");
     await this.enterUsername(username);
     await this.enterPassword(password);
     await this.clickLogin();
@@ -151,7 +178,7 @@ export class LoginPage extends BasePage {
    */
   async waitForLoginSuccess(): Promise<void> {
     // Wait for redirect to dashboard or main page
-    await this.page.waitForURL('**/dashboard', { timeout: 30000 });
+    await this.page.waitForURL("**/dashboard", { timeout: 30000 });
     await this.waitForLoadingToComplete();
   }
 
@@ -160,9 +187,9 @@ export class LoginPage extends BasePage {
    */
   async getErrorMessage(): Promise<string> {
     if (await this.errorAlert.isVisible()) {
-      return await this.errorAlert.textContent() || '';
+      return (await this.errorAlert.textContent()) || "";
     }
-    return '';
+    return "";
   }
 
   /**
@@ -182,25 +209,25 @@ export class LoginPage extends BasePage {
   /**
    * Wait for login process to complete (success or failure)
    */
-  async waitForLoginCompletion(): Promise<'success' | 'error'> {
+  async waitForLoginCompletion(): Promise<"success" | "error"> {
     try {
       // Race between success (redirect) and error message
       await Promise.race([
-        this.page.waitForURL('**/dashboard', { timeout: 30000 }),
-        this.errorAlert.waitFor({ state: 'visible', timeout: 30000 })
+        this.page.waitForURL("**/dashboard", { timeout: 30000 }),
+        this.errorAlert.waitFor({ state: "visible", timeout: 30000 }),
       ]);
-      
+
       // Check which condition was met
       const currentUrl = this.getCurrentUrl();
-      if (currentUrl.includes('dashboard') || currentUrl.includes('main')) {
-        return 'success';
+      if (currentUrl.includes("dashboard") || currentUrl.includes("main")) {
+        return "success";
       } else if (await this.hasError()) {
-        return 'error';
+        return "error";
       }
-      
-      return 'error';
+
+      return "error";
     } catch {
-      return 'error';
+      return "error";
     }
   }
 
@@ -208,19 +235,21 @@ export class LoginPage extends BasePage {
    * Get available authentication sources
    */
   async getAvailableAuthSources(): Promise<string[]> {
-    await this.page.locator('.ant-select-selector').click();
-    await this.page.waitForSelector('.ant-select-dropdown', { state: 'visible' });
-    
-    const options = await this.page.locator('.ant-select-item').all();
+    await this.page.locator(".ant-select-selector").click();
+    await this.page.waitForSelector(".ant-select-dropdown", {
+      state: "visible",
+    });
+
+    const options = await this.page.locator(".ant-select-item").all();
     const authSources: string[] = [];
-    
+
     for (const option of options) {
       const text = await option.textContent();
       if (text) authSources.push(text.trim());
     }
-    
+
     // Close dropdown
-    await this.page.keyboard.press('Escape');
+    await this.page.keyboard.press("Escape");
     return authSources;
   }
 
@@ -235,11 +264,11 @@ export class LoginPage extends BasePage {
     hasTitle: boolean;
   }> {
     return {
-      hasAuthSourceSelect: await this.isElementVisible('.ant-select-selector'),
+      hasAuthSourceSelect: await this.isElementVisible(".ant-select-selector"),
       hasUsernameField: await this.usernameInput.isVisible(),
       hasPasswordField: await this.passwordInput.isVisible(),
       hasLoginButton: await this.loginButton.isVisible(),
-      hasTitle: await this.pageTitle.isVisible()
+      hasTitle: await this.pageTitle.isVisible(),
     };
   }
 

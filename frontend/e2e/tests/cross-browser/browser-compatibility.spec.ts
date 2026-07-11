@@ -1,11 +1,19 @@
-import { test, expect, Browser, BrowserContext } from '@playwright/test';
-import { LoginPage, DashboardPage, ReportsPage } from '../../pages';
-import { AuthHelper, ApiHelper, PerformanceHelper } from '../../utils/test-helpers';
-import { TEST_USERS, TEST_CONFIG } from '../../fixtures/test-data';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { test, expect, Browser, BrowserContext } from "@playwright/test";
+import { LoginPage, DashboardPage, ReportsPage } from "../../pages";
+import {
+  AuthHelper,
+  ApiHelper,
+  PerformanceHelper,
+} from "../../utils/test-helpers";
+import { TEST_USERS, TEST_CONFIG } from "../../fixtures/test-data";
 
-test.describe('Cross-Browser Compatibility Tests', () => {
-  test.describe('Core Functionality Across Browsers', () => {
-    test('should perform basic authentication flow in all browsers', async ({ page, browserName }) => {
+test.describe("Cross-Browser Compatibility Tests", () => {
+  test.describe("Core Functionality Across Browsers", () => {
+    test("should perform basic authentication flow in all browsers", async ({
+      page,
+      browserName,
+    }) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
 
@@ -15,155 +23,180 @@ test.describe('Cross-Browser Compatibility Tests', () => {
       await ApiHelper.mockAuthEndpoints(page, TEST_USERS.AD_USER);
 
       await loginPage.goto();
-      await loginPage.loginWithAD(TEST_USERS.AD_USER.username, TEST_USERS.AD_USER.password);
+      await loginPage.loginWithAD(
+        TEST_USERS.AD_USER.username,
+        TEST_USERS.AD_USER.password,
+      );
 
       // Verify successful login
       const result = await loginPage.waitForLoginCompletion();
-      expect(result).toBe('success');
+      expect(result).toBe("success");
 
       // Verify dashboard loads
-      expect(page.url()).toContain('dashboard');
+      expect(page.url()).toContain("dashboard");
       const isDashboardLoaded = await dashboardPage.isLoaded();
       expect(isDashboardLoaded).toBe(true);
     });
 
-    test('should navigate between pages consistently across browsers', async ({ page, browserName }) => {
+    test("should navigate between pages consistently across browsers", async ({
+      page,
+      browserName,
+    }) => {
       console.log(`Testing navigation in ${browserName}`);
 
       const dashboardPage = new DashboardPage(page);
       const reportsPage = new ReportsPage(page);
 
-      await AuthHelper.login(page, 'AD_USER');
+      await AuthHelper.login(page, "AD_USER");
 
-      // Test navigation to reports
-      await dashboardPage.navigateToReports();
-      expect(page.url()).toContain('reports');
-
-      const isReportsLoaded = await reportsPage.isLoaded();
-      expect(isReportsLoaded).toBe(true);
+      // Test navigation to a stable report route. The current sidebar exposes
+      // report-specific destinations rather than a generic Reports item.
+      await dashboardPage.navigateToReportBuilder();
+      expect(page.url()).toContain("reports/builder");
 
       // Test browser back button
       await page.goBack();
-      expect(page.url()).toContain('dashboard');
+      expect(page.url()).toContain("dashboard");
 
       // Test browser forward button
       await page.goForward();
-      expect(page.url()).toContain('reports');
+      expect(page.url()).toContain("reports/builder");
     });
 
-    test('should handle form interactions consistently', async ({ page, browserName }) => {
+    test("should handle form interactions consistently", async ({
+      page,
+      browserName,
+    }) => {
       console.log(`Testing forms in ${browserName}`);
 
       const loginPage = new LoginPage(page);
       await loginPage.goto();
 
       // Test dropdown interactions
-      await loginPage.selectAuthSource('ad');
+      await loginPage.selectAuthSource("ad");
       await page.waitForTimeout(300);
 
       // Test form field interactions
-      await loginPage.enterUsername('test@domain.local');
-      await loginPage.enterPassword('testpassword');
+      await loginPage.enterUsername("test@domain.local");
+      await loginPage.enterPassword("testpassword");
 
       // Verify values are preserved
-      const usernameValue = await page.locator('input[name="username"]').inputValue();
-      const passwordValue = await page.locator('input[name="password"]').inputValue();
+      const usernameValue = await loginPage.usernameInput.inputValue();
+      const passwordValue = await loginPage.passwordInput.inputValue();
 
-      expect(usernameValue).toBe('test@domain.local');
-      expect(passwordValue).toBe('testpassword');
+      expect(usernameValue).toBe("test@domain.local");
+      expect(passwordValue).toBe("testpassword");
     });
   });
 
-  test.describe('Browser-Specific Features', () => {
-    test('should handle local storage across browsers', async ({ page, browserName }) => {
-      await AuthHelper.login(page, 'AD_USER');
+  test.describe("Browser-Specific Features", () => {
+    test("should handle local storage across browsers", async ({
+      page,
+      browserName,
+    }) => {
+      await AuthHelper.login(page, "AD_USER");
 
       // Set some data in localStorage
       await page.evaluate(() => {
-        localStorage.setItem('testKey', 'testValue');
-        localStorage.setItem('userPreferences', JSON.stringify({
-          theme: 'light',
-          language: 'en'
-        }));
+        localStorage.setItem("testKey", "testValue");
+        localStorage.setItem(
+          "userPreferences",
+          JSON.stringify({
+            theme: "light",
+            language: "en",
+          }),
+        );
       });
 
       // Refresh page
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState("networkidle");
 
       // Verify localStorage data persists
-      const testValue = await page.evaluate(() => localStorage.getItem('testKey'));
+      const testValue = await page.evaluate(() =>
+        localStorage.getItem("testKey"),
+      );
       const userPrefs = await page.evaluate(() => {
-        const prefs = localStorage.getItem('userPreferences');
+        const prefs = localStorage.getItem("userPreferences");
         return prefs ? JSON.parse(prefs) : null;
       });
 
-      expect(testValue).toBe('testValue');
+      expect(testValue).toBe("testValue");
       expect(userPrefs).toEqual({
-        theme: 'light',
-        language: 'en'
+        theme: "light",
+        language: "en",
       });
 
       // Test in different tab
       const newPage = await page.context().newPage();
-      await newPage.goto('/dashboard');
+      await newPage.goto("/dashboard");
 
-      const testValueInNewTab = await newPage.evaluate(() => localStorage.getItem('testKey'));
-      expect(testValueInNewTab).toBe('testValue');
+      const testValueInNewTab = await newPage.evaluate(() =>
+        localStorage.getItem("testKey"),
+      );
+      expect(testValueInNewTab).toBe("testValue");
 
       await newPage.close();
     });
 
-    test('should handle cookies consistently', async ({ page, browserName }) => {
-      await page.goto('/login');
+    test("should handle cookies consistently", async ({
+      page,
+      browserName,
+    }) => {
+      await page.goto("/login");
 
       // Set test cookies
       await page.context().addCookies([
         {
-          name: 'testCookie',
-          value: 'testValue',
-          domain: 'localhost',
-          path: '/'
-        }
+          name: "testCookie",
+          value: "testValue",
+          domain: "localhost",
+          path: "/",
+        },
       ]);
 
       // Verify cookies are accessible
       const cookies = await page.context().cookies();
-      const testCookie = cookies.find(cookie => cookie.name === 'testCookie');
+      const testCookie = cookies.find((cookie) => cookie.name === "testCookie");
 
       expect(testCookie).toBeTruthy();
-      expect(testCookie?.value).toBe('testValue');
+      expect(testCookie?.value).toBe("testValue");
 
       // Test cookie persistence across page loads
       await page.reload();
 
       const cookiesAfterReload = await page.context().cookies();
-      const persistentCookie = cookiesAfterReload.find(cookie => cookie.name === 'testCookie');
+      const persistentCookie = cookiesAfterReload.find(
+        (cookie) => cookie.name === "testCookie",
+      );
 
       expect(persistentCookie).toBeTruthy();
     });
 
-    test('should handle JavaScript features across browsers', async ({ page, browserName }) => {
-      await AuthHelper.login(page, 'AD_USER');
+    test("should handle JavaScript features across browsers", async ({
+      page,
+      browserName,
+    }) => {
+      await AuthHelper.login(page, "AD_USER");
 
       // Test modern JavaScript features
       const supportedFeatures = await page.evaluate(() => {
         const features = {
-          asyncAwait: typeof (async () => {}) === 'function',
-          promises: typeof Promise !== 'undefined',
+          asyncAwait: typeof (async () => {}) === "function",
+          promises: typeof Promise !== "undefined",
           arrowFunctions: (() => true)(),
           destructuring: (() => {
             try {
               const [a] = [1];
-              const {b} = {b: 2};
+              const { b } = { b: 2 };
               return true;
             } catch {
               return false;
             }
           })(),
-          fetch: typeof fetch !== 'undefined',
-          localStorage: typeof localStorage !== 'undefined',
-          sessionStorage: typeof sessionStorage !== 'undefined'
+          fetch: typeof fetch !== "undefined",
+          localStorage: typeof localStorage !== "undefined",
+          sessionStorage: typeof sessionStorage !== "undefined",
         };
         return features;
       });
@@ -180,22 +213,25 @@ test.describe('Cross-Browser Compatibility Tests', () => {
       console.log(`${browserName} supports all required JavaScript features`);
     });
 
-    test('should handle CSS features and styling consistently', async ({ page, browserName }) => {
-      await AuthHelper.login(page, 'AD_USER');
+    test("should handle CSS features and styling consistently", async ({
+      page,
+      browserName,
+    }) => {
+      await AuthHelper.login(page, "AD_USER");
 
       // Test CSS features support
       const cssSupport = await page.evaluate(() => {
-        const testElement = document.createElement('div');
+        const testElement = document.createElement("div");
         document.body.appendChild(testElement);
 
         const features = {
-          flexbox: CSS.supports('display', 'flex'),
-          grid: CSS.supports('display', 'grid'),
-          customProperties: CSS.supports('--custom', 'value'),
-          transforms: CSS.supports('transform', 'translateX(10px)'),
-          transitions: CSS.supports('transition', 'all 0.3s'),
-          animations: CSS.supports('animation', 'test 1s'),
-          calc: CSS.supports('width', 'calc(100% - 10px)')
+          flexbox: window.CSS.supports("display", "flex"),
+          grid: window.CSS.supports("display", "grid"),
+          customProperties: window.CSS.supports("--custom", "value"),
+          transforms: window.CSS.supports("transform", "translateX(10px)"),
+          transitions: window.CSS.supports("transition", "all 0.3s"),
+          animations: window.CSS.supports("animation", "test 1s"),
+          calc: window.CSS.supports("width", "calc(100% - 10px)"),
         };
 
         document.body.removeChild(testElement);
@@ -213,97 +249,120 @@ test.describe('Cross-Browser Compatibility Tests', () => {
     });
   });
 
-  test.describe('Performance Across Browsers', () => {
-    test('should meet performance benchmarks in all browsers', async ({ page, browserName }) => {
+  test.describe("Performance Across Browsers", () => {
+    test("should meet performance benchmarks in all browsers", async ({
+      page,
+      browserName,
+    }) => {
       console.log(`Testing performance in ${browserName}`);
 
-      const loadTime = await PerformanceHelper.measurePageLoad(page, '/dashboard');
-      
+      const loadTime = await PerformanceHelper.measurePageLoad(
+        page,
+        "/dashboard",
+      );
+
       // Performance thresholds may vary by browser
       const performanceThresholds = {
         chromium: 5000,
         firefox: 6000,
-        webkit: 7000
+        webkit: 7000,
       };
 
-      const threshold = performanceThresholds[browserName as keyof typeof performanceThresholds] || 7000;
+      const threshold =
+        performanceThresholds[
+          browserName as keyof typeof performanceThresholds
+        ] || 7000;
       expect(loadTime).toBeLessThan(threshold);
 
-      console.log(`${browserName} page load time: ${loadTime}ms (threshold: ${threshold}ms)`);
+      console.log(
+        `${browserName} page load time: ${loadTime}ms (threshold: ${threshold}ms)`,
+      );
     });
 
-    test('should handle memory usage efficiently', async ({ page, browserName }) => {
-      await AuthHelper.login(page, 'AD_USER');
+    test("should handle memory usage efficiently", async ({
+      page,
+      browserName,
+    }) => {
+      await AuthHelper.login(page, "AD_USER");
 
       // Get initial memory metrics
-      const initialMetrics = await PerformanceHelper.getPerformanceMetrics(page);
+      const initialMetrics =
+        await PerformanceHelper.getPerformanceMetrics(page);
 
       // Perform memory-intensive operations
-      await page.goto('/reports');
-      await page.goto('/reports/builder');
-      await page.goto('/settings');
-      await page.goto('/dashboard');
+      await page.goto("/reports");
+      await page.goto("/reports/builder");
+      await page.goto("/settings");
+      await page.goto("/dashboard");
 
       // Get final memory metrics
       const finalMetrics = await PerformanceHelper.getPerformanceMetrics(page);
 
       // Memory should not grow excessively
-      const memoryGrowth = finalMetrics.domContentLoaded - initialMetrics.domContentLoaded;
+      const memoryGrowth =
+        finalMetrics.domContentLoaded - initialMetrics.domContentLoaded;
       expect(memoryGrowth).toBeLessThan(100); // Reasonable memory growth threshold
 
       console.log(`${browserName} memory growth: ${memoryGrowth}ms`);
     });
   });
 
-  test.describe('Error Handling Across Browsers', () => {
-    test('should handle network errors consistently', async ({ page, browserName }) => {
+  test.describe("Error Handling Across Browsers", () => {
+    test("should handle network errors consistently", async ({
+      page,
+      browserName,
+    }) => {
       console.log(`Testing error handling in ${browserName}`);
 
       const loginPage = new LoginPage(page);
       await loginPage.goto();
 
       // Mock network failure
-      await page.route('**/api/auth/login', route => route.abort('failed'));
+      await page.route("**/api/auth/login", (route) => route.abort("failed"));
 
-      await loginPage.selectAuthSource('ad');
-      await loginPage.enterUsername('test@domain.local');
-      await loginPage.enterPassword('password');
+      await loginPage.selectAuthSource("ad");
+      await loginPage.enterUsername("test@domain.local");
+      await loginPage.enterPassword("password");
       await loginPage.clickLogin();
 
       // Should show error message
       const result = await loginPage.waitForLoginCompletion();
-      expect(result).toBe('error');
+      expect(result).toBe("error");
 
       const errorMessage = await loginPage.getErrorMessage();
       expect(errorMessage).toBeTruthy();
     });
 
-    test('should handle JavaScript errors gracefully', async ({ page, browserName }) => {
+    test("should handle JavaScript errors gracefully", async ({
+      page,
+      browserName,
+    }) => {
       let jsErrors: string[] = [];
 
       // Listen for JavaScript errors
-      page.on('pageerror', error => {
+      page.on("pageerror", (error) => {
         jsErrors.push(error.message);
       });
 
-      page.on('console', msg => {
-        if (msg.type() === 'error') {
+      page.on("console", (msg) => {
+        if (msg.type() === "error") {
           jsErrors.push(msg.text());
         }
       });
 
-      await AuthHelper.login(page, 'AD_USER');
+      await AuthHelper.login(page, "AD_USER");
 
       // Navigate through application
-      await page.goto('/reports');
-      await page.goto('/reports/builder');
-      await page.goto('/settings');
+      await page.goto("/reports");
+      await page.goto("/reports/builder");
+      await page.goto("/settings");
 
       // Should not have critical JavaScript errors
-      const criticalErrors = jsErrors.filter(error => 
-        error.toLowerCase().includes('uncaught') ||
-        error.toLowerCase().includes('typeerror') ||
-        error.toLowerCase().includes('referenceerror')
+      const criticalErrors = jsErrors.filter(
+        (error) =>
+          error.toLowerCase().includes("uncaught") ||
+          error.toLowerCase().includes("typeerror") ||
+          error.toLowerCase().includes("referenceerror"),
       );
 
       expect(criticalErrors.length).toBe(0);
@@ -314,42 +373,48 @@ test.describe('Cross-Browser Compatibility Tests', () => {
     });
   });
 
-  test.describe('Accessibility Across Browsers', () => {
-    test('should support keyboard navigation in all browsers', async ({ page, browserName }) => {
+  test.describe("Accessibility Across Browsers", () => {
+    test("should support keyboard navigation in all browsers", async ({
+      page,
+      browserName,
+    }) => {
       const loginPage = new LoginPage(page);
       await loginPage.goto();
 
       // Test keyboard navigation
-      await page.keyboard.press('Tab'); // Auth source
-      await page.keyboard.press('Tab'); // Username
-      await page.keyboard.press('Tab'); // Password
-      await page.keyboard.press('Tab'); // Login button
+      await page.keyboard.press("Tab"); // Auth source
+      await page.keyboard.press("Tab"); // Username
+      await page.keyboard.press("Tab"); // Password
+      await page.keyboard.press("Tab"); // Login button
 
       // Should be able to interact with form using keyboard
-      await page.keyboard.press('Shift+Tab'); // Back to password
-      await page.keyboard.press('Shift+Tab'); // Back to username
-      await page.keyboard.type('test@domain.local');
+      await page.keyboard.press("Shift+Tab"); // Back to password
+      await page.keyboard.press("Shift+Tab"); // Back to username
+      await page.keyboard.type("test@domain.local");
 
-      const usernameValue = await page.locator('input[name="username"]').inputValue();
-      expect(usernameValue).toBe('test@domain.local');
+      const usernameValue = await loginPage.usernameInput.inputValue();
+      expect(usernameValue).toBe("test@domain.local");
 
       console.log(`${browserName} supports keyboard navigation`);
     });
 
-    test('should maintain focus indicators', async ({ page, browserName }) => {
-      await AuthHelper.login(page, 'AD_USER');
+    test("should maintain focus indicators", async ({ page, browserName }) => {
+      await AuthHelper.login(page, "AD_USER");
 
       // Test focus indicators
-      const focusableElements = await page.locator('button, input, select, a, [tabindex]:not([tabindex="-1"])').all();
+      const focusableElements = await page
+        .locator('button, input, select, a, [tabindex]:not([tabindex="-1"])')
+        .all();
 
-      for (const element of focusableElements.slice(0, 5)) { // Test first 5 elements
+      for (const element of focusableElements.slice(0, 5)) {
+        // Test first 5 elements
         if (await element.isVisible()) {
           await element.focus();
 
           // Check if element has focus styles
-          const hasFocusStyles = await element.evaluate(el => {
+          const hasFocusStyles = await element.evaluate((el) => {
             const styles = window.getComputedStyle(el);
-            return styles.outline !== 'none' || styles.boxShadow !== 'none';
+            return styles.outline !== "none" || styles.boxShadow !== "none";
           });
 
           // Should have some form of focus indicator
@@ -361,87 +426,102 @@ test.describe('Cross-Browser Compatibility Tests', () => {
     });
   });
 
-  test.describe('Browser-Specific Workarounds', () => {
-    test('should handle Safari-specific behaviors', async ({ page, browserName }) => {
-      if (browserName !== 'webkit') {
+  test.describe("Browser-Specific Workarounds", () => {
+    test("should handle Safari-specific behaviors", async ({
+      page,
+      browserName,
+    }) => {
+      if (browserName !== "webkit") {
         test.skip();
       }
 
-      await AuthHelper.login(page, 'AD_USER');
+      await AuthHelper.login(page, "AD_USER");
 
       // Safari-specific tests
       // Test date input handling (Safari has different date picker)
       const dateInput = page.locator('input[type="date"]');
-      if (await dateInput.count() > 0) {
-        await dateInput.first().fill('2025-01-07');
+      if ((await dateInput.count()) > 0) {
+        await dateInput.first().fill("2025-01-07");
         const value = await dateInput.first().inputValue();
-        expect(value).toBe('2025-01-07');
+        expect(value).toBe("2025-01-07");
       }
 
       // Test Safari's strict CORS handling
       // (This would be tested if the app makes cross-origin requests)
-      console.log('Safari-specific tests completed');
+      console.log("Safari-specific tests completed");
     });
 
-    test('should handle Firefox-specific behaviors', async ({ page, browserName }) => {
-      if (browserName !== 'firefox') {
+    test("should handle Firefox-specific behaviors", async ({
+      page,
+      browserName,
+    }) => {
+      if (browserName !== "firefox") {
         test.skip();
       }
 
-      await AuthHelper.login(page, 'AD_USER');
+      await AuthHelper.login(page, "AD_USER");
 
       // Firefox-specific tests
       // Test scrollbar styling (Firefox handles differently)
-      const scrollableElement = page.locator('.scrollable, .ant-table-tbody').first();
+      const scrollableElement = page
+        .locator(".scrollable, .ant-table-tbody")
+        .first();
       if (await scrollableElement.isVisible()) {
         await scrollableElement.hover();
         // Firefox scrollbars should be functional
-        const isScrollable = await scrollableElement.evaluate(el => {
+        const isScrollable = await scrollableElement.evaluate((el) => {
           return el.scrollHeight > el.clientHeight;
         });
 
         if (isScrollable) {
-          console.log('Firefox scrolling behavior verified');
+          console.log("Firefox scrolling behavior verified");
         }
       }
     });
 
-    test('should handle Chrome-specific behaviors', async ({ page, browserName }) => {
-      if (!browserName.includes('chromium') && !browserName.includes('chrome')) {
+    test("should handle Chrome-specific behaviors", async ({
+      page,
+      browserName,
+    }) => {
+      if (
+        !browserName.includes("chromium") &&
+        !browserName.includes("chrome")
+      ) {
         test.skip();
       }
 
-      await AuthHelper.login(page, 'AD_USER');
-
       // Chrome-specific tests
-      // Test Chrome's autofill behavior
+      // Test Chrome's autofill behavior on a fresh login form.
       const loginPage = new LoginPage(page);
       await loginPage.goto();
 
       // Chrome might offer password suggestions
-      await loginPage.enterUsername('test@domain.local');
-      const passwordField = page.locator('input[name="password"]');
-      
+      await loginPage.enterUsername("test@domain.local");
+      const passwordField = loginPage.passwordInput;
+
       // Check if Chrome shows autofill suggestions
       await passwordField.click();
       await page.waitForTimeout(500);
 
-      console.log('Chrome-specific behaviors tested');
+      console.log("Chrome-specific behaviors tested");
     });
   });
 
-  test.describe('Feature Detection and Progressive Enhancement', () => {
-    test('should gracefully degrade features based on browser capabilities', async ({ page, browserName }) => {
-      await AuthHelper.login(page, 'AD_USER');
+  test.describe("Feature Detection and Progressive Enhancement", () => {
+    test("should gracefully degrade features based on browser capabilities", async ({
+      page,
+      browserName,
+    }) => {
+      await AuthHelper.login(page, "AD_USER");
 
       // Test feature detection
       const featureSupport = await page.evaluate(() => {
         return {
-          intersectionObserver: 'IntersectionObserver' in window,
-          resizeObserver: 'ResizeObserver' in window,
-          webAnimations: 'animate' in document.createElement('div'),
-          customElements: 'customElements' in window,
-          webComponents: 'HTMLTemplateElement' in window
+          intersectionObserver: "IntersectionObserver" in window,
+          resizeObserver: "ResizeObserver" in window,
+          webAnimations: "animate" in document.createElement("div"),
+          customElements: "customElements" in window,
+          webComponents: "HTMLTemplateElement" in window,
         };
       });
 
@@ -453,15 +533,15 @@ test.describe('Cross-Browser Compatibility Tests', () => {
       expect(isLoaded).toBe(true);
     });
 
-    test('should handle polyfills correctly', async ({ page, browserName }) => {
+    test("should handle polyfills correctly", async ({ page, browserName }) => {
       // Test that polyfills are loaded when needed
       const polyfillsLoaded = await page.evaluate(() => {
         // Check for common polyfills
         return {
-          promises: typeof Promise !== 'undefined',
-          fetch: typeof fetch !== 'undefined',
+          promises: typeof Promise !== "undefined",
+          fetch: typeof fetch !== "undefined",
           includes: Array.prototype.includes !== undefined,
-          assign: Object.assign !== undefined
+          assign: Object.assign !== undefined,
         };
       });
 
@@ -475,53 +555,61 @@ test.describe('Cross-Browser Compatibility Tests', () => {
     });
   });
 
-  test.describe('Cross-Browser Data Consistency', () => {
-    test('should handle date formatting consistently', async ({ page, browserName }) => {
-      await AuthHelper.login(page, 'AD_USER');
+  test.describe("Cross-Browser Data Consistency", () => {
+    test("should handle date formatting consistently", async ({
+      page,
+      browserName,
+    }) => {
+      await AuthHelper.login(page, "AD_USER");
 
       // Mock data with dates
-      await ApiHelper.mockApiResponse(page, '**/api/dashboard/stats*', {
-        lastExecution: '2025-01-07T14:30:00Z',
+      await ApiHelper.mockApiResponse(page, "**/api/dashboard/stats*", {
+        lastExecution: "2025-01-07T14:30:00Z",
         reports: [
           {
-            name: 'Test Report',
-            executedAt: '2025-01-07T10:15:30Z'
-          }
-        ]
+            name: "Test Report",
+            executedAt: "2025-01-07T10:15:30Z",
+          },
+        ],
       });
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState("networkidle");
 
       // Check date formatting
-      const dateElements = page.locator('[data-testid*="date"], .date, .timestamp');
+      const dateElements = page.locator(
+        '[data-testid*="date"], .date, .timestamp',
+      );
       const dateCount = await dateElements.count();
 
       if (dateCount > 0) {
         const firstDateText = await dateElements.first().textContent();
         expect(firstDateText).toBeTruthy();
-        
+
         // Date should be formatted consistently across browsers
         // (Implementation would depend on date formatting approach)
         console.log(`${browserName} date format: ${firstDateText}`);
       }
     });
 
-    test('should handle number formatting consistently', async ({ page, browserName }) => {
-      await AuthHelper.login(page, 'AD_USER');
+    test("should handle number formatting consistently", async ({
+      page,
+      browserName,
+    }) => {
+      await AuthHelper.login(page, "AD_USER");
 
       // Test number formatting
       const numberFormatting = await page.evaluate(() => {
         const testNumber = 1234567.89;
         return {
           locale: new Intl.NumberFormat().format(testNumber),
-          currency: new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
+          currency: new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
           }).format(testNumber),
-          percent: new Intl.NumberFormat('en-US', {
-            style: 'percent'
-          }).format(0.1234)
+          percent: new Intl.NumberFormat("en-US", {
+            style: "percent",
+          }).format(0.1234),
         };
       });
 
@@ -532,7 +620,10 @@ test.describe('Cross-Browser Compatibility Tests', () => {
       console.log(`${browserName} number formatting:`, numberFormatting);
     });
 
-    test('should handle timezone consistently', async ({ page, browserName }) => {
+    test("should handle timezone consistently", async ({
+      page,
+      browserName,
+    }) => {
       const timezone = await page.evaluate(() => {
         return Intl.DateTimeFormat().resolvedOptions().timeZone;
       });
@@ -540,8 +631,8 @@ test.describe('Cross-Browser Compatibility Tests', () => {
       console.log(`${browserName} timezone: ${timezone}`);
 
       // Application should handle timezones correctly
-      await AuthHelper.login(page, 'AD_USER');
-      
+      await AuthHelper.login(page, "AD_USER");
+
       // This would test timezone-aware date displays
       // Implementation depends on how the app handles timezones
     });

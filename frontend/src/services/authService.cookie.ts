@@ -1,10 +1,10 @@
-import { ApiResponse } from '@/types';
-import { User, LoginRequest, AuthState } from '@/types';
-import apiService from './api';
+import { ApiResponse } from "@/types";
+import { User, LoginRequest, AuthState } from "@/types";
+import apiService from "./api";
 
 // Define types for auth response data
 interface AuthMethodResponse {
-  method: 'cookie' | 'token';
+  method: "cookie" | "token";
   supportsCookies: boolean;
   supportsTokens: boolean;
   csrfRequired: boolean;
@@ -36,173 +36,218 @@ interface ProfileData {
 export class CookieAuthService {
   private csrfToken: string | null = null;
   private user: User | null = null;
-  
+  private tokenRefreshInterval: ReturnType<typeof setInterval> | null = null;
+
+  private clearLocalAuthState(): void {
+    this.csrfToken = null;
+    this.user = null;
+    sessionStorage.removeItem("user");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+  }
+
+  private broadcastLogout(): void {
+    localStorage.setItem("auth:logout", String(Date.now()));
+  }
+
+  private hasCrossTabLogout(): boolean {
+    return (
+      !!localStorage.getItem("auth:logout") &&
+      !localStorage.getItem("user") &&
+      !localStorage.getItem("accessToken")
+    );
+  }
+
   constructor() {
     // Check if we should use cookie-based auth
     this.checkAuthMethod();
   }
-  
+
   private async checkAuthMethod(): Promise<boolean> {
     try {
-      const response = await apiService.get<AuthMethodResponse>('/auth/method');
-      
+      const response = await apiService.get<AuthMethodResponse>("/auth/method");
+
       if (response.success && response.data) {
-        return response.data.method === 'cookie';
+        return response.data.method === "cookie";
       }
     } catch (error) {
-      console.error('Failed to check auth method:', error);
+      console.error("Failed to check auth method:", error);
     }
     return false;
   }
-  
-  async login(credentials: LoginRequest): Promise<ApiResponse<AuthResponseData>> {
+
+  async login(
+    credentials: LoginRequest,
+  ): Promise<ApiResponse<AuthResponseData>> {
     // Set header to indicate we accept cookies
-    const originalHeaders = apiService['client'].defaults.headers.common;
-    apiService['client'].defaults.headers.common['X-Accept-Cookies'] = 'true';
-    
+    const originalHeaders = apiService["client"].defaults.headers.common;
+    apiService["client"].defaults.headers.common["X-Accept-Cookies"] = "true";
+
     try {
-      const response = await apiService.post<AuthResponseData>('/auth/login', credentials);
-      
+      const response = await apiService.post<AuthResponseData>(
+        "/auth/login",
+        credentials,
+      );
+
       if (response.success && response.data) {
         const authData = response.data;
         // Store CSRF token for future requests
         this.csrfToken = authData.csrfToken;
         this.user = authData.user;
-        
+        localStorage.removeItem("auth:logout");
+        localStorage.removeItem("sessionId");
+
         // Store user in sessionStorage for page refreshes
-        sessionStorage.setItem('user', JSON.stringify(authData.user));
-        
+        sessionStorage.setItem("user", JSON.stringify(authData.user));
+
         // For migration support, also store tokens if returned
         if (authData.accessToken && authData.refreshToken) {
-          localStorage.setItem('accessToken', authData.accessToken);
-          localStorage.setItem('refreshToken', authData.refreshToken);
-          localStorage.setItem('user', JSON.stringify(authData.user));
+          localStorage.setItem("accessToken", authData.accessToken);
+          localStorage.setItem("refreshToken", authData.refreshToken);
+          localStorage.setItem("user", JSON.stringify(authData.user));
         }
       }
-      
+
       return response;
     } finally {
       // Restore original headers
-      apiService['client'].defaults.headers.common = originalHeaders;
+      apiService["client"].defaults.headers.common = originalHeaders;
     }
   }
 
   async logout(): Promise<ApiResponse> {
     try {
-      const response = await apiService.post('/auth/logout');
-      
-      // Clear all auth data
-      this.csrfToken = null;
-      this.user = null;
-      sessionStorage.removeItem('user');
-      
-      // Also clear localStorage for migration support
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      
+      const response = await apiService.post("/auth/logout");
+
+      this.clearLocalAuthState();
+      this.broadcastLogout();
+
       return response;
     } catch (error) {
-      // Still clear local data on error
-      this.csrfToken = null;
-      this.user = null;
-      sessionStorage.removeItem('user');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      this.clearLocalAuthState();
+      this.broadcastLogout();
       throw error;
     }
   }
 
   async refreshToken(): Promise<ApiResponse<RefreshTokenData>> {
     // Set header to indicate we're using cookies
-    const originalHeaders = apiService['client'].defaults.headers.common;
-    apiService['client'].defaults.headers.common['X-Accept-Cookies'] = 'true';
-    
+    const originalHeaders = apiService["client"].defaults.headers.common;
+    apiService["client"].defaults.headers.common["X-Accept-Cookies"] = "true";
+
     try {
       // For cookie-based auth, we don't need to send the refresh token
-      const response = await apiService.post<RefreshTokenData>('/auth/refresh', {});
-      
+      const response = await apiService.post<RefreshTokenData>(
+        "/auth/refresh",
+        {},
+      );
+
       if (response.success && response.data) {
         const refreshData = response.data;
         // Update CSRF token
         this.csrfToken = refreshData.csrfToken;
-        
+
         // Update user if returned
         if (refreshData.user) {
           this.user = refreshData.user;
-          sessionStorage.setItem('user', JSON.stringify(refreshData.user));
+          sessionStorage.setItem("user", JSON.stringify(refreshData.user));
         }
-        
+
         // For migration support, update tokens if returned
         if (refreshData.accessToken && refreshData.refreshToken) {
-          localStorage.setItem('accessToken', refreshData.accessToken);
-          localStorage.setItem('refreshToken', refreshData.refreshToken);
+          localStorage.setItem("accessToken", refreshData.accessToken);
+          localStorage.setItem("refreshToken", refreshData.refreshToken);
         }
       }
-      
+
       return response;
     } finally {
       // Restore original headers
-      apiService['client'].defaults.headers.common = originalHeaders;
+      apiService["client"].defaults.headers.common = originalHeaders;
     }
   }
 
   async getProfile(): Promise<ApiResponse<ProfileData>> {
-    const response = await apiService.get<ProfileData>('/auth/profile');
-    
+    const response = await apiService.get<ProfileData>("/auth/profile");
+
     if (response.success && response.data) {
       const profileData = response.data;
       this.user = profileData.user;
-      sessionStorage.setItem('user', JSON.stringify(profileData.user));
+      sessionStorage.setItem("user", JSON.stringify(profileData.user));
     }
-    
+
     return response;
   }
 
-  async updateProfile(profile: Partial<User>): Promise<ApiResponse<ProfileData>> {
-    const response = await apiService.put<ProfileData>('/auth/profile', profile);
-    
+  async updateProfile(
+    profile: Partial<User>,
+  ): Promise<ApiResponse<ProfileData>> {
+    const response = await apiService.put<ProfileData>(
+      "/auth/profile",
+      profile,
+    );
+
     if (response.success && response.data) {
       const profileData = response.data;
       this.user = profileData.user;
-      sessionStorage.setItem('user', JSON.stringify(profileData.user));
+      sessionStorage.setItem("user", JSON.stringify(profileData.user));
     }
-    
+
     return response;
   }
 
-  async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse> {
-    return apiService.post('/auth/change-password', {
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<ApiResponse> {
+    return apiService.post("/auth/change-password", {
       currentPassword,
-      newPassword
+      newPassword,
     });
   }
 
   // Get current auth state
   getCurrentAuthState(): AuthState {
+    if (this.hasCrossTabLogout()) {
+      this.clearLocalAuthState();
+    }
+
     // Try to get user from memory first
     if (!this.user) {
       // Try sessionStorage for page refreshes
-      const userStr = sessionStorage.getItem('user');
+      const userStr = sessionStorage.getItem("user");
       if (userStr) {
-        this.user = JSON.parse(userStr);
+        try {
+          this.user = JSON.parse(userStr);
+        } catch {
+          sessionStorage.removeItem("user");
+          localStorage.removeItem("user");
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("isAuthenticated");
+        }
       } else {
         // Fall back to localStorage for migration support
-        const localUserStr = localStorage.getItem('user');
+        const localUserStr = localStorage.getItem("user");
         if (localUserStr) {
-          this.user = JSON.parse(localUserStr);
+          try {
+            this.user = JSON.parse(localUserStr);
+          } catch {
+            localStorage.removeItem("user");
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("isAuthenticated");
+          }
         }
       }
     }
-    
+
     return {
       user: this.user,
       token: null, // Tokens are in HTTP-only cookies
       refreshToken: null,
       isAuthenticated: !!this.user,
       isLoading: false,
-      error: null
+      error: null,
     };
   }
 
@@ -212,14 +257,14 @@ export class CookieAuthService {
     if (this.csrfToken) {
       return this.csrfToken;
     }
-    
+
     // Try to get from cookie (if not HTTP-only)
     const match = document.cookie.match(/reporting_csrf_token=([^;]+)/);
     if (match) {
       this.csrfToken = match[1];
       return this.csrfToken;
     }
-    
+
     return null;
   }
 
@@ -227,7 +272,7 @@ export class CookieAuthService {
   hasPermission(permission: string): boolean {
     const user = this.getCurrentAuthState().user;
     if (!user) return false;
-    
+
     return user.permissions?.includes(permission) || false;
   }
 
@@ -235,7 +280,7 @@ export class CookieAuthService {
   hasRole(role: string): boolean {
     const user = this.getCurrentAuthState().user;
     if (!user) return false;
-    
+
     return user.roles?.includes(role) || false;
   }
 
@@ -246,7 +291,7 @@ export class CookieAuthService {
   }
 
   // Get user's authentication source
-  getAuthSource(): 'ad' | 'azure' | 'local' | null {
+  getAuthSource(): "ad" | "azure" | "local" | null {
     const user = this.getCurrentAuthState().user;
     return user?.authSource || null;
   }
@@ -254,14 +299,59 @@ export class CookieAuthService {
   // Check if we're using cookie-based auth
   isUsingCookies(): boolean {
     // Check for the absence of tokens in localStorage
-    return !localStorage.getItem('accessToken') && !!this.user;
+    return !localStorage.getItem("accessToken") && !!this.user;
   }
 
   // Setup automatic token refresh (if needed)
   setupTokenRefresh(): void {
-    // For cookie-based auth, we rely on the server to handle token expiry
-    // The middleware will suggest refresh when needed via X-Token-Refresh-Suggested header
-    console.log('Cookie-based auth: Token refresh handled by server');
+    if (this.tokenRefreshInterval) {
+      return;
+    }
+
+    const redirectToLogin = () => {
+      this.clearLocalAuthState();
+      this.broadcastLogout();
+      if (window.location.pathname !== "/login") {
+        window.history.replaceState(null, "", "/login");
+        window.dispatchEvent(new window.PopStateEvent("popstate"));
+      }
+    };
+
+    const checkTokenExpiry = async () => {
+      const legacyAuthToken = localStorage.getItem("authToken");
+      const accessToken = localStorage.getItem("accessToken");
+      if (legacyAuthToken && legacyAuthToken !== accessToken) {
+        redirectToLogin();
+        return;
+      }
+
+      const tokenExpiry = Number(localStorage.getItem("tokenExpiry") || "0");
+      if (!tokenExpiry || tokenExpiry > Date.now()) {
+        return;
+      }
+
+      try {
+        await this.refreshToken();
+      } catch (error) {
+        console.error("Cookie-based token refresh failed:", error);
+        redirectToLogin();
+      }
+    };
+
+    window.addEventListener("storage", (event) => {
+      if (event.key === "auth:logout" && event.newValue) {
+        redirectToLogin();
+      }
+    });
+
+    // Cookie sessions are normally refreshed by the server via
+    // X-Token-Refresh-Suggested. The local tokenExpiry hook keeps legacy token
+    // migration flows and E2E session-expiry simulations at the auth transport
+    // boundary instead of leaking them into UI code.
+    void checkTokenExpiry();
+    this.tokenRefreshInterval = setInterval(() => {
+      void checkTokenExpiry();
+    }, 1000);
   }
 
   // Handle auth state changes (for React components)
@@ -270,56 +360,51 @@ export class CookieAuthService {
     const interval = setInterval(() => {
       callback(this.getCurrentAuthState());
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }
 
   // Verify current authentication status
   async verify(): Promise<boolean> {
     try {
-      const response = await apiService.get<AuthVerifyData>('/auth/verify');
-      
+      const response = await apiService.get<AuthVerifyData>("/auth/verify");
+
       if (response.success && response.data) {
         const verifyData = response.data;
         if (verifyData.valid && verifyData.user) {
           this.user = verifyData.user;
-          sessionStorage.setItem('user', JSON.stringify(verifyData.user));
+          sessionStorage.setItem("user", JSON.stringify(verifyData.user));
           return true;
         }
       }
     } catch (error) {
-      console.error('Auth verification failed:', error);
+      console.error("Auth verification failed:", error);
     }
-    
+
     // Clear auth state if verification fails
     this.csrfToken = null;
     this.user = null;
-    sessionStorage.removeItem('user');
+    sessionStorage.removeItem("user");
     return false;
   }
 
   // Logout from all sessions
   async logoutAll(): Promise<ApiResponse> {
     try {
-      const response = await apiService.post('/auth/logout-all');
-      
+      const response = await apiService.post("/auth/logout-all");
+
       // Clear all auth data
       this.csrfToken = null;
       this.user = null;
-      sessionStorage.removeItem('user');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      
+      sessionStorage.removeItem("user");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+
       return response;
     } catch (error) {
-      // Still clear local data on error
-      this.csrfToken = null;
-      this.user = null;
-      sessionStorage.removeItem('user');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      this.clearLocalAuthState();
+      this.broadcastLogout();
       throw error;
     }
   }

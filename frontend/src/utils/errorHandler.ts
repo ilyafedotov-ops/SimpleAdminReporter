@@ -1,19 +1,19 @@
-import { AxiosError } from 'axios';
+import { AxiosError } from "axios";
 
 /**
  * Error types for categorizing different kinds of errors
  */
 export enum ErrorType {
-  NETWORK = 'NETWORK',
-  VALIDATION = 'VALIDATION',
-  AUTHENTICATION = 'AUTHENTICATION',
-  AUTHORIZATION = 'AUTHORIZATION',
-  QUERY_EXECUTION = 'QUERY_EXECUTION',
-  QUERY_VALIDATION = 'QUERY_VALIDATION',
-  TIMEOUT = 'TIMEOUT',
-  RATE_LIMIT = 'RATE_LIMIT',
-  SERVER = 'SERVER',
-  UNKNOWN = 'UNKNOWN'
+  NETWORK = "NETWORK",
+  VALIDATION = "VALIDATION",
+  AUTHENTICATION = "AUTHENTICATION",
+  AUTHORIZATION = "AUTHORIZATION",
+  QUERY_EXECUTION = "QUERY_EXECUTION",
+  QUERY_VALIDATION = "QUERY_VALIDATION",
+  TIMEOUT = "TIMEOUT",
+  RATE_LIMIT = "RATE_LIMIT",
+  SERVER = "SERVER",
+  UNKNOWN = "UNKNOWN",
 }
 
 /**
@@ -32,10 +32,10 @@ export class AppError extends Error {
     code?: string,
     details?: Record<string, unknown>,
     statusCode?: number,
-    retryAfter?: string | number
+    retryAfter?: string | number,
   ) {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
     this.type = type;
     this.code = code;
     this.details = details;
@@ -52,23 +52,29 @@ export function parseError(error: unknown): AppError {
   if (error instanceof AppError) {
     return error;
   }
-  
+
   // Handle Axios errors
-  if (error && typeof error === 'object' && 'isAxiosError' in error) {
+  if (error && typeof error === "object" && "isAxiosError" in error) {
     const axiosError = error as AxiosError<Record<string, unknown>>;
-    
+
     if (!axiosError.response) {
       // Network error - no response received
       return new AppError(
-        'Network error: Please check your internet connection',
+        "Network error: Please check your internet connection",
         ErrorType.NETWORK,
-        'NETWORK_ERROR'
+        "NETWORK_ERROR",
       );
     }
 
     const status = axiosError.response.status;
-    const data = (axiosError.response?.data) as { 
-      result?: { error?: { message?: string; code?: string; details?: Record<string, unknown> } };
+    const data = axiosError.response?.data as {
+      result?: {
+        error?: {
+          message?: string;
+          code?: string;
+          details?: Record<string, unknown>;
+        };
+      };
       message?: string;
       error?: string;
       code?: string;
@@ -77,25 +83,29 @@ export function parseError(error: unknown): AppError {
 
     // Handle query service error format
     if (data?.result?.error) {
-      const queryError = data.result.error as { message?: string; code?: string; details?: Record<string, unknown> };
+      const queryError = data.result.error as {
+        message?: string;
+        code?: string;
+        details?: Record<string, unknown>;
+      };
       const errorType = determineQueryErrorType(queryError.code);
       return new AppError(
-        queryError.message || 'Query execution failed',
+        queryError.message || "Query execution failed",
         errorType,
         queryError.code,
         queryError.details,
-        status
+        status,
       );
     }
 
     // Handle validation errors
     if (data?.errors && Array.isArray(data.errors)) {
       return new AppError(
-        `Validation failed: ${data.errors.join(', ')}`,
+        `Validation failed: ${data.errors.join(", ")}`,
         ErrorType.VALIDATION,
-        'VALIDATION_ERROR',
+        "VALIDATION_ERROR",
         { errors: data.errors },
-        status
+        status,
       );
     }
 
@@ -103,77 +113,78 @@ export function parseError(error: unknown): AppError {
     switch (status) {
       case 400:
         return new AppError(
-          data?.message || 'Bad request',
+          data?.message || "Bad request",
           ErrorType.VALIDATION,
-          'BAD_REQUEST',
-          typeof data === 'object' && data !== null ? data : { data },
-          status
+          "BAD_REQUEST",
+          typeof data === "object" && data !== null ? data : { data },
+          status,
         );
       case 401:
         return new AppError(
-          data?.message || 'Authentication required',
+          data?.message || data?.error || "Authentication required",
           ErrorType.AUTHENTICATION,
-          'UNAUTHORIZED',
-          typeof data === 'object' && data !== null ? data : { data },
-          status
+          "UNAUTHORIZED",
+          typeof data === "object" && data !== null ? data : { data },
+          status,
         );
       case 403:
         return new AppError(
-          data?.message || 'Access denied',
+          data?.message || "Access denied",
           ErrorType.AUTHORIZATION,
-          'FORBIDDEN',
-          typeof data === 'object' && data !== null ? data : { data },
-          status
+          "FORBIDDEN",
+          typeof data === "object" && data !== null ? data : { data },
+          status,
         );
       case 404:
         return new AppError(
-          data?.message || 'Resource not found',
+          data?.message || "Resource not found",
           ErrorType.UNKNOWN,
-          'NOT_FOUND',
-          typeof data === 'object' && data !== null ? data : { data },
-          status
+          "NOT_FOUND",
+          typeof data === "object" && data !== null ? data : { data },
+          status,
         );
       case 429: {
-        const retryAfter = axiosError.response?.headers['retry-after'] || 
-                          axiosError.response?.headers['x-ratelimit-reset'] || 
-                          axiosError.response?.headers['ratelimit-reset'];
+        const retryAfter =
+          axiosError.response?.headers["retry-after"] ||
+          axiosError.response?.headers["x-ratelimit-reset"] ||
+          axiosError.response?.headers["ratelimit-reset"];
         return new AppError(
-          data?.message || 'Too many requests',
+          data?.message || "Too many requests",
           ErrorType.RATE_LIMIT,
-          'RATE_LIMITED',
-          typeof data === 'object' && data !== null ? data : { data },
+          "RATE_LIMITED",
+          typeof data === "object" && data !== null ? data : { data },
           status,
-          retryAfter
+          retryAfter,
         );
       }
       case 408:
       case 504:
         return new AppError(
-          data?.message || 'Request timeout',
+          data?.message || "Request timeout",
           ErrorType.TIMEOUT,
-          'TIMEOUT',
-          typeof data === 'object' && data !== null ? data : { data },
-          status
+          "TIMEOUT",
+          typeof data === "object" && data !== null ? data : { data },
+          status,
         );
       default:
         if (status >= 500) {
           return new AppError(
-            data?.message || 'Server error',
+            data?.message || "Server error",
             ErrorType.SERVER,
-            'SERVER_ERROR',
-            typeof data === 'object' && data !== null ? data : { data },
-            status
+            "SERVER_ERROR",
+            typeof data === "object" && data !== null ? data : { data },
+            status,
           );
         }
     }
 
     // Generic error message
     return new AppError(
-      data?.message || data?.error || 'An error occurred',
+      data?.message || data?.error || "An error occurred",
       ErrorType.UNKNOWN,
       data?.code,
-      typeof data === 'object' && data !== null ? data : { data },
-      status
+      typeof data === "object" && data !== null ? data : { data },
+      status,
     );
   }
 
@@ -183,12 +194,12 @@ export function parseError(error: unknown): AppError {
   }
 
   // Handle string errors
-  if (typeof error === 'string') {
+  if (typeof error === "string") {
     return new AppError(error, ErrorType.UNKNOWN);
   }
 
   // Unknown error type
-  return new AppError('An unexpected error occurred', ErrorType.UNKNOWN);
+  return new AppError("An unexpected error occurred", ErrorType.UNKNOWN);
 }
 
 /**
@@ -198,23 +209,23 @@ function determineQueryErrorType(code?: string): ErrorType {
   if (!code) return ErrorType.QUERY_EXECUTION;
 
   const upperCode = code.toUpperCase();
-  
-  if (upperCode.includes('VALIDATION')) {
+
+  if (upperCode.includes("VALIDATION")) {
     return ErrorType.QUERY_VALIDATION;
   }
-  if (upperCode.includes('TIMEOUT')) {
+  if (upperCode.includes("TIMEOUT")) {
     return ErrorType.TIMEOUT;
   }
-  if (upperCode.includes('AUTH')) {
+  if (upperCode.includes("AUTH")) {
     return ErrorType.AUTHENTICATION;
   }
-  if (upperCode.includes('PERMISSION') || upperCode.includes('ACCESS')) {
+  if (upperCode.includes("PERMISSION") || upperCode.includes("ACCESS")) {
     return ErrorType.AUTHORIZATION;
   }
-  if (upperCode.includes('RATE')) {
+  if (upperCode.includes("RATE")) {
     return ErrorType.RATE_LIMIT;
   }
-  
+
   return ErrorType.QUERY_EXECUTION;
 }
 
@@ -224,25 +235,25 @@ function determineQueryErrorType(code?: string): ErrorType {
 export function getUserFriendlyMessage(error: AppError): string {
   switch (error.type) {
     case ErrorType.NETWORK:
-      return 'Unable to connect to the server. Please check your internet connection and try again.';
+      return "Unable to connect to the server. Please check your internet connection and try again.";
     case ErrorType.AUTHENTICATION:
-      return 'Your session has expired. Please log in again.';
+      return "Your session has expired. Please log in again.";
     case ErrorType.AUTHORIZATION:
-      return 'You do not have permission to perform this action.';
+      return "You do not have permission to perform this action.";
     case ErrorType.VALIDATION:
       return error.message; // Validation errors are usually already user-friendly
     case ErrorType.QUERY_VALIDATION:
-      return 'The query contains errors. Please check your query and try again.';
+      return "The query contains errors. Please check your query and try again.";
     case ErrorType.QUERY_EXECUTION:
-      return 'Failed to execute the query. Please try again or contact support if the problem persists.';
+      return "Failed to execute the query. Please try again or contact support if the problem persists.";
     case ErrorType.TIMEOUT:
-      return 'The request took too long to complete. Please try again with a smaller dataset.';
+      return "The request took too long to complete. Please try again with a smaller dataset.";
     case ErrorType.RATE_LIMIT:
-      return 'Too many requests. Please wait a moment and try again.';
+      return "Too many requests. Please wait a moment and try again.";
     case ErrorType.SERVER:
-      return 'Server error occurred. Please try again later or contact support.';
+      return "Server error occurred. Please try again later or contact support.";
     default:
-      return error.message || 'An unexpected error occurred. Please try again.';
+      return error.message || "An unexpected error occurred. Please try again.";
   }
 }
 
@@ -254,7 +265,7 @@ export function isRetryableError(error: AppError): boolean {
     ErrorType.NETWORK,
     ErrorType.TIMEOUT,
     ErrorType.RATE_LIMIT,
-    ErrorType.SERVER
+    ErrorType.SERVER,
   ].includes(error.type);
 }
 
@@ -263,7 +274,7 @@ export function isRetryableError(error: AppError): boolean {
  */
 export function getRetryDelay(error: AppError, attemptNumber: number): number {
   const baseDelay = 1000; // 1 second
-  
+
   switch (error.type) {
     case ErrorType.RATE_LIMIT:
       // For rate limits, use exponential backoff with longer delays
@@ -286,24 +297,24 @@ export function getRetryDelay(error: AppError, attemptNumber: number): number {
 export function getRecoveryGuidance(error: AppError): string {
   switch (error.type) {
     case ErrorType.NETWORK:
-      return 'Check your internet connection and try again. If using VPN, verify the connection is stable.';
+      return "Check your internet connection and try again. If using VPN, verify the connection is stable.";
     case ErrorType.TIMEOUT:
-      return 'Try reducing the number of selected fields, adding more specific filters, or limiting the date range.';
+      return "Try reducing the number of selected fields, adding more specific filters, or limiting the date range.";
     case ErrorType.QUERY_VALIDATION:
     case ErrorType.VALIDATION:
-      return 'Review your query configuration. Ensure all selected fields are valid and filters are properly configured.';
+      return "Review your query configuration. Ensure all selected fields are valid and filters are properly configured.";
     case ErrorType.AUTHENTICATION:
-      return 'Your session has expired. Please refresh the page and log in again.';
+      return "Your session has expired. Please refresh the page and log in again.";
     case ErrorType.AUTHORIZATION:
-      return 'Contact your administrator to request the necessary permissions for this operation.';
+      return "Contact your administrator to request the necessary permissions for this operation.";
     case ErrorType.RATE_LIMIT:
-      return `You've reached the rate limit. Wait ${error.retryAfter || '60 seconds'} before trying again.`;
+      return `You've reached the rate limit. Wait ${error.retryAfter || "60 seconds"} before trying again.`;
     case ErrorType.SERVER:
-      return 'The server is experiencing issues. Try again in a few minutes or contact support if the problem persists.';
+      return "The server is experiencing issues. Try again in a few minutes or contact support if the problem persists.";
     case ErrorType.QUERY_EXECUTION:
-      return 'The query failed to execute. Try simplifying your query or contact support for assistance.';
+      return "The query failed to execute. Try simplifying your query or contact support for assistance.";
     default:
-      return 'Try refreshing the page or contact support if the problem continues.';
+      return "Try refreshing the page or contact support if the problem continues.";
   }
 }
 
@@ -311,12 +322,16 @@ export function getRecoveryGuidance(error: AppError): string {
  * Log error with appropriate level based on type
  */
 export function logError(error: AppError, context?: string): void {
-  const logContext = context ? `[${context}]` : '';
-  
+  const logContext = context ? `[${context}]` : "";
+
   switch (error.type) {
     case ErrorType.VALIDATION:
     case ErrorType.QUERY_VALIDATION:
-      console.warn(`${logContext} Validation Error:`, error.message || String(error), error.details);
+      console.warn(
+        `${logContext} Validation Error:`,
+        error.message || String(error),
+        error.details,
+      );
       break;
     case ErrorType.AUTHENTICATION:
     case ErrorType.AUTHORIZATION:
@@ -324,13 +339,24 @@ export function logError(error: AppError, context?: string): void {
       break;
     case ErrorType.NETWORK:
     case ErrorType.TIMEOUT:
-      console.error(`${logContext} Network Error:`, error.message || String(error));
+      console.error(
+        `${logContext} Network Error:`,
+        error.message || String(error),
+      );
       break;
     case ErrorType.SERVER:
     case ErrorType.QUERY_EXECUTION:
-      console.error(`${logContext} Server Error:`, error.message || String(error), error.details);
+      console.error(
+        `${logContext} Server Error:`,
+        error.message || String(error),
+        error.details,
+      );
       break;
     default:
-      console.error(`${logContext} Error:`, error.message || String(error), error.details);
+      console.error(
+        `${logContext} Error:`,
+        error.message || String(error),
+        error.details,
+      );
   }
 }
