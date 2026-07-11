@@ -24,6 +24,8 @@ export class AuthService {
         }
       ).data
     ) {
+      localStorage.removeItem("sessionId");
+
       // Store tokens in localStorage
       if ((response as { data: { accessToken?: string } }).data.accessToken) {
         localStorage.setItem(

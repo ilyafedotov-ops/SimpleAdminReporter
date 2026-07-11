@@ -181,19 +181,33 @@ test.describe("Authentication - Session Management", () => {
       // Login
       await AuthHelper.login(page, "AD_USER");
 
-      // Simulate expired token
+      // A protected API call returning 401 should attempt refresh. If refresh
+      // also fails, the global API interceptor clears auth and redirects.
+      await page.route("**/api/reports/stats**", (route) => {
+        route.fulfill({
+          status: 401,
+          contentType: "application/json",
+          body: JSON.stringify({
+            error: "Access token expired",
+          }),
+        });
+      });
       await page.evaluate(() => {
-        localStorage.setItem("tokenExpiry", (Date.now() - 1000).toString());
+        localStorage.removeItem("api_cache");
       });
 
-      // Trigger token check
-      await page.reload();
+      // Trigger a protected API request from the dashboard. The interceptor can
+      // redirect while the reload is still in flight, so tolerate the expected
+      // aborted reload and assert the final URL separately.
+      await page.reload().catch((error) => {
+        if (!String(error).includes("ERR_ABORTED")) {
+          throw error;
+        }
+      });
 
-      // Should redirect to login
-      await page.waitForURL("**/login", {
+      await expect(page).toHaveURL(/\/login/, {
         timeout: TEST_CONFIG.DEFAULT_TIMEOUT,
       });
-      expect(page.url()).toContain("login");
     });
 
     test("should handle concurrent token refresh requests", async ({
@@ -248,7 +262,7 @@ test.describe("Authentication - Session Management", () => {
 
       // Tamper with token
       await page.evaluate(() => {
-        localStorage.setItem("authToken", "tampered-token");
+        localStorage.setItem("accessToken", "tampered-token");
       });
 
       // Mock token validation failure
@@ -537,9 +551,14 @@ test.describe("Authentication - Session Management", () => {
       expect(currentUrl).toMatch(/(dashboard|login)/);
 
       if (currentUrl.includes("dashboard")) {
-        // If authenticated, should have consistent user data
+        // localStorage is shared across tabs. If the tab stays authenticated,
+        // it should render consistently with the shared stored user.
         const userInfo = await dashboardPage.getCurrentUserInfo();
-        expect(userInfo?.username).toBe(user.username);
+        const storedUsername = await page.evaluate(() => {
+          const storedUser = localStorage.getItem("user");
+          return storedUser ? JSON.parse(storedUser).username : null;
+        });
+        expect(userInfo?.username).toBe(storedUsername);
       }
 
       await secondPage.close();

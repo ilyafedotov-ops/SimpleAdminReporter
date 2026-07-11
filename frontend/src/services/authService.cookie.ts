@@ -339,7 +339,7 @@ export class CookieAuthService {
     };
 
     window.addEventListener("storage", (event) => {
-      if (event.key === "auth:logout") {
+      if (event.key === "auth:logout" && event.newValue) {
         redirectToLogin();
       }
     });
