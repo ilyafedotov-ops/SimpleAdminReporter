@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@azure/identity": "^4.13.1",
-    "@azure/msal-node": "^3.8.10",
+    "@azure/msal-node": "^5.4.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "bcryptjs": "^3.0.3",
     "bull": "^4.16.5",
