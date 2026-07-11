@@ -20,7 +20,9 @@ class CredentialsApiService {
     serviceType?: "ad" | "azure" | "o365",
   ): Promise<ApiResponse<ServiceCredential[]>> {
     const params = serviceType ? { serviceType } : undefined;
-    return await this.api.get<ServiceCredential[]>(this.basePath, params);
+    return await this.api.get<ServiceCredential[]>(this.basePath, params, {
+      useCache: false,
+    });
   }
 
   /**

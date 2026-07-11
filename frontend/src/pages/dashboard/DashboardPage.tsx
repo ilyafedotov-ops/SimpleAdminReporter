@@ -106,6 +106,7 @@ const StatCard: React.FC<StatCardProps> = React.memo(
 
     return (
       <div
+        className="dashboard-card widget"
         style={{
           display: "flex",
           alignItems: "center",
@@ -525,6 +526,8 @@ const DashboardPage: React.FC = () => {
         }}
       >
         <button
+          type="button"
+          aria-label="Toggle dark mode"
           onClick={() => dispatch(toggleDarkMode())}
           style={{
             padding: "8px",
@@ -543,6 +546,11 @@ const DashboardPage: React.FC = () => {
 
       {/* Content Area */}
       <div
+        role="status"
+        aria-live="polite"
+        aria-label={
+          statsLoading ? "Dashboard data loading" : "Dashboard data loaded"
+        }
         style={{
           padding: "0 32px 32px",
           position: "relative",
@@ -607,6 +615,7 @@ const DashboardPage: React.FC = () => {
                 [...Array(4)].map((_, index) => (
                   <div
                     key={index}
+                    className="dashboard-card widget"
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -687,6 +696,7 @@ const DashboardPage: React.FC = () => {
           >
             {/* Recent Activity Overview */}
             <div
+              className="dashboard-card widget recent-reports"
               style={{
                 borderRadius: "16px",
                 background: darkMode
@@ -719,6 +729,8 @@ const DashboardPage: React.FC = () => {
                   Recent Activity
                 </h3>
                 <button
+                  type="button"
+                  aria-label="Refresh recent activity"
                   onClick={() => refetchStats()}
                   style={{
                     padding: "4px 12px",
@@ -847,6 +859,7 @@ const DashboardPage: React.FC = () => {
                     ))}
                   {reportStats.recentExecutions.length > 5 && (
                     <button
+                      type="button"
                       onClick={() => navigate("/reports/history")}
                       style={{
                         width: "100%",
@@ -897,6 +910,7 @@ const DashboardPage: React.FC = () => {
 
             {/* Report Categories */}
             <div
+              className="dashboard-card widget"
               style={{
                 borderRadius: "16px",
                 background: darkMode
@@ -946,7 +960,7 @@ const DashboardPage: React.FC = () => {
           </div>
 
           {/* Quick Access Templates */}
-          <div>
+          <div className="dashboard-card widget">
             <div
               style={{
                 display: "flex",
@@ -966,6 +980,7 @@ const DashboardPage: React.FC = () => {
                 Favorite Reports
               </h3>
               <button
+                type="button"
                 onClick={() => navigate("/reports")}
                 style={{
                   display: "flex",
@@ -1121,6 +1136,8 @@ const DashboardPage: React.FC = () => {
                             <IconComponent size={24} />
                           </div>
                           <button
+                            type="button"
+                            aria-label={`Generate ${template.name}`}
                             style={{
                               padding: "8px 16px",
                               background: "#4a5568",

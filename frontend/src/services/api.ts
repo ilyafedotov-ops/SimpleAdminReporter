@@ -57,12 +57,35 @@ class ApiService {
 
     // Response interceptor to handle common errors
     this.client.interceptors.response.use(
-      (response: AxiosResponse) => response,
+      (response: AxiosResponse) => {
+        if (response.headers["x-token-refresh-suggested"] === "true") {
+          if (isCookieAuthEnabled()) {
+            this.client.post("/auth/refresh", {}).catch((err) => {
+              console.error("Background token refresh failed:", err);
+            });
+          } else {
+            const refreshToken = localStorage.getItem("refreshToken");
+            if (refreshToken) {
+              this.refreshAccessToken(refreshToken).catch((err) => {
+                console.error("Background token refresh failed:", err);
+              });
+            }
+          }
+        }
+
+        return response;
+      },
       async (error: AxiosError) => {
         const config = error.config as CustomAxiosRequestConfig;
 
         // Handle authentication errors (401)
         if (error.response?.status === 401) {
+          // A failed login attempt is expected to surface as a form error.
+          // Do not run the global session-expiry redirect path for the login endpoint.
+          if (config?.url?.includes("/auth/login")) {
+            return Promise.reject(error);
+          }
+
           // Don't try to refresh for the refresh endpoint itself
           if (config?.url?.includes("/auth/refresh")) {
             localStorage.removeItem("accessToken");

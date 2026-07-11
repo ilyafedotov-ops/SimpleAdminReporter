@@ -59,6 +59,12 @@ const LoginPage: React.FC = () => {
 
   const isLoading = useAppSelector(selectAuthLoading);
   const error = useAppSelector(selectAuthError);
+  const searchParams = new URLSearchParams(location.search);
+  const oauthError = searchParams.get("error");
+  const oauthErrorDescription = searchParams.get("error_description");
+  const displayError = oauthError
+    ? [oauthError, oauthErrorDescription].filter(Boolean).join(": ")
+    : error;
 
   const [form] = Form.useForm();
   const [selectedAuthSource, setSelectedAuthSource] = useState<
@@ -160,10 +166,10 @@ const LoginPage: React.FC = () => {
         </Text>
       </div>
 
-      {error && (
+      {displayError && (
         <Alert
           message="Login Failed"
-          description={error}
+          description={displayError}
           type="error"
           showIcon
           style={{ marginBottom: 24 }}
@@ -191,7 +197,10 @@ const LoginPage: React.FC = () => {
         >
           <Select
             placeholder="Select authentication method"
-            onChange={setSelectedAuthSource}
+            onChange={(value) => {
+              setSelectedAuthSource(value);
+              form.resetFields(["username", "password"]);
+            }}
             suffixIcon={<CloudServerOutlined />}
             style={{ width: "100%" }}
             dropdownStyle={getDropdownStyle()}
@@ -334,6 +343,7 @@ const LoginPage: React.FC = () => {
             type="primary"
             htmlType="submit"
             loading={isLoading}
+            disabled={isLoading}
             icon={
               selectedAuthSource === "azure" ? <CloudOutlined /> : undefined
             }

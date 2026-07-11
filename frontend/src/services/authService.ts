@@ -84,6 +84,7 @@ export class AuthService {
     }>("/auth/refresh", { refreshToken });
 
     if (response.success && response.data) {
+      localStorage.removeItem("sessionId");
       localStorage.setItem("accessToken", response.data.accessToken || "");
       localStorage.setItem("refreshToken", response.data.refreshToken || "");
     }
@@ -115,11 +116,22 @@ export class AuthService {
     const token = localStorage.getItem("accessToken");
     const refreshToken = localStorage.getItem("refreshToken");
 
+    let user: User | null = null;
+    if (userStr) {
+      try {
+        user = JSON.parse(userStr);
+      } catch {
+        localStorage.removeItem("user");
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("isAuthenticated");
+      }
+    }
+
     return {
-      user: userStr ? JSON.parse(userStr) : null,
+      user,
       token,
       refreshToken,
-      isAuthenticated: !!token,
+      isAuthenticated: !!token && !!user,
       isLoading: false,
       error: null,
     };
