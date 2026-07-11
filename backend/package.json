@@ -106,7 +106,7 @@
     "@typescript-eslint/eslint-plugin": "^8.63.0",
     "@typescript-eslint/parser": "^8.63.0",
     "axios-cookiejar-support": "^7.0.0",
-    "eslint": "^9.39.4",
+    "eslint": "^10.7.0",
     "jest": "^30.4.2",
     "jest-extended": "^6.0.0",
     "jest-junit": "^16.0.0",
