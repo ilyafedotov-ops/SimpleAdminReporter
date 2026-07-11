@@ -1,4 +1,3 @@
-
 # ==================== docker-compose.ci.yml ====================
 # Docker Compose configuration for CI/CD testing
 #version: '3.8'
@@ -26,7 +25,8 @@ services:
 
   backend-test:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
       target: test
     environment:
       - NODE_ENV=test

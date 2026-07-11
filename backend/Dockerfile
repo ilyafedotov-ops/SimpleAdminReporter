@@ -2,20 +2,20 @@
 # Build stage
 FROM node:22-alpine AS builder
 
-WORKDIR /app
+WORKDIR /app/backend
 
 # Install build dependencies
 RUN apk add --no-cache python3 make g++ curl
 
 # Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY backend/package*.json ./
+COPY backend/tsconfig.json ./
 
 # Install all dependencies (including devDependencies for building)
 RUN npm ci --prefer-offline
 
 # Copy source files
-COPY src ./src
+COPY backend/src ./src
 
 # Build TypeScript
 RUN npm run build
@@ -23,21 +23,22 @@ RUN npm run build
 # Test stage (for CI)
 FROM node:22-alpine AS test
 
-WORKDIR /app
+WORKDIR /app/backend
 
 # Install test dependencies
 RUN apk add --no-cache python3 make g++ curl postgresql-client
 
 # Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
-COPY jest.config.js* ./
+COPY backend/package*.json ./
+COPY backend/tsconfig.json ./
+COPY backend/jest.config.js* ./
 
 # Install all dependencies
 RUN npm ci
 
-# Copy everything for testing
-COPY . .
+# Copy backend and database for testing
+COPY backend/ .
+COPY database /app/backend/database
 
 # Run linting and type checking
 RUN npm run lint
@@ -49,7 +50,7 @@ CMD ["npm", "run", "test:ci"]
 # Production stage
 FROM node:22-alpine AS production
 
-WORKDIR /app
+WORKDIR /app/backend
 
 # Install runtime dependencies
 RUN apk add --no-cache \
@@ -63,20 +64,21 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs
 
 # Copy package files
-COPY package*.json ./
+COPY backend/package*.json ./
 
 # Install production dependencies only
 RUN npm ci --only=production --prefer-offline && \
     npm cache clean --force
 
 # Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/backend/dist ./dist
+COPY database /app/backend/database
 
 # Copy any additional runtime files
-COPY package.json ./
+COPY backend/package.json ./
 
 # Create necessary directories and set permissions
-RUN mkdir -p /app/logs /app/uploads /app/temp /app/exports && \
+RUN mkdir -p /app/backend/logs /app/backend/uploads /app/backend/temp /app/backend/exports && \
     chown -R nodejs:nodejs /app
 
 # Switch to non-root user
@@ -98,20 +100,21 @@ CMD ["npm", "start"]
 # Development stage
 FROM node:22-alpine AS development
 
-WORKDIR /app
+WORKDIR /app/backend
 
 # Install build dependencies including nodemon
 RUN apk add --no-cache python3 make g++ curl postgresql-client
 
 # Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY backend/package*.json ./
+COPY backend/tsconfig.json ./
 
 # Install all dependencies
 RUN npm ci
 
 # Copy source files (will be overridden by volume mount in dev)
-COPY src ./src
+COPY backend/src ./src
+COPY database /app/backend/database
 
 # Expose port
 EXPOSE 5000

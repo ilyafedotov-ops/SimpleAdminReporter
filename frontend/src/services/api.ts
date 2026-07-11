@@ -1,9 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import axios, { AxiosInstance, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { ApiResponse, PaginatedResponse, HealthCheck } from '@/types';
-import { parseError, logError } from '@/utils/errorHandler';
-import { queueApiCall, ApiPriority } from '@/utils/apiQueue';
-import { queryCache, createCacheKey } from '@/utils/apiCache';
+import axios, {
+  AxiosInstance,
+  AxiosResponse,
+  AxiosError,
+  InternalAxiosRequestConfig,
+} from "axios";
+import { ApiResponse, PaginatedResponse, HealthCheck } from "@/types";
+import { parseError, logError } from "@/utils/errorHandler";
+import { queueApiCall, ApiPriority } from "@/utils/apiQueue";
+import { queryCache, createCacheKey } from "@/utils/apiCache";
+import { getAccessToken, isCookieAuthEnabled } from "@/utils/authToken";
 
 // Extend AxiosRequestConfig to include our custom _retry property
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -15,15 +21,20 @@ class ApiService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = (import.meta.env.VITE_API_URL?.trim() && import.meta.env.VITE_API_URL.trim() !== '') ? import.meta.env.VITE_API_URL.trim() : '/api';
-    
+    this.baseURL =
+      import.meta.env.VITE_API_URL?.trim() &&
+      import.meta.env.VITE_API_URL.trim() !== ""
+        ? import.meta.env.VITE_API_URL.trim()
+        : "/api";
+    const cookieAuth = isCookieAuthEnabled();
+
     this.client = axios.create({
       baseURL: this.baseURL,
       timeout: 30000,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      withCredentials: false,
+      withCredentials: cookieAuth,
     });
 
     this.setupInterceptors();
@@ -33,13 +44,15 @@ class ApiService {
     // Request interceptor to add JWT auth token
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+        if (!isCookieAuthEnabled()) {
+          const token = getAccessToken();
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
         }
         return config;
       },
-      (error) => Promise.reject(error)
+      (error) => Promise.reject(error),
     );
 
     // Response interceptor to handle common errors
@@ -47,29 +60,43 @@ class ApiService {
       (response: AxiosResponse) => response,
       async (error: AxiosError) => {
         const config = error.config as CustomAxiosRequestConfig;
-        
+
         // Handle authentication errors (401)
         if (error.response?.status === 401) {
           // Don't try to refresh for the refresh endpoint itself
-          if (config?.url?.includes('/auth/refresh')) {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+          if (config?.url?.includes("/auth/refresh")) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("user");
+            window.location.href = "/login";
             return Promise.reject(error);
           }
-          
+
           // Try to refresh token
-          const refreshToken = localStorage.getItem('refreshToken');
+          const refreshToken = localStorage.getItem("refreshToken");
           if (refreshToken && !config?._retry) {
             config._retry = true; // Mark that we've tried to refresh
             try {
               const response = await this.refreshAccessToken(refreshToken);
-              localStorage.setItem('accessToken', (response as { data: { accessToken: string; refreshToken?: string } }).data.accessToken);
-              if ((response as { data: { refreshToken?: string } }).data.refreshToken) {
-                localStorage.setItem('refreshToken', (response as { data: { refreshToken: string } }).data.refreshToken);
+              localStorage.setItem(
+                "accessToken",
+                (
+                  response as {
+                    data: { accessToken: string; refreshToken?: string };
+                  }
+                ).data.accessToken,
+              );
+              if (
+                (response as { data: { refreshToken?: string } }).data
+                  .refreshToken
+              ) {
+                localStorage.setItem(
+                  "refreshToken",
+                  (response as { data: { refreshToken: string } }).data
+                    .refreshToken,
+                );
               }
-              
+
               // Retry the original request
               if (config) {
                 config.headers.Authorization = `Bearer ${(response as { data: { accessToken: string } }).data.accessToken}`;
@@ -77,42 +104,50 @@ class ApiService {
               }
             } catch (_refreshError) {
               // Refresh failed, clear storage and redirect to login
-              localStorage.removeItem('accessToken');
-              localStorage.removeItem('refreshToken');
-              localStorage.removeItem('user');
-              window.location.href = '/login';
+              localStorage.removeItem("accessToken");
+              localStorage.removeItem("refreshToken");
+              localStorage.removeItem("user");
+              window.location.href = "/login";
             }
           } else {
             // No refresh token or already retried, redirect to login
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("user");
+            window.location.href = "/login";
           }
         }
         return Promise.reject(error);
-      }
+      },
     );
   }
 
-  private async refreshAccessToken(refreshToken: string): Promise<AxiosResponse> {
-    return this.client.post('/auth/refresh', { refreshToken });
+  private async refreshAccessToken(
+    refreshToken: string,
+  ): Promise<AxiosResponse> {
+    return this.client.post("/auth/refresh", { refreshToken });
   }
 
   // Generic HTTP methods
   async get<T = unknown>(
-    url: string, 
+    url: string,
     params?: Record<string, unknown>,
-    options?: { 
+    options?: {
       useCache?: boolean;
       cacheTTL?: number;
       priority?: number;
       immediate?: boolean;
       signal?: AbortSignal;
-    }
+    },
   ): Promise<ApiResponse<T>> {
-    const { useCache = true, cacheTTL, priority = ApiPriority.NORMAL, immediate = false, signal } = options || {};
-    
+    const {
+      useCache = true,
+      cacheTTL,
+      priority = ApiPriority.NORMAL,
+      immediate = false,
+      signal,
+    } = options || {};
+
     // Check cache first
     if (useCache) {
       const cacheKey = createCacheKey(url, params);
@@ -122,46 +157,55 @@ class ApiService {
         return cached;
       }
     }
-    
+
     // Queue the request
-    return queueApiCall(async () => {
-      try {
-        const response = await this.client.get(url, { params, signal });
-        
-        // Cache successful responses
-        if (useCache && (response as ApiResponse).data) {
-          const cacheKey = createCacheKey(url, params);
-          queryCache.set(cacheKey, (response as ApiResponse).data, cacheTTL);
+    return queueApiCall(
+      async () => {
+        try {
+          const response = await this.client.get<ApiResponse<T>>(url, {
+            params,
+            signal,
+          });
+
+          // Cache successful responses
+          if (useCache && response.data) {
+            const cacheKey = createCacheKey(url, params);
+            queryCache.set(cacheKey, response.data, cacheTTL);
+          }
+
+          return response.data;
+        } catch (error) {
+          throw this.handleError(error);
         }
-        
-        return (response as ApiResponse).data;
-      } catch (error) {
-        throw this.handleError(error);
-      }
-    }, { priority, immediate });
+      },
+      { priority, immediate },
+    );
   }
 
   async post<T = unknown>(
-    url: string, 
+    url: string,
     data?: unknown,
-    options?: { priority?: number; immediate?: boolean }
+    options?: { priority?: number; immediate?: boolean },
   ): Promise<ApiResponse<T>> {
     const { priority = ApiPriority.NORMAL, immediate = false } = options || {};
-    
-    return queueApiCall(async () => {
-      try {
-        const response = await this.client.post(url, data);
-        return (response as ApiResponse).data;
-      } catch (error) {
-        throw this.handleError(error);
-      }
-    }, { priority, immediate });
+
+    return queueApiCall(
+      async () => {
+        try {
+          const response = await this.client.post<ApiResponse<T>>(url, data);
+          return response.data;
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { priority, immediate },
+    );
   }
 
-  async put<T = unknown>(url: string, data?: unknown): Promise<T> {
+  async put<T = unknown>(url: string, data?: unknown): Promise<ApiResponse<T>> {
     try {
-      const response = await this.client.put(url, data);
-      return (response as { data: T }).data;
+      const response = await this.client.put<ApiResponse<T>>(url, data);
+      return response.data;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -177,16 +221,20 @@ class ApiService {
   }
 
   async getPaginated<T = unknown>(
-    url: string, 
+    url: string,
     params?: Record<string, unknown>,
-    options?: { 
+    options?: {
       useCache?: boolean;
       cacheTTL?: number;
       priority?: number;
-    }
+    },
   ): Promise<PaginatedResponse<T>> {
-    const { useCache = true, cacheTTL, priority = ApiPriority.NORMAL } = options || {};
-    
+    const {
+      useCache = true,
+      cacheTTL,
+      priority = ApiPriority.NORMAL,
+    } = options || {};
+
     // Check cache first
     if (useCache) {
       const cacheKey = createCacheKey(`paginated:${url}`, params);
@@ -196,36 +244,41 @@ class ApiService {
         return cached;
       }
     }
-    
-    return queueApiCall(async () => {
-      try {
-        const response = await this.client.get(url, { params });
-        
-        // Cache successful responses
-        if (useCache && (response as ApiResponse).data) {
-          const cacheKey = createCacheKey(`paginated:${url}`, params);
-          queryCache.set(cacheKey, (response as ApiResponse).data, cacheTTL);
+
+    return queueApiCall(
+      async () => {
+        try {
+          const response = await this.client.get<PaginatedResponse<T>>(url, {
+            params,
+          });
+
+          // Cache successful responses
+          if (useCache && response.data) {
+            const cacheKey = createCacheKey(`paginated:${url}`, params);
+            queryCache.set(cacheKey, response.data, cacheTTL);
+          }
+
+          return response.data;
+        } catch (error) {
+          throw this.handleError(error);
         }
-        
-        return (response as ApiResponse).data;
-      } catch (error) {
-        throw this.handleError(error);
-      }
-    }, { priority });
+      },
+      { priority },
+    );
   }
 
   // File download method
   async downloadFile(url: string, filename?: string): Promise<void> {
     try {
       const response = await this.client.get(url, {
-        responseType: 'blob',
+        responseType: "blob",
       });
 
       // Create blob link to download
       const href = URL.createObjectURL((response as { data: Blob }).data);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = href;
-      link.download = filename || 'download';
+      link.download = filename || "download";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -236,24 +289,30 @@ class ApiService {
   }
 
   // File upload method
-  async uploadFile<T = unknown>(url: string, file: File, progressCallback?: (progress: number) => void): Promise<ApiResponse<T>> {
+  async uploadFile<T = unknown>(
+    url: string,
+    file: File,
+    progressCallback?: (progress: number) => void,
+  ): Promise<ApiResponse<T>> {
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
 
       const response = await this.client.post(url, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
         onUploadProgress: (progressEvent) => {
           if (progressCallback && progressEvent.total) {
-            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
             progressCallback(progress);
           }
         },
       });
 
-      return (response as AxiosResponse<unknown>).data;
+      return (response as AxiosResponse<ApiResponse<T>>).data;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -262,10 +321,10 @@ class ApiService {
   private handleError(error: unknown): Error {
     // Use the centralized error parser
     const appError = parseError(error);
-    
+
     // Log the error with context
-    logError(appError, 'ApiService');
-    
+    logError(appError, "ApiService");
+
     // Return a standard Error object for backward compatibility
     return new Error(appError.message);
   }
@@ -273,8 +332,9 @@ class ApiService {
   // Health check method
   async healthCheck(): Promise<HealthCheck | ApiResponse<HealthCheck>> {
     try {
-      const response = await this.client.get('/health');
-      return (response as AxiosResponse<HealthCheck | ApiResponse<HealthCheck>>).data;
+      const response = await this.client.get("/health");
+      return (response as AxiosResponse<HealthCheck | ApiResponse<HealthCheck>>)
+        .data;
     } catch (error) {
       throw this.handleError(error);
     }

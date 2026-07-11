@@ -1,57 +1,66 @@
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-import tsconfigPaths from 'vite-tsconfig-paths';
-import path from 'path';
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
-    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']
+    extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"],
   },
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: './src/setupTests.ts',
+    environment: "jsdom",
+    setupFiles: "./src/setupTests.ts",
     testTimeout: 30000,
     exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/cypress/**',
-      '**/.{idea,git,cache,output,temp}/**',
-      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*',
-      '**/e2e/**',
-      '**/playwright*/**'
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/cypress/**",
+      "**/.{idea,git,cache,output,temp}/**",
+      "**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*",
+      "**/e2e/**",
+      "**/playwright*/**",
+      "**/*.integration.test.tsx",
+      "**/test-scenarios/**",
     ],
-    include: [
-      'src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
-    ],
+    include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     env: {
-      VITE_USE_COOKIE_AUTH: 'true'
+      VITE_USE_COOKIE_AUTH: "true",
     },
-    reporters: ['default', 'junit'],
+    reporters: ["default", "junit"],
     outputFile: {
-      junit: './junit.xml'
+      junit: "./junit.xml",
     },
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov', 'cobertura'],
-      reportsDirectory: './coverage',
+      provider: "v8",
+      reporter: ["text", "json", "html", "lcov", "cobertura"],
+      reportsDirectory: "./coverage",
+      thresholds: {
+        lines: 20,
+        functions: 45,
+        branches: 40,
+        statements: 20,
+      },
       exclude: [
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/build/**',
-        '**/coverage/**',
-        '**/*.config.*',
-        '**/e2e/**',
-        '**/playwright*/**',
-        '**/.{idea,git,cache,output,temp}/**',
-        '**/src/test-setup.ts',
-        '**/src/setupTests.ts',
-        '**/*.d.ts'
-      ]
-    }
-  }
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/coverage/**",
+        "**/*.config.*",
+        "**/e2e/**",
+        "**/playwright*/**",
+        "**/.{idea,git,cache,output,temp}/**",
+        "**/src/test-setup.ts",
+        "**/src/setupTests.ts",
+        "**/*.d.ts",
+      ],
+    },
+  },
 });

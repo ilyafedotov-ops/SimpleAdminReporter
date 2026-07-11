@@ -36,8 +36,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       target: development
     container_name: reporting-backend
     ports:
@@ -69,8 +69,8 @@ services:
       - CREDENTIAL_ENCRYPTION_KEY=${CREDENTIAL_ENCRYPTION_KEY}
       - CREDENTIAL_ENCRYPTION_SALT=${CREDENTIAL_ENCRYPTION_SALT}
     volumes:
-      - ./backend/src:/app/src:ro
-      - ./backend/package.json:/app/package.json:ro
+      - ./backend/src:/app/backend/src:ro
+      - ./backend/package.json:/app/backend/package.json:ro
     depends_on:
       - postgres
       - redis
@@ -79,7 +79,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: reporting-postgres
     ports:
       - "5432:5432"

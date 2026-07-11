@@ -1,18 +1,18 @@
-import crypto from 'crypto';
-import { logger } from '@/utils/logger';
+import crypto from "crypto";
+import { logger } from "@/utils/logger";
 
 /**
  * Encryption utility for securing sensitive credentials
  * Uses AES-256-GCM for authenticated encryption
  */
 export class CredentialEncryption {
-  private algorithm = 'aes-256-gcm';
+  private algorithm = "aes-256-gcm";
   private keyLength = 32; // 256 bits
   private ivLength = 16; // 128 bits
   private tagLength = 16; // 128 bits
   private saltLength = 32; // 256 bits
   private iterations = 100000; // PBKDF2 iterations
-  
+
   private masterKey: Buffer;
   /**
    * Raw password taken from CREDENTIAL_ENCRYPTION_KEY. Storing it allows the
@@ -23,13 +23,17 @@ export class CredentialEncryption {
 
   constructor() {
     const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY;
-    
+
     if (!encryptionKey) {
-      throw new Error('CREDENTIAL_ENCRYPTION_KEY environment variable is not set');
+      throw new Error(
+        "CREDENTIAL_ENCRYPTION_KEY environment variable is not set",
+      );
     }
 
     if (encryptionKey.length < 32) {
-      throw new Error('CREDENTIAL_ENCRYPTION_KEY must be at least 32 characters long');
+      throw new Error(
+        "CREDENTIAL_ENCRYPTION_KEY must be at least 32 characters long",
+      );
     }
 
     // Keep the raw password so we can derive per-ciphertext keys later
@@ -37,9 +41,15 @@ export class CredentialEncryption {
 
     // Derive a key from the provided password using PBKDF2 (legacy / global-salt mode)
     const salt = this.getOrCreateSalt();
-    this.masterKey = crypto.pbkdf2Sync(encryptionKey, salt, this.iterations, this.keyLength, 'sha256');
-    
-    logger.info('Credential encryption service initialized');
+    this.masterKey = crypto.pbkdf2Sync(
+      encryptionKey,
+      salt,
+      this.iterations,
+      this.keyLength,
+      "sha256",
+    );
+
+    logger.info("Credential encryption service initialized");
   }
 
   /**
@@ -48,15 +58,20 @@ export class CredentialEncryption {
    */
   private getOrCreateSalt(): Buffer {
     const saltEnv = process.env.CREDENTIAL_ENCRYPTION_SALT;
-    
+
     if (saltEnv) {
-      return Buffer.from(saltEnv, 'hex');
+      return Buffer.from(saltEnv, "hex");
     }
 
-    // Generate a new salt if not provided
+    // Generate a new salt if not provided (development only)
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("CREDENTIAL_ENCRYPTION_SALT is required in production");
+    }
+
     const newSalt = crypto.randomBytes(this.saltLength);
-    logger.warn('Generated new encryption salt. Set CREDENTIAL_ENCRYPTION_SALT environment variable for persistence.');
-    logger.info(`CREDENTIAL_ENCRYPTION_SALT=${newSalt.toString('hex')}`);
+    logger.warn(
+      "Generated new encryption salt for development. Set CREDENTIAL_ENCRYPTION_SALT for persistence.",
+    );
     return newSalt;
   }
 
@@ -78,15 +93,19 @@ export class CredentialEncryption {
         salt,
         this.iterations,
         this.keyLength,
-        'sha256'
+        "sha256",
       );
 
       // 2. Per-credential random IV
       const iv = crypto.randomBytes(this.ivLength);
-      const cipher = crypto.createCipheriv(this.algorithm, key, iv) as crypto.CipherGCM;
+      const cipher = crypto.createCipheriv(
+        this.algorithm,
+        key,
+        iv,
+      ) as crypto.CipherGCM;
 
       const encrypted = Buffer.concat([
-        cipher.update(plaintext, 'utf8'),
+        cipher.update(plaintext, "utf8"),
         cipher.final(),
       ]);
 
@@ -96,10 +115,10 @@ export class CredentialEncryption {
       const combined = Buffer.concat([salt, iv, authTag, encrypted]);
 
       // Prefix with version marker so we can distinguish formats later
-      return `v1:${combined.toString('base64')}`;
+      return `v1:${combined.toString("base64")}`;
     } catch (error) {
-      logger.error('Encryption failed:', error);
-      throw new Error('Failed to encrypt credential');
+      logger.error("Encryption failed:", error);
+      throw new Error("Failed to encrypt credential");
     }
   }
 
@@ -113,9 +132,9 @@ export class CredentialEncryption {
       let offset = 0;
 
       // Detect versioned payloads by prefix
-      if (encryptedData.startsWith('v1:')) {
+      if (encryptedData.startsWith("v1:")) {
         // New format with embedded salt
-        combined = Buffer.from(encryptedData.slice(3), 'base64');
+        combined = Buffer.from(encryptedData.slice(3), "base64");
 
         const salt = combined.slice(0, this.saltLength);
         offset += this.saltLength;
@@ -125,11 +144,11 @@ export class CredentialEncryption {
           salt,
           this.iterations,
           this.keyLength,
-          'sha256'
+          "sha256",
         );
       } else {
         // Legacy format relies on global salt and masterKey
-        combined = Buffer.from(encryptedData, 'base64');
+        combined = Buffer.from(encryptedData, "base64");
         key = this.masterKey;
       }
 
@@ -141,17 +160,21 @@ export class CredentialEncryption {
       );
       const encrypted = combined.slice(offset + this.ivLength + this.tagLength);
 
-      const decipher = crypto.createDecipheriv(this.algorithm, key, iv) as crypto.DecipherGCM;
+      const decipher = crypto.createDecipheriv(
+        this.algorithm,
+        key,
+        iv,
+      ) as crypto.DecipherGCM;
       decipher.setAuthTag(authTag);
 
       const decrypted = Buffer.concat([
         decipher.update(encrypted),
         decipher.final(),
       ]);
-      return decrypted.toString('utf8');
+      return decrypted.toString("utf8");
     } catch (error) {
-      logger.error('Decryption failed:', error);
-      throw new Error('Failed to decrypt credential');
+      logger.error("Decryption failed:", error);
+      throw new Error("Failed to decrypt credential");
     }
   }
 
@@ -162,15 +185,15 @@ export class CredentialEncryption {
    */
   extractSalt(encryptedData: string): string | null {
     try {
-      if (!encryptedData.startsWith('v1:')) {
+      if (!encryptedData.startsWith("v1:")) {
         return null;
       }
-      
-      const combined = Buffer.from(encryptedData.slice(3), 'base64');
+
+      const combined = Buffer.from(encryptedData.slice(3), "base64");
       const salt = combined.slice(0, this.saltLength);
-      return salt.toString('hex');
+      return salt.toString("hex");
     } catch (error) {
-      logger.error('Failed to extract salt:', error);
+      logger.error("Failed to extract salt:", error);
       return null;
     }
   }
@@ -183,37 +206,44 @@ export class CredentialEncryption {
    */
   decryptWithSalt(encryptedData: string, saltHex: string): string {
     try {
-      if (encryptedData.startsWith('v1:')) {
+      if (encryptedData.startsWith("v1:")) {
         // If it's already v1, use regular decrypt
         return this.decrypt(encryptedData);
       }
-      
-      const salt = Buffer.from(saltHex, 'hex');
+
+      const salt = Buffer.from(saltHex, "hex");
       const key = crypto.pbkdf2Sync(
         this.encryptionPassword,
         salt,
         this.iterations,
         this.keyLength,
-        'sha256'
+        "sha256",
       );
-      
-      const combined = Buffer.from(encryptedData, 'base64');
+
+      const combined = Buffer.from(encryptedData, "base64");
       const iv = combined.slice(0, this.ivLength);
-      const authTag = combined.slice(this.ivLength, this.ivLength + this.tagLength);
+      const authTag = combined.slice(
+        this.ivLength,
+        this.ivLength + this.tagLength,
+      );
       const encrypted = combined.slice(this.ivLength + this.tagLength);
-      
-      const decipher = crypto.createDecipheriv(this.algorithm, key, iv) as crypto.DecipherGCM;
+
+      const decipher = crypto.createDecipheriv(
+        this.algorithm,
+        key,
+        iv,
+      ) as crypto.DecipherGCM;
       decipher.setAuthTag(authTag);
-      
+
       const decrypted = Buffer.concat([
         decipher.update(encrypted),
-        decipher.final()
+        decipher.final(),
       ]);
-      
-      return decrypted.toString('utf8');
+
+      return decrypted.toString("utf8");
     } catch (error) {
-      logger.error('Decryption with salt failed:', error);
-      throw new Error('Failed to decrypt credential with provided salt');
+      logger.error("Decryption with salt failed:", error);
+      throw new Error("Failed to decrypt credential with provided salt");
     }
   }
 
@@ -228,16 +258,16 @@ export class CredentialEncryption {
     // Temporarily create an instance with the old key
     const oldEncryption = new CredentialEncryption();
     oldEncryption.masterKey = crypto.pbkdf2Sync(
-      oldKey, 
-      this.getOrCreateSalt(), 
-      this.iterations, 
-      this.keyLength, 
-      'sha256'
+      oldKey,
+      this.getOrCreateSalt(),
+      this.iterations,
+      this.keyLength,
+      "sha256",
     );
-    
+
     // Decrypt with old key
     const plaintext = oldEncryption.decrypt(encryptedData);
-    
+
     // Re-encrypt with current (new) key
     return this.encrypt(plaintext);
   }
@@ -248,14 +278,15 @@ export class CredentialEncryption {
    * @returns Random password string
    */
   generateSecurePassword(length: number = 32): string {
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const charset =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
     const randomBytes = crypto.randomBytes(length);
-    let password = '';
-    
+    let password = "";
+
     for (let i = 0; i < length; i++) {
       password += charset[randomBytes[i] % charset.length];
     }
-    
+
     return password;
   }
 
@@ -267,9 +298,9 @@ export class CredentialEncryption {
    */
   hash(value: string): string {
     return crypto
-      .createHash('sha256')
-      .update(value + this.masterKey.toString('hex'))
-      .digest('hex');
+      .createHash("sha256")
+      .update(value + this.masterKey.toString("hex"))
+      .digest("hex");
   }
 
   /**
@@ -280,10 +311,7 @@ export class CredentialEncryption {
    */
   compareHash(plaintext: string, hash: string): boolean {
     const computedHash = this.hash(plaintext);
-    return crypto.timingSafeEqual(
-      Buffer.from(computedHash),
-      Buffer.from(hash)
-    );
+    return crypto.timingSafeEqual(Buffer.from(computedHash), Buffer.from(hash));
   }
 }
 

@@ -1,34 +1,39 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import { QueryBuilderModal } from '../QueryBuilderModal';
-import { AppError, ErrorType } from '@/utils/errorHandler';
-import { uiSlice } from '@/store/slices/uiSlice';
+import React from "react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
+import { QueryBuilderModal } from "../QueryBuilderModal";
+import { AppError, ErrorType } from "@/utils/errorHandler";
+import uiSliceReducer from "@/store/slices/uiSlice";
+import * as useFieldDiscoveryModule from "@/hooks/useFieldDiscovery";
+import * as useErrorHandlerModule from "@/hooks/useErrorHandler";
+import * as credentialsApiModule from "@/services/credentials.api";
 
 // Mock dependencies
-vi.mock('@/services/credentials.api', () => ({
+vi.mock("@/services/credentials.api", () => ({
   credentialsAPI: {
     getCredentials: vi.fn(),
   },
 }));
 
-vi.mock('@/hooks/useFieldDiscovery', () => ({
+vi.mock("@/hooks/useFieldDiscovery", () => ({
   useFieldDiscovery: vi.fn(),
 }));
 
-vi.mock('@/hooks/useErrorHandler', () => ({
-  useErrorHandler: () => ({
-    handlePreviewOperation: vi.fn(),
-    createPreviewRetryHandler: vi.fn(),
-    handlePreviewError: vi.fn(),
-  }),
+vi.mock("@/hooks/useErrorHandler", () => ({
+  useErrorHandler: vi.fn(),
 }));
 
 // Mock antd message
-vi.mock('antd', async () => {
-  const actual = await vi.importActual('antd');
+vi.mock("antd", async () => {
+  const actual = await vi.importActual("antd");
   return {
     ...actual,
     message: {
@@ -40,47 +45,67 @@ vi.mock('antd', async () => {
   };
 });
 
+vi.mock("../../auth/MsalAzureAuthFlow", () => ({
+  MsalAzureAuthFlow: () => null,
+}));
+
 // Mock child components
-vi.mock('../EnhancedFieldExplorer', () => ({
-  EnhancedFieldExplorer: ({ onFieldSelect, onFieldDeselect }: { onFieldSelect: (field: unknown) => void; onFieldDeselect: (field: unknown) => void }) => (
+vi.mock("../EnhancedFieldExplorer", () => ({
+  EnhancedFieldExplorer: ({
+    onFieldSelect,
+    onFieldDeselect,
+  }: {
+    onFieldSelect: (field: unknown) => void;
+    onFieldDeselect: (field: unknown) => void;
+  }) => (
     <div data-testid="field-explorer">
-      <button onClick={() => onFieldSelect({ fieldName: 'testField', displayName: 'Test Field' })}>
+      <button
+        onClick={() =>
+          onFieldSelect({ fieldName: "testField", displayName: "Test Field" })
+        }
+      >
         Select Field
       </button>
-      <button onClick={() => onFieldDeselect({ fieldName: 'testField' })}>
+      <button onClick={() => onFieldDeselect({ fieldName: "testField" })}>
         Deselect Field
       </button>
     </div>
   ),
 }));
 
-vi.mock('./VisualFilterBuilder', () => ({
+vi.mock("../VisualFilterBuilder", () => ({
   default: ({ onChange }: { onChange: (filters: unknown[]) => void }) => (
     <div data-testid="filter-builder">
-      <button onClick={() => onChange([{ field: 'testField', operator: 'equals', value: 'test' }])}>
+      <button
+        onClick={() =>
+          onChange([{ field: "testField", operator: "equals", value: "test" }])
+        }
+      >
         Add Filter
       </button>
     </div>
   ),
 }));
 
-vi.mock('./QueryVisualization', () => ({
-  QueryVisualization: () => <div data-testid="query-visualization">Query Visualization</div>,
+vi.mock("../QueryVisualization", () => ({
+  QueryVisualization: () => (
+    <div data-testid="query-visualization">Query Visualization</div>
+  ),
 }));
 
-vi.mock('../reports/ReportViewer', () => ({
-  ReportViewer: ({ 
-    error, 
-    onRetry, 
-    onGoBack, 
+vi.mock("../reports/ReportViewer", () => ({
+  ReportViewer: ({
+    error,
+    onRetry,
+    onGoBack,
     loading,
-    enableRecovery 
-  }: { 
-    error?: string; 
-    onRetry?: () => void; 
-    onGoBack?: () => void; 
-    loading?: boolean; 
-    enableRecovery?: boolean; 
+    enableRecovery,
+  }: {
+    error?: string;
+    onRetry?: () => void;
+    onGoBack?: () => void;
+    loading?: boolean;
+    enableRecovery?: boolean;
   }) => (
     <div data-testid="report-viewer">
       {error && <div data-testid="report-error">{error}</div>}
@@ -100,21 +125,25 @@ vi.mock('../reports/ReportViewer', () => ({
   ),
 }));
 
-vi.mock('./QueryPreviewErrorBoundary', () => ({
-  QueryPreviewErrorBoundary: ({ 
-    children, 
-    onRetry, 
-    onGoBack, 
+vi.mock("../QueryPreviewErrorBoundary", () => ({
+  QueryPreviewErrorBoundary: ({
+    children,
+    onRetry,
+    onGoBack,
     maxRetries,
-    context 
-  }: { 
-    children?: React.ReactNode; 
-    onRetry?: () => void; 
-    onGoBack?: () => void; 
+    context,
+  }: {
+    children?: React.ReactNode;
+    onRetry?: () => void;
+    onGoBack?: () => void;
     maxRetries?: number;
-    context?: string; 
+    context?: string;
   }) => (
-    <div data-testid="error-boundary" data-context={context} data-max-retries={maxRetries}>
+    <div
+      data-testid="error-boundary"
+      data-context={context}
+      data-max-retries={maxRetries}
+    >
       {onRetry && (
         <button data-testid="boundary-retry" onClick={onRetry}>
           Boundary Retry
@@ -134,7 +163,7 @@ vi.mock('./QueryPreviewErrorBoundary', () => ({
 const createMockStore = (initialState = {}) => {
   return configureStore({
     reducer: {
-      ui: uiSlice.reducer,
+      ui: uiSliceReducer,
     },
     preloadedState: {
       ui: {
@@ -145,14 +174,14 @@ const createMockStore = (initialState = {}) => {
   });
 };
 
-describe('QueryBuilderModal Integration Tests', () => {
+describe("QueryBuilderModal Integration Tests", () => {
   let mockStore: ReturnType<typeof createMockStore>;
   let mockUseFieldDiscovery: unknown;
   let mockUseErrorHandler: unknown;
   let mockCredentialsAPI: unknown;
 
   const defaultProps = {
-    dataSource: 'ad' as const,
+    dataSource: "ad" as const,
     onClose: vi.fn(),
     onSave: vi.fn(),
     onExecute: vi.fn(),
@@ -167,17 +196,17 @@ describe('QueryBuilderModal Integration Tests', () => {
     mockUseFieldDiscovery = {
       fields: [
         {
-          fieldName: 'sAMAccountName',
-          displayName: 'Username',
-          dataType: 'string',
-          category: 'basic',
+          fieldName: "sAMAccountName",
+          displayName: "Username",
+          dataType: "string",
+          category: "basic",
           isSearchable: true,
         },
         {
-          fieldName: 'displayName',
-          displayName: 'Display Name',
-          dataType: 'string',
-          category: 'basic',
+          fieldName: "displayName",
+          displayName: "Display Name",
+          dataType: "string",
+          category: "basic",
           isSearchable: true,
         },
       ],
@@ -189,7 +218,11 @@ describe('QueryBuilderModal Integration Tests', () => {
       setCredentialId: vi.fn(),
     };
 
-    // useFieldDiscovery is already mocked at the top of the file
+    vi.mocked(useFieldDiscoveryModule.useFieldDiscovery).mockReturnValue(
+      mockUseFieldDiscovery as ReturnType<
+        typeof useFieldDiscoveryModule.useFieldDiscovery
+      >,
+    );
 
     // Setup error handler mock
     mockUseErrorHandler = {
@@ -198,7 +231,11 @@ describe('QueryBuilderModal Integration Tests', () => {
       handlePreviewError: vi.fn(),
     };
 
-    // useErrorHandler is already mocked at the top of the file
+    vi.mocked(useErrorHandlerModule.useErrorHandler).mockReturnValue(
+      mockUseErrorHandler as ReturnType<
+        typeof useErrorHandlerModule.useErrorHandler
+      >,
+    );
 
     // Setup credentials API mock
     mockCredentialsAPI = {
@@ -207,8 +244,8 @@ describe('QueryBuilderModal Integration Tests', () => {
         data: [
           {
             id: 1,
-            credentialName: 'Test Credential',
-            username: 'test@domain.com',
+            credentialName: "Test Credential",
+            username: "test@domain.com",
             isActive: true,
             isDefault: true,
           },
@@ -216,7 +253,9 @@ describe('QueryBuilderModal Integration Tests', () => {
       }),
     };
 
-    // credentialsAPI is already mocked at the top of the file
+    vi.mocked(
+      credentialsApiModule.credentialsAPI.getCredentials,
+    ).mockImplementation(mockCredentialsAPI.getCredentials);
 
     vi.useFakeTimers();
   });
@@ -229,82 +268,85 @@ describe('QueryBuilderModal Integration Tests', () => {
     return render(
       <Provider store={mockStore}>
         <QueryBuilderModal {...defaultProps} {...props} />
-      </Provider>
+      </Provider>,
     );
   };
 
-  describe('Error Boundary Integration', () => {
-    it('renders QueryPreviewErrorBoundary with correct props in results step', async () => {
+  describe("Error Boundary Integration", () => {
+    it("renders QueryPreviewErrorBoundary with correct props in results step", async () => {
       renderComponent();
 
       // Navigate to step 1 (configure)
-      fireEvent.click(screen.getByText('Next'));
+      fireEvent.click(screen.getByText("Next"));
 
       // Fill in required fields
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
 
       // Navigate to step 2 (results) via preview execution
-      const previewButton = screen.getByText('Review Full Report');
+      const previewButton = screen.getByText("Review Full Report");
       fireEvent.click(previewButton);
 
       await waitFor(() => {
-        const errorBoundary = screen.getByTestId('error-boundary');
+        const errorBoundary = screen.getByTestId("error-boundary");
         expect(errorBoundary).toBeInTheDocument();
-        expect(errorBoundary).toHaveAttribute('data-context', 'Report Results Preview');
-        expect(errorBoundary).toHaveAttribute('data-max-retries', '3');
+        expect(errorBoundary).toHaveAttribute(
+          "data-context",
+          "Report Results Preview",
+        );
+        expect(errorBoundary).toHaveAttribute("data-max-retries", "3");
       });
     });
 
-    it('passes retry handler to error boundary that retries preview execution', async () => {
+    it("passes retry handler to error boundary that retries preview execution", async () => {
       const mockOnExecute = vi.fn().mockResolvedValue({ data: [] });
       renderComponent({ onExecute: mockOnExecute });
 
       // Navigate to results step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-boundary')).toBeInTheDocument();
+        expect(screen.getByTestId("error-boundary")).toBeInTheDocument();
       });
 
       // Click retry button in error boundary
-      const retryButton = screen.getByTestId('boundary-retry');
+      const retryButton = screen.getByTestId("boundary-retry");
       fireEvent.click(retryButton);
 
       expect(mockOnExecute).toHaveBeenCalled();
     });
 
-    it('passes go back handler to error boundary that navigates to config step', async () => {
+    it("passes go back handler to error boundary that navigates to config step", async () => {
       renderComponent();
 
       // Navigate to results step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-boundary')).toBeInTheDocument();
+        expect(screen.getByTestId("error-boundary")).toBeInTheDocument();
       });
 
       // Click go back button in error boundary
-      const goBackButton = screen.getByTestId('boundary-go-back');
+      const goBackButton = screen.getByTestId("boundary-go-back");
       fireEvent.click(goBackButton);
 
       // Should navigate back to configuration step
-      expect(screen.getByText('Configure & Review')).toBeInTheDocument();
+      expect(screen.getByText("Configure & Review")).toBeInTheDocument();
     });
   });
 
-  describe('Preview Error Handling Integration', () => {
-    it('integrates with useErrorHandler for preview operations', async () => {
-      const mockError = new AppError('Preview failed', ErrorType.NETWORK);
+  describe("Preview Error Handling Integration", () => {
+    it("integrates with useErrorHandler for preview operations", async () => {
+      const mockError = new AppError("Preview failed", ErrorType.NETWORK);
       const mockOnExecute = vi.fn().mockRejectedValue(mockError);
 
       mockUseErrorHandler.handlePreviewOperation.mockImplementation(
@@ -315,23 +357,23 @@ describe('QueryBuilderModal Integration Tests', () => {
             options?.onError?.(error);
             return null;
           }
-        }
+        },
       );
 
       renderComponent({ onExecute: mockOnExecute });
 
       // Navigate to preview step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
         expect(mockUseErrorHandler.handlePreviewOperation).toHaveBeenCalledWith(
           expect.any(Function),
           expect.objectContaining({
-            context: 'AD Query Preview',
+            context: "AD Query Preview",
             maxRetries: 3,
             enableAutoRetry: true,
             onRetry: expect.any(Function),
@@ -339,13 +381,13 @@ describe('QueryBuilderModal Integration Tests', () => {
             onSuccess: expect.any(Function),
             onError: expect.any(Function),
             showNotification: false,
-          })
+          }),
         );
       });
     });
 
-    it('handles preview success and navigates to results step', async () => {
-      const mockResult = { data: [{ id: 1, name: 'Test Result' }] };
+    it("handles preview success and navigates to results step", async () => {
+      const mockResult = { data: [{ id: 1, name: "Test Result" }] };
       const mockOnExecute = vi.fn().mockResolvedValue(mockResult);
 
       mockUseErrorHandler.handlePreviewOperation.mockImplementation(
@@ -353,25 +395,25 @@ describe('QueryBuilderModal Integration Tests', () => {
           const result = await operation();
           options?.onSuccess?.(result);
           return result;
-        }
+        },
       );
 
       renderComponent({ onExecute: mockOnExecute });
 
       // Navigate to preview step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('report-viewer')).toBeInTheDocument();
+        expect(screen.getByTestId("report-viewer")).toBeInTheDocument();
       });
     });
 
-    it('handles preview errors and shows error state', async () => {
-      const mockError = new AppError('Preview failed', ErrorType.TIMEOUT);
+    it("handles preview errors and shows error state", async () => {
+      const mockError = new AppError("Preview failed", ErrorType.TIMEOUT);
       const mockOnExecute = vi.fn().mockRejectedValue(mockError);
 
       mockUseErrorHandler.handlePreviewOperation.mockImplementation(
@@ -382,31 +424,31 @@ describe('QueryBuilderModal Integration Tests', () => {
             options?.onError?.(error);
             return null;
           }
-        }
+        },
       );
 
       renderComponent({ onExecute: mockOnExecute });
 
       // Navigate to preview step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        expect(screen.getByText('Query Execution Failed')).toBeInTheDocument();
+        expect(screen.getByText("Query Execution Failed")).toBeInTheDocument();
       });
     });
   });
 
-  describe('Retry Logic Integration', () => {
-    it('implements retry logic with exponential backoff for preview', async () => {
+  describe("Retry Logic Integration", () => {
+    it("implements retry logic with exponential backoff for preview", async () => {
       let attempt = 0;
       const mockOnExecute = vi.fn().mockImplementation(() => {
         attempt++;
         if (attempt < 3) {
-          throw new AppError('Retry test', ErrorType.NETWORK);
+          throw new AppError("Retry test", ErrorType.NETWORK);
         }
         return Promise.resolve({ data: [{ id: 1, success: true }] });
       });
@@ -417,7 +459,7 @@ describe('QueryBuilderModal Integration Tests', () => {
             return await operation();
           } catch {
             // Simulate retry logic
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 100));
             try {
               const result = await operation();
               options?.onSuccess?.(result);
@@ -427,17 +469,17 @@ describe('QueryBuilderModal Integration Tests', () => {
               return null;
             }
           }
-        }
+        },
       );
 
       renderComponent({ onExecute: mockOnExecute });
 
       // Navigate to preview step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await act(async () => {
         vi.advanceTimersByTime(200);
@@ -446,134 +488,134 @@ describe('QueryBuilderModal Integration Tests', () => {
       expect(mockOnExecute).toHaveBeenCalledTimes(2);
     });
 
-    it('tracks retry count and shows retry indicators', async () => {
-      const mockError = new AppError('Persistent error', ErrorType.NETWORK);
+    it("tracks retry count and shows retry indicators", async () => {
+      const mockError = new AppError("Persistent error", ErrorType.NETWORK);
       const mockOnExecute = vi.fn().mockRejectedValue(mockError);
 
       renderComponent({ onExecute: mockOnExecute });
 
       // Navigate to results step with error
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
 
       // Simulate error state by navigating to step 2
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        expect(screen.getByText('Query Execution Failed')).toBeInTheDocument();
+        expect(screen.getByText("Query Execution Failed")).toBeInTheDocument();
       });
 
       // Check for retry count indicator
       expect(screen.getByText(/Attempted.*of.*retries/)).toBeInTheDocument();
     });
 
-    it('prevents retry when max retries exceeded', async () => {
-      const mockError = new AppError('Max retries error', ErrorType.NETWORK);
+    it("prevents retry when max retries exceeded", async () => {
+      const mockError = new AppError("Max retries error", ErrorType.NETWORK);
       mockError.canRetry = false; // Simulate max retries reached
 
       renderComponent();
 
       // Navigate to results step with max retries reached
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
 
       // Set state to simulate max retries reached
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        expect(screen.getByText('Query Execution Failed')).toBeInTheDocument();
+        expect(screen.getByText("Query Execution Failed")).toBeInTheDocument();
       });
 
       // Retry button should not be present or should be disabled
-      const retryButton = screen.queryByText('Retry');
+      const retryButton = screen.queryByText("Retry");
       if (retryButton) {
         expect(retryButton).toBeDisabled();
       }
     });
   });
 
-  describe('ReportViewer Error Integration', () => {
-    it('passes error state to ReportViewer component', async () => {
+  describe("ReportViewer Error Integration", () => {
+    it("passes error state to ReportViewer component", async () => {
       renderComponent();
 
       // Navigate to results step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('report-viewer')).toBeInTheDocument();
+        expect(screen.getByTestId("report-viewer")).toBeInTheDocument();
       });
 
       // The ReportViewer should receive error props
-      const reportViewer = screen.getByTestId('report-viewer');
+      const reportViewer = screen.getByTestId("report-viewer");
       expect(reportViewer).toBeInTheDocument();
     });
 
-    it('passes retry handler to ReportViewer', async () => {
+    it("passes retry handler to ReportViewer", async () => {
       const mockOnExecute = vi.fn();
       renderComponent({ onExecute: mockOnExecute });
 
       // Navigate to results step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('report-viewer')).toBeInTheDocument();
+        expect(screen.getByTestId("report-viewer")).toBeInTheDocument();
       });
 
       // ReportViewer should have retry functionality
-      const retryButton = screen.queryByTestId('report-retry');
+      const retryButton = screen.queryByTestId("report-retry");
       if (retryButton) {
         fireEvent.click(retryButton);
         expect(mockOnExecute).toHaveBeenCalled();
       }
     });
 
-    it('passes go back handler to ReportViewer', async () => {
+    it("passes go back handler to ReportViewer", async () => {
       renderComponent();
 
       // Navigate to results step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('report-viewer')).toBeInTheDocument();
+        expect(screen.getByTestId("report-viewer")).toBeInTheDocument();
       });
 
       // ReportViewer should have go back functionality
-      const goBackButton = screen.queryByTestId('report-go-back');
+      const goBackButton = screen.queryByTestId("report-go-back");
       if (goBackButton) {
         fireEvent.click(goBackButton);
         // Should navigate back to configuration step
-        expect(screen.getByText('Configure & Review')).toBeInTheDocument();
+        expect(screen.getByText("Configure & Review")).toBeInTheDocument();
       }
     });
 
-    it('enables recovery features in ReportViewer', async () => {
+    it("enables recovery features in ReportViewer", async () => {
       renderComponent();
 
       // Navigate to results step
-      fireEvent.click(screen.getByText('Next'));
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Test Query' },
+      fireEvent.click(screen.getByText("Next"));
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Test Query" },
       });
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       await waitFor(() => {
-        const reportViewer = screen.getByTestId('report-viewer');
+        const reportViewer = screen.getByTestId("report-viewer");
         expect(reportViewer).toBeInTheDocument();
       });
 
@@ -582,49 +624,53 @@ describe('QueryBuilderModal Integration Tests', () => {
     });
   });
 
-  describe('Field Discovery Error Handling', () => {
-    it('handles field discovery errors gracefully', async () => {
-      mockUseFieldDiscovery.error = 'Failed to load fields';
+  describe("Field Discovery Error Handling", () => {
+    it("handles field discovery errors gracefully", async () => {
+      mockUseFieldDiscovery.error = "Failed to load fields";
       mockUseFieldDiscovery.fields = [];
 
       renderComponent();
 
-      expect(screen.getByText('Failed to load fields')).toBeInTheDocument();
-      expect(screen.getByText('Retry')).toBeInTheDocument();
+      expect(screen.getByText("Failed to load fields")).toBeInTheDocument();
+      expect(screen.getByText("Retry")).toBeInTheDocument();
     });
 
-    it('shows loading state during field discovery', () => {
+    it("shows loading state during field discovery", () => {
       mockUseFieldDiscovery.loading = true;
       mockUseFieldDiscovery.fields = [];
 
       renderComponent();
 
-      expect(screen.getByText('Loading fields...')).toBeInTheDocument();
+      expect(screen.getByText("Loading fields...")).toBeInTheDocument();
     });
 
-    it('shows schema discovery state for AD', () => {
+    it("shows schema discovery state for AD", () => {
       mockUseFieldDiscovery.isDiscovering = true;
       mockUseFieldDiscovery.fields = [];
 
       renderComponent();
 
-      expect(screen.getByText('Discovering fields from Active Directory...')).toBeInTheDocument();
+      expect(
+        screen.getByText("Discovering fields from Active Directory..."),
+      ).toBeInTheDocument();
     });
   });
 
-  describe('Credentials Error Handling', () => {
-    it('handles credentials loading errors', async () => {
-      mockCredentialsAPI.getCredentials.mockRejectedValue(new Error('Credentials failed'));
+  describe("Credentials Error Handling", () => {
+    it("handles credentials loading errors", async () => {
+      mockCredentialsAPI.getCredentials.mockRejectedValue(
+        new Error("Credentials failed"),
+      );
 
       renderComponent();
 
       await waitFor(() => {
         // Error should be handled internally, component should still render
-        expect(screen.getByText('Visual Query Builder')).toBeInTheDocument();
+        expect(screen.getByText("Visual Query Builder")).toBeInTheDocument();
       });
     });
 
-    it('shows empty state when no credentials available', async () => {
+    it("shows empty state when no credentials available", async () => {
       mockCredentialsAPI.getCredentials.mockResolvedValue({
         success: true,
         data: [],
@@ -633,72 +679,76 @@ describe('QueryBuilderModal Integration Tests', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('No fields available')).toBeInTheDocument();
-        expect(screen.getByText('Please select a service account above')).toBeInTheDocument();
+        expect(screen.getByText("No fields available")).toBeInTheDocument();
+        expect(
+          screen.getByText("Please select a service account above"),
+        ).toBeInTheDocument();
       });
     });
   });
 
-  describe('Error Recovery Workflows', () => {
-    it('supports full error recovery workflow from field selection to preview', async () => {
+  describe("Error Recovery Workflows", () => {
+    it("supports full error recovery workflow from field selection to preview", async () => {
       // Start with successful field loading
       renderComponent();
 
       // Select a field
-      fireEvent.click(screen.getByText('Select Field'));
+      fireEvent.click(screen.getByText("Select Field"));
 
       // Navigate to configuration
-      fireEvent.click(screen.getByText('Next'));
+      fireEvent.click(screen.getByText("Next"));
 
       // Add configuration
-      fireEvent.change(screen.getByPlaceholderText('Enter query name...'), {
-        target: { value: 'Recovery Test Query' },
+      fireEvent.change(screen.getByPlaceholderText("Enter query name..."), {
+        target: { value: "Recovery Test Query" },
       });
 
       // Try preview - this might fail and trigger error boundary
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       // Error boundary should be present and functional
       await waitFor(() => {
-        expect(screen.getByTestId('error-boundary')).toBeInTheDocument();
+        expect(screen.getByTestId("error-boundary")).toBeInTheDocument();
       });
 
       // Recovery actions should be available
-      const retryButton = screen.queryByTestId('boundary-retry');
-      const goBackButton = screen.queryByTestId('boundary-go-back');
+      const retryButton = screen.queryByTestId("boundary-retry");
+      const goBackButton = screen.queryByTestId("boundary-go-back");
 
       expect(retryButton || goBackButton).toBeInTheDocument();
     });
 
-    it('maintains query state during error recovery', async () => {
+    it("maintains query state during error recovery", async () => {
       renderComponent();
 
       // Build a query
-      fireEvent.click(screen.getByText('Select Field'));
-      fireEvent.click(screen.getByText('Add Filter'));
-      fireEvent.click(screen.getByText('Next'));
+      fireEvent.click(screen.getByText("Select Field"));
+      fireEvent.click(screen.getByText("Add Filter"));
+      fireEvent.click(screen.getByText("Next"));
 
-      const queryNameInput = screen.getByPlaceholderText('Enter query name...');
-      fireEvent.change(queryNameInput, { target: { value: 'Persistent Query' } });
+      const queryNameInput = screen.getByPlaceholderText("Enter query name...");
+      fireEvent.change(queryNameInput, {
+        target: { value: "Persistent Query" },
+      });
 
       // Go to preview (might trigger error)
-      fireEvent.click(screen.getByText('Review Full Report'));
+      fireEvent.click(screen.getByText("Review Full Report"));
 
       // Go back to configuration
-      fireEvent.click(screen.getByText('Previous'));
+      fireEvent.click(screen.getByText("Previous"));
 
       // Query state should be preserved
-      expect(queryNameInput).toHaveValue('Persistent Query');
+      expect(queryNameInput).toHaveValue("Persistent Query");
     });
 
-    it('provides contextual error messages based on current step', async () => {
+    it("provides contextual error messages based on current step", async () => {
       renderComponent();
 
       // Different steps should provide different error contexts
       // Step 0: Field selection errors
-      mockUseFieldDiscovery.error = 'Field discovery failed';
+      mockUseFieldDiscovery.error = "Field discovery failed";
 
-      expect(screen.getByText('Failed to load fields')).toBeInTheDocument();
+      expect(screen.getByText("Failed to load fields")).toBeInTheDocument();
 
       // Step 1: Configuration errors would be handled differently
       // Step 2: Preview errors would show in error boundary

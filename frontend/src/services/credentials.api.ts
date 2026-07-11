@@ -1,22 +1,24 @@
-import apiService from '@/services/api';
-import { 
-  ServiceCredential, 
-  CreateCredentialDto, 
-  UpdateCredentialDto, 
+import apiService from "@/services/api";
+import {
+  ServiceCredential,
+  CreateCredentialDto,
+  UpdateCredentialDto,
   TestCredentialResult,
   DefaultCredentials,
-  ApiResponse 
-} from '@/types';
+  ApiResponse,
+} from "@/types";
 
 class CredentialsApiService {
-  private readonly basePath = '/credentials';
+  private readonly basePath = "/credentials";
   private readonly api = apiService;
 
   /**
    * Get all credentials for the current user
    * @param serviceType Optional filter by service type
    */
-  async getCredentials(serviceType?: 'ad' | 'azure' | 'o365'): Promise<ApiResponse<ServiceCredential[]>> {
+  async getCredentials(
+    serviceType?: "ad" | "azure" | "o365",
+  ): Promise<ApiResponse<ServiceCredential[]>> {
     const params = serviceType ? { serviceType } : undefined;
     return await this.api.get<ServiceCredential[]>(this.basePath, params);
   }
@@ -26,31 +28,40 @@ class CredentialsApiService {
    * @param credentialId The credential ID
    */
   async getCredential(credentialId: number): Promise<ServiceCredential> {
-    const response = await this.api.get<ServiceCredential>(`${this.basePath}/${credentialId}`);
-    if (!(response as { data?: ServiceCredential[] }).data) {
-      throw new Error('Credential not found');
+    const response = await this.api.get<ServiceCredential>(
+      `${this.basePath}/${credentialId}`,
+    );
+    if (!response.data) {
+      throw new Error("Credential not found");
     }
-    return (response as { data: ServiceCredential[] }).data;
+    return response.data;
   }
 
   /**
    * Get default credentials for all service types
    */
   async getDefaultCredentials(): Promise<DefaultCredentials> {
-    const response = await this.api.get<DefaultCredentials>(`${this.basePath}/defaults`);
-    return (response as { data?: DefaultCredentials }).data || { ad: null, azure: null, o365: null };
+    const response = await this.api.get<DefaultCredentials>(
+      `${this.basePath}/defaults`,
+    );
+    return response.data || { ad: null, azure: null, o365: null };
   }
 
   /**
    * Create a new credential
    * @param credential The credential data
    */
-  async createCredential(credential: CreateCredentialDto): Promise<ServiceCredential> {
-    const response = await this.api.post<ServiceCredential>(this.basePath, credential);
-    if (!(response as { data?: ServiceCredential[] }).data) {
-      throw new Error('Failed to create credential');
+  async createCredential(
+    credential: CreateCredentialDto,
+  ): Promise<ServiceCredential> {
+    const response = await this.api.post<ServiceCredential>(
+      this.basePath,
+      credential,
+    );
+    if (!response.data) {
+      throw new Error("Failed to create credential");
     }
-    return (response as { data: ServiceCredential[] }).data;
+    return response.data;
   }
 
   /**
@@ -59,17 +70,17 @@ class CredentialsApiService {
    * @param updates The fields to update
    */
   async updateCredential(
-    credentialId: number, 
-    updates: UpdateCredentialDto
+    credentialId: number,
+    updates: UpdateCredentialDto,
   ): Promise<ServiceCredential> {
     const response = await this.api.put<ServiceCredential>(
-      `${this.basePath}/${credentialId}`, 
-      updates
+      `${this.basePath}/${credentialId}`,
+      updates,
     );
-    if (!(response as { data?: ServiceCredential[] }).data) {
-      throw new Error('Failed to update credential');
+    if (!response.data) {
+      throw new Error("Failed to update credential");
     }
-    return (response as { data: ServiceCredential[] }).data;
+    return response.data;
   }
 
   /**
@@ -86,12 +97,12 @@ class CredentialsApiService {
    */
   async testCredential(credentialId: number): Promise<TestCredentialResult> {
     const response = await this.api.post<TestCredentialResult>(
-      `${this.basePath}/${credentialId}/test`
+      `${this.basePath}/${credentialId}/test`,
     );
-    if (!(response as { data?: ServiceCredential[] }).data) {
-      throw new Error('Failed to test credential');
+    if (!response.data) {
+      throw new Error("Failed to test credential");
     }
-    return (response as { data: ServiceCredential[] }).data;
+    return response.data;
   }
 
   /**
@@ -108,30 +119,30 @@ class CredentialsApiService {
   validateCredential(credential: CreateCredentialDto): string[] {
     const errors: string[] = [];
 
-    if (!credential.credentialName || credential.credentialName.trim() === '') {
-      errors.push('Credential name is required');
+    if (!credential.credentialName || credential.credentialName.trim() === "") {
+      errors.push("Credential name is required");
     }
 
     switch (credential.serviceType) {
-      case 'ad':
+      case "ad":
         if (!credential.username) {
-          errors.push('Username is required for AD credentials');
+          errors.push("Username is required for AD credentials");
         }
         if (!credential.password) {
-          errors.push('Password is required for AD credentials');
+          errors.push("Password is required for AD credentials");
         }
         break;
 
-      case 'azure':
-      case 'o365':
+      case "azure":
+      case "o365":
         if (!credential.tenantId) {
-          errors.push('Tenant ID is required for Azure/O365 credentials');
+          errors.push("Tenant ID is required for Azure/O365 credentials");
         }
         if (!credential.clientId) {
-          errors.push('Client ID is required for Azure/O365 credentials');
+          errors.push("Client ID is required for Azure/O365 credentials");
         }
         if (!credential.clientSecret) {
-          errors.push('Client Secret is required for Azure/O365 credentials');
+          errors.push("Client Secret is required for Azure/O365 credentials");
         }
         break;
     }
@@ -142,11 +153,11 @@ class CredentialsApiService {
   /**
    * Get credential type display name
    */
-  getServiceTypeDisplayName(serviceType: 'ad' | 'azure' | 'o365'): string {
+  getServiceTypeDisplayName(serviceType: "ad" | "azure" | "o365"): string {
     const displayNames = {
-      ad: 'Active Directory',
-      azure: 'Azure Active Directory',
-      o365: 'Office 365'
+      ad: "Active Directory",
+      azure: "Azure Active Directory",
+      o365: "Office 365",
     };
     return displayNames[serviceType] || serviceType.toUpperCase();
   }
@@ -154,13 +165,13 @@ class CredentialsApiService {
   /**
    * Get credential type description
    */
-  getServiceTypeDescription(serviceType: 'ad' | 'azure' | 'o365'): string {
+  getServiceTypeDescription(serviceType: "ad" | "azure" | "o365"): string {
     const descriptions = {
-      ad: 'On-premises Active Directory using LDAP',
-      azure: 'Azure Active Directory (Microsoft Entra ID)',
-      o365: 'Microsoft 365 and Office 365 services'
+      ad: "On-premises Active Directory using LDAP",
+      azure: "Azure Active Directory (Microsoft Entra ID)",
+      o365: "Microsoft 365 and Office 365 services",
     };
-    return descriptions[serviceType] || '';
+    return descriptions[serviceType] || "";
   }
 
   /**
@@ -168,10 +179,13 @@ class CredentialsApiService {
    */
   async getAzureOAuthUrl(credentialName: string): Promise<{ authUrl: string }> {
     const response = await this.api.get<{ authUrl: string }>(
-      '/auth/azure/oauth/url', 
-      { credentialName }
+      "/auth/azure/oauth/url",
+      { credentialName },
     );
-    return (response as { data: TestCredentialResult }).data;
+    if (!response.data) {
+      throw new Error("Failed to get Azure OAuth URL");
+    }
+    return response.data;
   }
 
   async checkOAuthStatus(): Promise<{
@@ -187,43 +201,48 @@ class CredentialsApiService {
       tenantId?: string;
       clientId?: string;
       hasRefreshToken?: boolean;
-    }>('/auth/azure/oauth/status');
-    return (response as { data: TestCredentialResult }).data;
+    }>("/auth/azure/oauth/status");
+    if (!response.data) {
+      return { hasToken: false };
+    }
+    return response.data;
   }
 
   /**
    * Get credential status info
    */
   getCredentialStatus(credential: ServiceCredential): {
-    status: 'success' | 'error' | 'warning' | 'default';
+    status: "success" | "error" | "warning" | "default";
     message: string;
   } {
     if (!credential.lastTested) {
       return {
-        status: 'default',
-        message: 'Not tested'
+        status: "default",
+        message: "Not tested",
       };
     }
 
     const lastTestedDate = new Date(credential.lastTested);
-    const daysSinceTest = Math.floor((Date.now() - lastTestedDate.getTime()) / (1000 * 60 * 60 * 24));
+    const daysSinceTest = Math.floor(
+      (Date.now() - lastTestedDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
     if (credential.lastTestSuccess) {
       if (daysSinceTest > 30) {
         return {
-          status: 'warning',
-          message: `Last tested ${daysSinceTest} days ago`
+          status: "warning",
+          message: `Last tested ${daysSinceTest} days ago`,
         };
       }
       return {
-        status: 'success',
-        message: credential.lastTestMessage || 'Connection successful'
+        status: "success",
+        message: credential.lastTestMessage || "Connection successful",
       };
     }
 
     return {
-      status: 'error',
-      message: credential.lastTestMessage || 'Connection failed'
+      status: "error",
+      message: credential.lastTestMessage || "Connection failed",
     };
   }
 }

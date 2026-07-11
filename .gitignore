@@ -94,6 +94,8 @@ Thumbs.db
 
 # Logs
 logs/
+!frontend/src/pages/logs/
+!frontend/src/pages/logs/**
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -102,9 +104,11 @@ yarn-error.log*
 # Runtime configuration
 .env.*.local
 
-# Database dumps
-*.sql
+# Database dumps (allow versioned schema/migrations)
 *.sql.gz
+/database/backups/
+/database/dumps/
+!database/**/*.sql
 
 # SSL certificates
 *.pem

@@ -168,10 +168,10 @@ run_jest_direct() {
     log "Running Jest directly for pattern: $test_pattern"
     
     # Build Jest arguments
-    local jest_args=()
+    local jest_args=("--config" "jest.e2e.config.js")
     
     if [[ -n "$test_pattern" ]]; then
-        jest_args+=("--testPathPattern" "$test_pattern")
+        jest_args+=("--testPathPatterns" "$test_pattern")
     fi
     
     jest_args+=("--testTimeout" "$TIMEOUT")

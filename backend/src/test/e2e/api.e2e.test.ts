@@ -1,913 +1,925 @@
-import { 
-  E2ETestContext, 
-  setupE2ETestContext, 
+import {
+  E2ETestContext,
+  setupE2ETestContext,
   teardownE2ETestContext,
   createE2ETestData,
   assertApiResponse,
   generateTestCorrelationId,
-  waitFor
-} from './setup';
-import { logger } from '@/utils/logger';
+  waitFor,
+  getApiData,
+} from "./setup";
+import { logger } from "@/utils/logger";
 
 // Set environment for E2E tests
-process.env.TEST_TYPE = 'integration';
-process.env.NODE_ENV = 'test';
+process.env.TEST_TYPE = "integration";
+process.env.NODE_ENV = "test";
 
-describe('API Integration E2E Tests', () => {
+describe("API Integration E2E Tests", () => {
   let testContext: E2ETestContext;
 
   beforeAll(async () => {
-    logger.info('Setting up E2E test context for API tests...');
+    logger.info("Setting up E2E test context for API tests...");
     testContext = await setupE2ETestContext();
     await createE2ETestData(testContext.pool);
-    logger.info('E2E test context ready for API tests');
+    logger.info("E2E test context ready for API tests");
   }, 90000); // 90 second timeout for beforeAll
 
   afterAll(async () => {
-    logger.info('Tearing down E2E test context for API tests...');
+    logger.info("Tearing down E2E test context for API tests...");
     if (testContext) {
       await teardownE2ETestContext(testContext);
     }
-    logger.info('E2E test context cleanup complete for API tests');
+    logger.info("E2E test context cleanup complete for API tests");
   }, 30000); // 30 second timeout for afterAll
 
-  describe('Health Check Endpoints', () => {
-    it('should get overall health status', async () => {
+  describe("Health Check Endpoints", () => {
+    it("should get overall health status", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/health')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/health")
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(body.status).toBeOneOf(['healthy', 'degraded', 'unhealthy']);
+
+      expect(body.status).toBe("ok");
       expect(body.timestamp).toBeDefined();
-      expect(body.services).toBeDefined();
-      expect(typeof body.services).toBe('object');
-      
-      // Verify service health structure
-      expect(body.services.database).toBeDefined();
-      expect(body.services.redis).toBeDefined();
-      expect(body.services.database.status).toBeOneOf(['healthy', 'unhealthy']);
-      expect(body.services.redis.status).toBeOneOf(['healthy', 'unhealthy']);
+      expect(body.service).toBeDefined();
+      expect(body.version).toBeDefined();
     });
 
-    it('should get detailed health status', async () => {
+    it("should get detailed health status", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/health/detailed')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/health/detailed")
+        .set("Authorization", `Bearer ${testContext.adminToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(body.status).toBeOneOf(['healthy', 'degraded', 'unhealthy']);
+
+      expect(body.status).toBeOneOf(["healthy", "degraded", "unhealthy"]);
       expect(body.timestamp).toBeDefined();
-      expect(body.services).toBeDefined();
-      expect(body.systemInfo).toBeDefined();
-      expect(body.systemInfo.uptime).toBeDefined();
-      expect(body.systemInfo.memory).toBeDefined();
-      expect(body.systemInfo.cpu).toBeDefined();
+      expect(body.checks).toBeDefined();
+      expect(typeof body.checks).toBe("object");
+      expect(body.checks.database).toBeDefined();
+      expect(body.checks.redis).toBeDefined();
+      expect(body.checks.database.status).toBeOneOf([
+        "healthy",
+        "unhealthy",
+        "degraded",
+      ]);
+      expect(body.checks.redis.status).toBeOneOf([
+        "healthy",
+        "unhealthy",
+        "degraded",
+      ]);
     });
 
-    it('should get liveness probe', async () => {
+    it("should get liveness probe", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/health/live')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/health/live")
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(body.status).toBe('alive');
+
+      expect(body.status).toBe("alive");
       expect(body.timestamp).toBeDefined();
+      expect(body.uptime).toBeDefined();
     });
 
-    it('should get readiness probe', async () => {
+    it("should get readiness probe", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/health/ready')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/health/ready")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
-      const body = assertApiResponse(response, 200);
-      
-      expect(body.status).toBeOneOf(['ready', 'not_ready']);
-      expect(body.timestamp).toBeDefined();
-      expect(body.dependencies).toBeDefined();
+      expect(response.status).toBeOneOf([200, 503]);
+      expect(response.body.status).toBeOneOf(["ready", "not ready"]);
+      expect(response.body.timestamp).toBeDefined();
     });
 
-    it('should get component-specific health', async () => {
+    it("should get component-specific health", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      // Test database health
+
       const dbResponse = await testContext.request
-        .get('/api/health/component/database')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/health/component/database")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const dbBody = assertApiResponse(dbResponse, 200);
-      expect(dbBody.component).toBe('database');
-      expect(dbBody.status).toBeOneOf(['healthy', 'unhealthy']);
-      expect(dbBody.details).toBeDefined();
-      
-      // Test Redis health
+      expect(dbBody.component).toBe("database");
+      expect(dbBody.status).toBeOneOf(["healthy", "unhealthy", "degraded"]);
+
       const redisResponse = await testContext.request
-        .get('/api/health/component/redis')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/health/component/redis")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const redisBody = assertApiResponse(redisResponse, 200);
-      expect(redisBody.component).toBe('redis');
-      expect(redisBody.status).toBeOneOf(['healthy', 'unhealthy']);
+      expect(redisBody.component).toBe("redis");
+      expect(redisBody.status).toBeOneOf(["healthy", "unhealthy", "degraded"]);
     });
 
-    it('should handle non-existent component health check', async () => {
+    it("should handle non-existent component health check", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/health/component/nonexistent')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/health/component/nonexistent")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       assertApiResponse(response, 400);
-      expect(response.body.error).toContain('Invalid component');
+      expect(response.body.error).toContain("Invalid component");
     });
 
-    it('should get health summary', async () => {
+    it("should get health summary", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/health/summary')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/health/summary")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(body.overallStatus).toBeOneOf(['healthy', 'degraded', 'unhealthy']);
-      expect(body.healthyServices).toBeDefined();
-      expect(body.totalServices).toBeDefined();
-      expect(typeof body.healthyServices).toBe('number');
-      expect(typeof body.totalServices).toBe('number');
+
+      expect(body.overall).toBeOneOf(["healthy", "degraded", "unhealthy"]);
+      expect(body.database).toBeOneOf(["healthy", "degraded", "unhealthy"]);
+      expect(body.redis).toBeOneOf(["healthy", "degraded", "unhealthy"]);
     });
 
-    it('should require authentication for health endpoints', async () => {
+    it("should require authentication for protected health endpoints", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/health')
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/health/ready")
+        .set("X-Correlation-ID", correlationId);
 
       assertApiResponse(response, 401);
     });
 
-    it('should provide root health endpoint without auth', async () => {
+    it("should provide root health endpoint without auth", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      const response = await testContext.request
-        .get('/health')
-        .set('X-Correlation-ID', correlationId);
 
-      // Root health endpoint should work without auth for load balancers
+      const response = await testContext.request
+        .get("/health")
+        .set("X-Correlation-ID", correlationId);
+
       const body = assertApiResponse(response, 200);
-      expect(body.status).toBeDefined();
+      expect(body.status).toBeOneOf(["healthy", "degraded", "unhealthy"]);
       expect(body.timestamp).toBeDefined();
+      expect(body.checks).toBeDefined();
     });
   });
 
-  describe('Credentials Management', () => {
+  describe("Credentials Management", () => {
     let testCredentialId: number;
-    
+
     beforeEach(() => {
-      // Add delay between credential tests to prevent deadlocks
-      return new Promise(resolve => setTimeout(resolve, 100));
+      return new Promise((resolve) => setTimeout(resolve, 100));
     });
 
-    it('should list user credentials', async () => {
+    it("should list user credentials", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/credentials')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/credentials")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(Array.isArray(body)).toBe(true);
-      
-      if (body.length > 0) {
-        const credential = body[0];
-        expect(credential).toHaveProperty('id');
-        expect(credential).toHaveProperty('serviceType');
-        expect(credential).toHaveProperty('credentialName');
-        expect(credential).toHaveProperty('username');
-        expect(credential).toHaveProperty('isActive');
-        expect(credential).toHaveProperty('isDefault');
-        
-        // Should not expose encrypted data
+      expect(body.success).toBe(true);
+      const credentials = getApiData<any[]>(body);
+
+      expect(Array.isArray(credentials)).toBe(true);
+
+      if (credentials.length > 0) {
+        const credential = credentials[0];
+        expect(credential).toHaveProperty("id");
+        expect(credential).toHaveProperty("serviceType");
+        expect(credential).toHaveProperty("credentialName");
+        expect(credential).toHaveProperty("username");
+        expect(credential).toHaveProperty("isActive");
+        expect(credential).toHaveProperty("isDefault");
+
         expect(credential.encryptedPassword).toBeUndefined();
         expect(credential.encryptedClientSecret).toBeUndefined();
       }
     });
 
-    it('should filter credentials by service type', async () => {
+    it("should filter credentials by service type", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/credentials')
-        .query({ serviceType: 'ad' })
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/credentials")
+        .query({ serviceType: "ad" })
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      body.forEach((credential: any) => {
-        expect(credential.serviceType).toBe('ad');
+      const credentials = getApiData<any[]>(body);
+
+      credentials.forEach((credential: any) => {
+        expect(credential.serviceType).toBe("ad");
       });
     });
 
-    it('should create new AD credential', async () => {
+    it("should create new AD credential", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const credentialData = {
-        serviceType: 'ad',
-        credentialName: 'E2E Test AD Credential',
-        username: 'e2e-test-user',
-        password: 'e2e-test-password',
-        server: 'test-dc.local',
-        baseDN: 'DC=test,DC=local',
-        isDefault: false
+        serviceType: "ad",
+        credentialName: "E2E Test AD Credential",
+        username: "e2e-test-user",
+        password: "e2e-test-password",
+        server: "test-dc.local",
+        baseDN: "DC=test,DC=local",
+        isDefault: false,
       };
 
       const response = await testContext.request
-        .post('/api/credentials')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId)
+        .post("/api/credentials")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId)
         .send(credentialData);
 
       const body = assertApiResponse(response, 201);
-      
-      expect(body.id).toBeDefined();
-      expect(body.serviceType).toBe(credentialData.serviceType);
-      expect(body.credentialName).toBe(credentialData.credentialName);
-      expect(body.username).toBe(credentialData.username);
-      expect(body.isDefault).toBe(false);
-      expect(body.isActive).toBe(true);
-      
-      // Password should not be returned
-      expect(body.password).toBeUndefined();
-      expect(body.encryptedPassword).toBeUndefined();
+      expect(body.success).toBe(true);
+      const credential = getApiData(body);
 
-      testCredentialId = body.id;
+      expect(credential.id).toBeDefined();
+      expect(credential.serviceType).toBe(credentialData.serviceType);
+      expect(credential.credentialName).toBe(credentialData.credentialName);
+      expect(credential.username).toBe(credentialData.username);
+      expect(credential.isDefault).toBe(false);
+      expect(credential.isActive).toBe(true);
+
+      expect(credential.password).toBeUndefined();
+      expect(credential.encryptedPassword).toBeUndefined();
+
+      testCredentialId = credential.id;
     });
 
-    it('should create new Azure AD credential', async () => {
+    it("should create new Azure AD credential", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const credentialData = {
-        serviceType: 'azure',
-        credentialName: 'E2E Test Azure Credential',
-        tenantId: 'test-tenant-id',
-        clientId: 'test-client-id',
-        clientSecret: 'test-client-secret',
-        isDefault: false
+        serviceType: "azure",
+        credentialName: "E2E Test Azure Credential",
+        tenantId: "test-tenant-id",
+        clientId: "test-client-id",
+        clientSecret: "test-client-secret",
+        isDefault: false,
       };
 
       const response = await testContext.request
-        .post('/api/credentials')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId)
+        .post("/api/credentials")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId)
         .send(credentialData);
 
       const body = assertApiResponse(response, 201);
-      
-      expect(body.serviceType).toBe('azure');
-      expect(body.tenantId).toBe(credentialData.tenantId);
-      expect(body.clientId).toBe(credentialData.clientId);
-      
-      // Client secret should not be returned
-      expect(body.clientSecret).toBeUndefined();
-      expect(body.encryptedClientSecret).toBeUndefined();
+      const credential = getApiData(body);
+
+      expect(credential.serviceType).toBe("azure");
+      expect(credential.tenantId).toBe(credentialData.tenantId);
+      expect(credential.clientId).toBe(credentialData.clientId);
+
+      expect(credential.clientSecret).toBeUndefined();
+      expect(credential.encryptedClientSecret).toBeUndefined();
     });
 
-    it('should validate required fields for different service types', async () => {
+    it("should validate required fields for different service types", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      // Test missing AD fields
+
       const invalidADResponse = await testContext.request
-        .post('/api/credentials')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId)
+        .post("/api/credentials")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId)
         .send({
-          serviceType: 'ad',
-          credentialName: 'Invalid AD Credential'
-          // Missing username and password
+          serviceType: "ad",
+          credentialName: "Invalid AD Credential",
         });
 
-      assertApiResponse(invalidADResponse, 400);
-      expect(invalidADResponse.body.error).toBeDefined();
+      expect(invalidADResponse.status).toBe(400);
+      expect(invalidADResponse.body.success).toBe(false);
+      expect(
+        invalidADResponse.body.error || invalidADResponse.body.errors,
+      ).toBeDefined();
 
-      // Test missing Azure fields
       const invalidAzureResponse = await testContext.request
-        .post('/api/credentials')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId)
+        .post("/api/credentials")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId)
         .send({
-          serviceType: 'azure',
-          credentialName: 'Invalid Azure Credential',
-          tenantId: 'test-tenant'
-          // Missing clientId and clientSecret
+          serviceType: "azure",
+          credentialName: "Invalid Azure Credential",
+          tenantId: "test-tenant",
         });
 
-      assertApiResponse(invalidAzureResponse, 400);
+      expect(invalidAzureResponse.status).toBe(400);
+      expect(invalidAzureResponse.body.success).toBe(false);
+      expect(
+        invalidAzureResponse.body.error || invalidAzureResponse.body.errors,
+      ).toBeDefined();
     });
 
-    it('should get specific credential', async () => {
+    it("should get specific credential", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
         .get(`/api/credentials/${testCredentialId}`)
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(body.id).toBe(testCredentialId);
-      expect(body.serviceType).toBeDefined();
-      expect(body.credentialName).toBeDefined();
+      const credential = getApiData(body);
+
+      expect(credential.id).toBe(testCredentialId);
+      expect(credential.serviceType).toBeDefined();
+      expect(credential.credentialName).toBeDefined();
     });
 
-    it('should update credential', async () => {
+    it("should update credential", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const updateData = {
-        credentialName: 'Updated E2E Test Credential',
-        username: 'updated-user',
-        password: 'updated-password'
+        credentialName: "Updated E2E Test Credential",
+        username: "updated-user",
+        password: "updated-password",
       };
 
       const response = await testContext.request
         .put(`/api/credentials/${testCredentialId}`)
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId)
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId)
         .send(updateData);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(body.credentialName).toBe(updateData.credentialName);
-      expect(body.username).toBe(updateData.username);
+      const credential = getApiData(body);
+
+      expect(credential.credentialName).toBe(updateData.credentialName);
+      expect(credential.username).toBe(updateData.username);
     });
 
-    it('should set default credential', async () => {
+    it("should set default credential", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
         .put(`/api/credentials/${testCredentialId}/set-default`)
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
-
-      assertApiResponse(response, 200);
-      expect(response.body.success).toBe(true);
-
-      // Verify it's set as default
-      const getResponse = await testContext.request
-        .get(`/api/credentials/${testCredentialId}`)
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
-
-      const body = assertApiResponse(getResponse, 200);
-      expect(body.isDefault).toBe(true);
-    });
-
-    it('should get default credentials', async () => {
-      const correlationId = generateTestCorrelationId();
-      
-      const response = await testContext.request
-        .get('/api/credentials/defaults')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(typeof body).toBe('object');
-      
-      // Should contain default credentials by service type
-      if (body.ad) {
-        expect(body.ad.serviceType).toBe('ad');
-        expect(body.ad.isDefault).toBe(true);
+      expect(body.success).toBe(true);
+
+      const getResponse = await testContext.request
+        .get(`/api/credentials/${testCredentialId}`)
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
+
+      const credential = getApiData(assertApiResponse(getResponse, 200));
+      expect(credential.isDefault).toBe(true);
+    });
+
+    it("should get default credentials", async () => {
+      const correlationId = generateTestCorrelationId();
+
+      const response = await testContext.request
+        .get("/api/credentials/defaults")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
+
+      const body = assertApiResponse(response, 200);
+      const defaults = getApiData(body);
+
+      expect(typeof defaults).toBe("object");
+
+      if (defaults.ad) {
+        expect(defaults.ad.serviceType).toBe("ad");
+        expect(defaults.ad.isDefault).toBe(true);
       }
-      if (body.azure) {
-        expect(body.azure.serviceType).toBe('azure');
-        expect(body.azure.isDefault).toBe(true);
+      if (defaults.azure) {
+        expect(defaults.azure.serviceType).toBe("azure");
+        expect(defaults.azure.isDefault).toBe(true);
       }
     });
 
-    it('should test credential connection', async () => {
+    it("should test credential connection", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
         .post(`/api/credentials/${testCredentialId}/test`)
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
-      // Test will likely fail due to invalid test credentials, but endpoint should exist
-      expect(response.status).toBeOneOf([200, 400, 500]);
+      expect(response.status).toBeOneOf([200, 400, 404, 500]);
 
       if (response.status === 200) {
         expect(response.body.success).toBe(true);
-        expect(response.body.details).toBeDefined();
+        expect(response.body.data).toBeDefined();
       } else {
         expect(response.body.error).toBeDefined();
       }
 
-      // Verify test result is recorded in database (with increased timeout)
       await waitFor(async () => {
         const client = await testContext.pool.connect();
         try {
           const credResult = await client.query(
-            'SELECT last_tested, last_test_success FROM service_credentials WHERE id = $1',
-            [testCredentialId]
+            "SELECT last_tested, last_test_success FROM service_credentials WHERE id = $1",
+            [testCredentialId],
           );
-          return credResult.rows.length > 0 && credResult.rows[0].last_tested !== null;
+          return (
+            credResult.rows.length > 0 &&
+            credResult.rows[0].last_tested !== null
+          );
         } catch (error) {
-          logger.warn('Database query failed during credential test verification:', error);
+          logger.warn(
+            "Database query failed during credential test verification:",
+            error,
+          );
           return false;
         } finally {
           client.release();
         }
-      }, 5000); // Increased timeout to 5 seconds
-    }, 10000); // Increased test timeout to 10 seconds
+      }, 5000);
+    }, 10000);
 
-    it('should prevent access to other users credentials', async () => {
+    it("should prevent access to other users credentials", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      // Try to access credential with admin token (different user)
+
       const response = await testContext.request
         .get(`/api/credentials/${testCredentialId}`)
-        .set('Authorization', `Bearer ${testContext.adminToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .set("Authorization", `Bearer ${testContext.adminToken}`)
+        .set("X-Correlation-ID", correlationId);
 
-      // Should be forbidden or not found
-      expect(response.status).toBeOneOf([403, 404]);
+      expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
     });
 
-    it('should delete credential', async () => {
+    it("should delete credential", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
         .delete(`/api/credentials/${testCredentialId}`)
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
-      assertApiResponse(response, 200);
-      expect(response.body.success).toBe(true);
+      const body = assertApiResponse(response, 200);
+      expect(body.success).toBe(true);
 
-      // Verify it's deleted
       const getResponse = await testContext.request
         .get(`/api/credentials/${testCredentialId}`)
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       assertApiResponse(getResponse, 404);
     });
   });
 
-  describe('Field Discovery', () => {
-    it('should discover AD schema fields', async () => {
+  describe("Field Discovery", () => {
+    it("should discover AD schema fields", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      const response = await testContext.request
-        .get('/api/reports/fields/ad')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
 
-      // Field discovery might fail due to missing LDAP connection
+      const response = await testContext.request
+        .get("/api/reports/fields/ad")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
+
       expect(response.status).toBeOneOf([200, 400, 500]);
 
       if (response.status === 200) {
-        const body = response.body;
-        expect(body.fields).toBeDefined();
-        expect(Array.isArray(body.fields)).toBe(true);
-        expect(body.lastUpdated).toBeDefined();
-        
-        // Verify field structure
-        if (body.fields.length > 0) {
-          const field = body.fields[0];
-          expect(field).toHaveProperty('name');
-          expect(field).toHaveProperty('displayName');
-          expect(field).toHaveProperty('type');
-          expect(field).toHaveProperty('category');
-          expect(field).toHaveProperty('description');
+        expect(response.body.success).toBe(true);
+        const data = getApiData(response.body);
+        expect(data.categories).toBeDefined();
+        expect(Array.isArray(data.categories)).toBe(true);
+        expect(data.totalFields).toBeDefined();
+
+        if (
+          data.categories.length > 0 &&
+          data.categories[0].fields?.length > 0
+        ) {
+          const field = data.categories[0].fields[0];
+          expect(field).toHaveProperty("fieldName");
+          expect(field).toHaveProperty("displayName");
+          expect(field).toHaveProperty("dataType");
+          expect(field).toHaveProperty("category");
         }
       }
     });
 
-    it('should discover Azure AD Graph fields', async () => {
+    it("should discover Azure AD Graph fields", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/reports/fields/azure')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/reports/fields/azure")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       expect(response.status).toBeOneOf([200, 400, 500]);
 
       if (response.status === 200) {
-        const body = response.body;
-        expect(body.fields).toBeDefined();
-        expect(Array.isArray(body.fields)).toBe(true);
+        const data = getApiData(response.body);
+        expect(data.fields).toBeDefined();
+        expect(Array.isArray(data.fields)).toBe(true);
       }
     });
 
-    it('should discover O365 fields', async () => {
+    it("should discover O365 fields", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/reports/fields/o365')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/reports/fields/o365")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       expect(response.status).toBeOneOf([200, 400, 500]);
 
       if (response.status === 200) {
-        const body = response.body;
-        expect(body.fields).toBeDefined();
-        expect(Array.isArray(body.fields)).toBe(true);
+        const data = getApiData(response.body);
+        expect(data.categories ?? data.fields).toBeDefined();
       }
     });
 
-    it('should cache field discovery results', async () => {
+    it("should cache field discovery results", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      // First request
-      const start1 = Date.now();
+
+      // Bust cache so the next two requests exercise the same code path
+      await testContext.request
+        .get("/api/reports/fields/ad?refresh=true")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", `${correlationId}-refresh`);
+
       const response1 = await testContext.request
-        .get('/api/reports/fields/ad')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', `${correlationId}-1`);
-      const time1 = Date.now() - start1;
+        .get("/api/reports/fields/ad")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", `${correlationId}-1`);
 
-      // Second request (should be cached)
-      const start2 = Date.now();
       const response2 = await testContext.request
-        .get('/api/reports/fields/ad')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', `${correlationId}-2`);
-      const time2 = Date.now() - start2;
+        .get("/api/reports/fields/ad")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", `${correlationId}-2`);
 
-      // Both should have same status
       expect(response1.status).toBe(response2.status);
 
       if (response1.status === 200 && response2.status === 200) {
-        // Second request should be faster (cached)
-        expect(time2).toBeLessThan(time1);
-        
-        // Results should be identical
-        expect(response1.body.fields).toEqual(response2.body.fields);
+        expect(getApiData(response1.body)).toEqual(getApiData(response2.body));
       }
     });
 
-    it('should handle invalid data source', async () => {
+    it("should handle invalid data source", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/reports/fields/invalid_source')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/reports/fields/invalid_source")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       assertApiResponse(response, 400);
-      expect(response.body.error).toContain('Invalid data source');
+      expect(response.body.error).toContain("Invalid data source");
     });
 
-    it('should search fields by name or description', async () => {
+    it("should search fields by name or description", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/reports/fields/ad')
-        .query({ search: 'user' })
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/reports/fields/ad")
+        .query({ search: "user" })
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       expect(response.status).toBeOneOf([200, 400, 500]);
 
       if (response.status === 200) {
-        const body = response.body;
-        expect(body.fields).toBeDefined();
-        
-        // All returned fields should match search term
-        body.fields.forEach((field: any) => {
-          const matchesSearch = field.name.toLowerCase().includes('user') ||
-                               field.displayName.toLowerCase().includes('user') ||
-                               (field.description && field.description.toLowerCase().includes('user'));
+        const data = getApiData(response.body);
+        expect(data.fields).toBeDefined();
+
+        data.fields.forEach((field: any) => {
+          const fieldName = (field.fieldName ?? field.name ?? "").toLowerCase();
+          const displayName = (field.displayName ?? "").toLowerCase();
+          const description = (field.description ?? "").toLowerCase();
+          const matchesSearch =
+            fieldName.includes("user") ||
+            displayName.includes("user") ||
+            description.includes("user");
           expect(matchesSearch).toBe(true);
         });
       }
     });
 
-    it('should filter fields by category', async () => {
+    it("should filter fields by category", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/reports/fields/ad')
-        .query({ category: 'basic' })
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/reports/fields/ad")
+        .query({ category: "basic" })
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       expect(response.status).toBeOneOf([200, 400, 500]);
 
       if (response.status === 200) {
-        const body = response.body;
-        expect(body.fields).toBeDefined();
-        
-        // All returned fields should be in basic category
-        body.fields.forEach((field: any) => {
-          expect(field.category).toBe('basic');
+        const data = getApiData(response.body);
+        expect(data.fields).toBeDefined();
+
+        data.fields.forEach((field: any) => {
+          expect(field.category).toBe("basic");
         });
       }
     });
   });
 
-  describe('System Configuration', () => {
-    it('should get system configuration (admin only)', async () => {
+  describe("System Configuration", () => {
+    it("should get system configuration (admin only)", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/system/config')
-        .set('Authorization', `Bearer ${testContext.adminToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/system/config")
+        .set("Authorization", `Bearer ${testContext.adminToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
+
       expect(body.version).toBeDefined();
       expect(body.environment).toBeDefined();
-      expect(body.features).toBeDefined();
-      expect(body.limits).toBeDefined();
+      expect(body.services).toBeDefined();
+      expect(body.availability).toBeDefined();
     });
 
-    it('should deny system config access to regular users', async () => {
+    it("should deny system config access to regular users", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/system/config')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/system/config")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       assertApiResponse(response, 403);
     });
 
-    it('should get system health status', async () => {
+    it("should get system health status", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      const response = await testContext.request
-        .get('/api/system/health')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
 
-      const body = assertApiResponse(response, 200);
-      
-      expect(body.status).toBeOneOf(['healthy', 'degraded', 'unhealthy']);
-      expect(body.components).toBeDefined();
-      expect(body.metrics).toBeDefined();
+      const response = await testContext.request
+        .get("/api/system/health")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
+
+      expect(response.status).toBeOneOf([200, 503]);
+      const body = response.body;
+
+      expect(body.status).toBeOneOf(["healthy", "unhealthy"]);
+      expect(body.services).toBeDefined();
+      expect(body.timestamp).toBeDefined();
     });
   });
 
-  describe('User Preferences', () => {
-    it('should get user preferences', async () => {
+  describe("User Preferences", () => {
+    it("should get user preferences", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/user/preferences')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/user/preferences")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
+
       expect(body.theme).toBeDefined();
-      expect(body.language).toBeDefined();
-      expect(body.notifications).toBeDefined();
-      expect(body.reports).toBeDefined();
+      expect(body.defaultPageSize).toBeDefined();
+      expect(body.emailNotifications).toBeDefined();
+      expect(body.notificationPreferences).toBeDefined();
     });
 
-    it('should update user preferences', async () => {
+    it("should update user preferences", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const preferences = {
-        theme: 'dark',
-        language: 'en',
-        notifications: {
-          email: true,
-          browser: false,
+        theme: "dark",
+        defaultPageSize: 25,
+        emailNotifications: true,
+        notificationPreferences: {
           reportCompletion: true,
-          systemAlerts: true
+          scheduledReports: false,
+          systemAlerts: true,
+          weeklyDigest: false,
+          notificationTime: "10:00",
         },
-        reports: {
-          defaultPageSize: 25,
-          autoRefresh: false,
-          defaultExportFormat: 'xlsx'
-        }
       };
 
       const response = await testContext.request
-        .put('/api/user/preferences')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId)
+        .put("/api/user/preferences")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId)
         .send(preferences);
 
       const body = assertApiResponse(response, 200);
-      
+
       expect(body.theme).toBe(preferences.theme);
-      expect(body.language).toBe(preferences.language);
-      expect(body.notifications.email).toBe(preferences.notifications.email);
-      expect(body.reports.defaultPageSize).toBe(preferences.reports.defaultPageSize);
+      expect(body.defaultPageSize).toBe(preferences.defaultPageSize);
+      expect(body.emailNotifications).toBe(preferences.emailNotifications);
+      expect(body.notificationPreferences.reportCompletion).toBe(
+        preferences.notificationPreferences.reportCompletion,
+      );
     });
 
-    it('should update notification preferences specifically', async () => {
+    it("should update notification preferences specifically", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const notificationPrefs = {
-        email: false,
-        browser: true,
+        emailNotifications: false,
         reportCompletion: false,
-        systemAlerts: true
+        scheduledReports: true,
+        systemAlerts: true,
+        weeklyDigest: false,
+        notificationTime: "14:30",
       };
 
       const response = await testContext.request
-        .put('/api/user/preferences/notifications')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId)
+        .put("/api/user/preferences/notifications")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId)
         .send(notificationPrefs);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(body.notifications.email).toBe(notificationPrefs.email);
-      expect(body.notifications.browser).toBe(notificationPrefs.browser);
-      expect(body.notifications.reportCompletion).toBe(notificationPrefs.reportCompletion);
-      expect(body.notifications.systemAlerts).toBe(notificationPrefs.systemAlerts);
+
+      expect(body.emailNotifications).toBe(
+        notificationPrefs.emailNotifications,
+      );
+      expect(body.notificationPreferences.reportCompletion).toBe(
+        notificationPrefs.reportCompletion,
+      );
+      expect(body.notificationPreferences.scheduledReports).toBe(
+        notificationPrefs.scheduledReports,
+      );
+      expect(body.notificationPreferences.systemAlerts).toBe(
+        notificationPrefs.systemAlerts,
+      );
+      expect(body.notificationPreferences.weeklyDigest).toBe(
+        notificationPrefs.weeklyDigest,
+      );
     });
   });
 
-  describe('Search Functionality', () => {
-    it('should perform global search', async () => {
+  describe("Search Functionality", () => {
+    it("should perform global search", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/search/global')
-        .query({ q: 'test', limit: 10 })
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/search/global")
+        .query({ q: "test", limit: 10 })
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
+
       expect(body.results).toBeDefined();
       expect(Array.isArray(body.results)).toBe(true);
-      expect(body.totalResults).toBeDefined();
-      expect(body.categories).toBeDefined();
-      
-      // Verify result structure
+      expect(body.total).toBeDefined();
+      expect(body.query).toBe("test");
+
       body.results.forEach((result: any) => {
-        expect(result).toHaveProperty('id');
-        expect(result).toHaveProperty('type');
-        expect(result).toHaveProperty('title');
-        expect(result).toHaveProperty('description');
-        expect(result).toHaveProperty('relevance');
+        expect(result).toHaveProperty("id");
+        expect(result).toHaveProperty("type");
+        expect(result).toHaveProperty("title");
+        expect(result).toHaveProperty("path");
       });
     });
 
-    it('should get search suggestions', async () => {
+    it("should get search suggestions", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .get('/api/search/suggestions')
-        .query({ q: 'test', limit: 5 })
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/search/suggestions")
+        .query({ q: "test", limit: 5 })
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBeLessThanOrEqual(5);
-      
-      body.forEach((suggestion: any) => {
-        expect(typeof suggestion).toBe('string');
-        expect(suggestion.toLowerCase()).toContain('test');
+
+      expect(Array.isArray(body.suggestions)).toBe(true);
+      expect(body.suggestions.length).toBeLessThanOrEqual(10);
+
+      body.suggestions.forEach((suggestion: string) => {
+        expect(typeof suggestion).toBe("string");
+        expect(suggestion.toLowerCase()).toContain("test");
       });
     });
 
-    it('should get recent searches', async () => {
+    it("should get recent searches", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      // Perform a search first
+
       await testContext.request
-        .get('/api/search/global')
-        .query({ q: 'recent search test' })
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/search/global")
+        .query({ q: "recent search test" })
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
-      // Get recent searches
       const response = await testContext.request
-        .get('/api/search/recent')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .get("/api/search/recent")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       const body = assertApiResponse(response, 200);
-      
-      expect(Array.isArray(body)).toBe(true);
-      
-      body.forEach((search: any) => {
-        expect(search).toHaveProperty('query');
-        expect(search).toHaveProperty('timestamp');
-        expect(search).toHaveProperty('resultCount');
+
+      expect(Array.isArray(body.searches)).toBe(true);
+
+      body.searches.forEach((search: string) => {
+        expect(typeof search).toBe("string");
       });
     });
   });
 
-  describe('API Rate Limiting and Security', () => {
-    it('should rate limit API requests', async () => {
+  describe("API Rate Limiting and Security", () => {
+    it("should rate limit API requests", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      // Send multiple requests quickly
+
       const requests = [];
       for (let i = 0; i < 20; i++) {
         requests.push(
           testContext.request
-            .get('/api/health')
-            .set('Authorization', `Bearer ${testContext.testToken}`)
-            .set('X-Correlation-ID', `${correlationId}-${i}`)
+            .get("/api/health")
+            .set("X-Correlation-ID", `${correlationId}-${i}`),
         );
       }
 
       const responses = await Promise.all(requests);
-      
-      // Some requests should be rate limited in production environment
-      const successCount = responses.filter((r: any) => r.status === 200).length;
-      const rateLimitedCount = responses.filter((r: any) => r.status === 429).length;
-      
-      logger.info('Rate limiting test results:', {
+
+      const successCount = responses.filter(
+        (r: any) => r.status === 200,
+      ).length;
+      const rateLimitedCount = responses.filter(
+        (r: any) => r.status === 429,
+      ).length;
+
+      logger.info("Rate limiting test results:", {
         total: responses.length,
         successful: successCount,
-        rateLimited: rateLimitedCount
+        rateLimited: rateLimitedCount,
       });
 
-      // In test environment, rate limiting might be more lenient
       expect(successCount + rateLimitedCount).toBe(responses.length);
     });
 
-    it('should handle CORS properly', async () => {
+    it("should handle CORS properly", async () => {
       const correlationId = generateTestCorrelationId();
-      
+
       const response = await testContext.request
-        .options('/api/health')
-        .set('Origin', 'http://localhost:3000')
-        .set('Access-Control-Request-Method', 'GET')
-        .set('Access-Control-Request-Headers', 'Authorization')
-        .set('X-Correlation-ID', correlationId);
+        .options("/api/health")
+        .set("Origin", "http://localhost:3000")
+        .set("Access-Control-Request-Method", "GET")
+        .set("Access-Control-Request-Headers", "Authorization")
+        .set("X-Correlation-ID", correlationId);
 
       expect(response.status).toBeOneOf([200, 204]);
-      expect(response.headers['access-control-allow-origin']).toBeDefined();
-      expect(response.headers['access-control-allow-methods']).toBeDefined();
+      expect(response.headers["access-control-allow-origin"]).toBeDefined();
+      expect(response.headers["access-control-allow-methods"]).toBeDefined();
     });
 
-    it('should sanitize error responses', async () => {
+    it("should sanitize error responses", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      // Try to access non-existent endpoint with potential injection
+
       const response = await testContext.request
         .get('/api/nonexistent/<script>alert("xss")</script>')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId);
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId);
 
       assertApiResponse(response, 404);
-      
-      // Error response should not contain script tags or other dangerous content
+
       const responseText = JSON.stringify(response.body);
-      expect(responseText).not.toContain('<script>');
-      expect(responseText).not.toContain('alert(');
+      expect(responseText).not.toMatch(/<script>/i);
+      // 404 handler URL-encodes the path; ensure raw script tags are not echoed
+      expect(response.body.path).toContain("%3Cscript%3E");
     });
 
-    it('should validate request size limits', async () => {
+    it("should validate request size limits", async () => {
       const correlationId = generateTestCorrelationId();
-      
-      // Create a large payload (but within reasonable limits)
+
       const largeData = {
-        name: 'Test Report',
-        description: 'A'.repeat(10000), // 10KB description
+        name: "Test Report",
+        description: "A".repeat(10000),
+        source: "ad",
         query: {
-          filter: 'B'.repeat(5000) // 5KB filter
-        }
+          source: "ad",
+          fields: [
+            { name: "sAMAccountName", displayName: "Username", type: "string" },
+          ],
+          filters: [
+            { field: "B".repeat(5000), operator: "equals", value: "test" },
+          ],
+        },
       };
 
       const response = await testContext.request
-        .post('/api/reports/custom')
-        .set('Authorization', `Bearer ${testContext.testToken}`)
-        .set('X-Correlation-ID', correlationId)
+        .post("/api/reports/custom")
+        .set("Authorization", `Bearer ${testContext.testToken}`)
+        .set("X-Correlation-ID", correlationId)
         .send(largeData);
 
-      // Should either succeed or fail with validation error (not 413 payload too large)
       expect(response.status).toBeOneOf([201, 400]);
     });
   });

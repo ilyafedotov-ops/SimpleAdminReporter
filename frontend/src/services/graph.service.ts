@@ -1,7 +1,7 @@
-import { Client } from '@microsoft/microsoft-graph-client';
-import { msalAuthService } from './auth/msal-auth.service';
-import { graphScopes } from '@/config/msal.config';
-import { message } from 'antd';
+import { Client } from "@microsoft/microsoft-graph-client";
+import { msalAuthService } from "./auth/msal-auth.service";
+import { graphScopes } from "@/config/msal.config";
+import { message } from "antd";
 
 interface GraphRequestOptions {
   endpoint: string;
@@ -18,8 +18,8 @@ interface GraphRequestOptions {
 
 interface GraphPagedResponse<T> {
   value: T[];
-  '@odata.count'?: number;
-  '@odata.nextLink'?: string;
+  "@odata.count"?: number;
+  "@odata.nextLink"?: string;
 }
 
 class GraphService {
@@ -34,15 +34,15 @@ class GraphService {
         authProvider: async (done) => {
           try {
             // Get token using MSAL
-            const token = await msalAuthService.acquireTokenSilent(
-              ['https://graph.microsoft.com/.default']
-            );
+            const token = await msalAuthService.acquireTokenSilent([
+              "https://graph.microsoft.com/.default",
+            ]);
             done(null, token);
           } catch (error) {
             done(error as Error, null);
           }
         },
-        defaultVersion: 'v1.0',
+        defaultVersion: "v1.0",
       });
     }
     return this.client;
@@ -79,7 +79,7 @@ class GraphService {
 
       if (options.count) {
         request = request.count(true);
-        request = request.header('ConsistencyLevel', 'eventual');
+        request = request.header("ConsistencyLevel", "eventual");
       }
 
       if (options.expand) {
@@ -105,20 +105,22 @@ class GraphService {
    */
   async getAllPages<T>(
     options: GraphRequestOptions,
-    maxPages: number = 10
+    maxPages: number = 10,
   ): Promise<T[]> {
     const allData: T[] = [];
     let nextLink: string | undefined = options.endpoint;
     let pageCount = 0;
 
     while (nextLink && pageCount < maxPages) {
-      const response = await this.request<GraphPagedResponse<T>>({
+      const response: GraphPagedResponse<T> = await this.request<
+        GraphPagedResponse<T>
+      >({
         ...options,
         endpoint: nextLink,
       });
 
       allData.push(...response.value);
-      nextLink = response['@odata.nextLink'];
+      nextLink = response["@odata.nextLink"];
       pageCount++;
     }
 
@@ -130,9 +132,16 @@ class GraphService {
    */
   async getCurrentUser() {
     return this.request({
-      endpoint: '/me',
+      endpoint: "/me",
       scopes: graphScopes.user.read,
-      select: ['id', 'displayName', 'mail', 'userPrincipalName', 'jobTitle', 'department'],
+      select: [
+        "id",
+        "displayName",
+        "mail",
+        "userPrincipalName",
+        "jobTitle",
+        "department",
+      ],
     });
   }
 
@@ -146,7 +155,7 @@ class GraphService {
     orderBy?: string;
   }) {
     return this.request<GraphPagedResponse<Record<string, unknown>>>({
-      endpoint: '/users',
+      endpoint: "/users",
       scopes: graphScopes.user.readAll,
       ...options,
     });
@@ -162,7 +171,7 @@ class GraphService {
     orderBy?: string;
   }) {
     return this.request<GraphPagedResponse<Record<string, unknown>>>({
-      endpoint: '/groups',
+      endpoint: "/groups",
       scopes: graphScopes.group.read,
       ...options,
     });
@@ -173,9 +182,9 @@ class GraphService {
    */
   async getDirectoryRoles() {
     return this.request<GraphPagedResponse<Record<string, unknown>>>({
-      endpoint: '/directoryRoles',
+      endpoint: "/directoryRoles",
       scopes: graphScopes.directory.read,
-      expand: 'members',
+      expand: "members",
     });
   }
 
@@ -188,7 +197,7 @@ class GraphService {
     orderBy?: string;
   }) {
     return this.request<GraphPagedResponse<Record<string, unknown>>>({
-      endpoint: '/auditLogs/directoryAudits',
+      endpoint: "/auditLogs/directoryAudits",
       scopes: graphScopes.auditLog.read,
       ...options,
     });
@@ -203,7 +212,7 @@ class GraphService {
     orderBy?: string;
   }) {
     return this.request<GraphPagedResponse<Record<string, unknown>>>({
-      endpoint: '/auditLogs/signIns',
+      endpoint: "/auditLogs/signIns",
       scopes: graphScopes.auditLog.read,
       ...options,
     });
@@ -214,7 +223,7 @@ class GraphService {
    */
   async executeCustomQuery(
     endpoint: string,
-    options?: Omit<GraphRequestOptions, 'endpoint'>
+    options?: Omit<GraphRequestOptions, "endpoint">,
   ) {
     return this.request({
       endpoint,
@@ -225,26 +234,28 @@ class GraphService {
   /**
    * Batch multiple Graph requests
    */
-  async batch(requests: Array<{
-    id: string;
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: unknown;
-  }>) {
+  async batch(
+    requests: Array<{
+      id: string;
+      method: string;
+      url: string;
+      headers?: Record<string, string>;
+      body?: unknown;
+    }>,
+  ) {
     const client = await this.getClient();
-    
+
     const batchRequestBody = {
-      requests: requests.map(req => ({
+      requests: requests.map((req) => ({
         id: req.id,
         method: req.method,
-        url: req.url.startsWith('/') ? req.url : `/${req.url}`,
+        url: req.url.startsWith("/") ? req.url : `/${req.url}`,
         headers: req.headers,
         body: req.body,
       })),
     };
 
-    const response = await client.api('/$batch').post(batchRequestBody);
+    const response = await client.api("/$batch").post(batchRequestBody);
     return response;
   }
 
@@ -252,26 +263,35 @@ class GraphService {
    * Handle Graph API errors
    */
   private handleGraphError(error: unknown) {
-    console.error('Graph API error:', error);
+    console.error("Graph API error:", error);
 
-    if (error && typeof error === 'object' && 'statusCode' in error) {
+    if (error && typeof error === "object" && "statusCode" in error) {
       const errorObj = error as { statusCode: number; message?: string };
-      
+
       if (errorObj.statusCode === 401) {
-        message.error('Authentication failed. Please sign in again.');
+        message.error("Authentication failed. Please sign in again.");
       } else if (errorObj.statusCode === 403) {
-        message.error('You do not have permission to access this resource.');
+        message.error("You do not have permission to access this resource.");
       } else if (errorObj.statusCode === 429) {
-        message.error('Too many requests. Please try again later.');
+        message.error("Too many requests. Please try again later.");
       } else if (errorObj.message) {
         message.error(`Graph API error: ${errorObj.message}`);
       } else {
-        message.error('An unexpected error occurred while calling Microsoft Graph.');
+        message.error(
+          "An unexpected error occurred while calling Microsoft Graph.",
+        );
       }
-    } else if (error && typeof error === 'object' && 'message' in error && error.message) {
+    } else if (
+      error &&
+      typeof error === "object" &&
+      "message" in error &&
+      error.message
+    ) {
       message.error(`Graph API error: ${error.message}`);
     } else {
-      message.error('An unexpected error occurred while calling Microsoft Graph.');
+      message.error(
+        "An unexpected error occurred while calling Microsoft Graph.",
+      );
     }
   }
 

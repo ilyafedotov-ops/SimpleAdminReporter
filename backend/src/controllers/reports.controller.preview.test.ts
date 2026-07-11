@@ -3,26 +3,23 @@
  * Testing testCustomQuery endpoint behavior preservation after PreviewService refactoring
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { ReportsController } from './reports.controller';
-import { serviceFactory } from '@/services/service.factory';
-import { createError } from '@/middleware/error.middleware';
-import { db } from '@/config/database';
-import { fieldDiscoveryService } from '@/services/fieldDiscovery.service';
-import { reportExecutor } from '@/services/report-executor.service';
+import { Request, Response, NextFunction } from "express";
+import { ReportsController } from "./reports.controller";
+import { serviceFactory } from "@/services/service.factory";
+import { createError } from "@/middleware/error.middleware";
 
 // Mock dependencies
-jest.mock('@/config/database');
-jest.mock('@/services/fieldDiscovery.service');
-jest.mock('@/services/report-executor.service');
-jest.mock('@/services/service.factory');
-jest.mock('@/middleware/error.middleware', () => {
+jest.mock("@/config/database");
+jest.mock("@/services/fieldDiscovery.service");
+jest.mock("@/services/report-executor.service");
+jest.mock("@/services/service.factory");
+jest.mock("@/middleware/error.middleware", () => {
   const createErrorMock = jest.fn((message, statusCode) => {
     const error = new Error(message) as any;
     error.statusCode = statusCode;
     return error;
   });
-  
+
   return {
     asyncHandler: (fn: any) => async (req: any, res: any, next: any) => {
       try {
@@ -32,14 +29,14 @@ jest.mock('@/middleware/error.middleware', () => {
         return next(error);
       }
     },
-    createError: createErrorMock
+    createError: createErrorMock,
   };
 });
-jest.mock('@/utils/logger');
-jest.mock('express-validator', () => ({
+jest.mock("@/utils/logger");
+jest.mock("express-validator", () => ({
   validationResult: jest.fn(() => ({
     isEmpty: () => true,
-    array: () => []
+    array: () => [],
   })),
   body: jest.fn(() => ({
     isLength: jest.fn().mockReturnThis(),
@@ -51,63 +48,65 @@ jest.mock('express-validator', () => ({
     isArray: jest.fn().mockReturnThis(),
     isBoolean: jest.fn().mockReturnThis(),
     isIn: jest.fn().mockReturnThis(),
-    isUUID: jest.fn().mockReturnThis()
+    isUUID: jest.fn().mockReturnThis(),
   })),
   param: jest.fn(() => ({
     isUUID: jest.fn().mockReturnThis(),
-    withMessage: jest.fn().mockReturnThis()
+    withMessage: jest.fn().mockReturnThis(),
   })),
   query: jest.fn(() => ({
     optional: jest.fn().mockReturnThis(),
     isObject: jest.fn().mockReturnThis(),
     withMessage: jest.fn().mockReturnThis(),
-    isIn: jest.fn().mockReturnThis()
-  }))
+    isIn: jest.fn().mockReturnThis(),
+  })),
 }));
-jest.mock('@/config/redis', () => ({
+jest.mock("@/config/redis", () => ({
   redis: {
     del: jest.fn(),
-    invalidatePattern: jest.fn().mockResolvedValue(5)
-  }
+    invalidatePattern: jest.fn().mockResolvedValue(5),
+  },
 }));
-jest.mock('@/services/adSchemaDiscovery.service', () => ({
+jest.mock("@/services/adSchemaDiscovery.service", () => ({
   adSchemaDiscovery: {
     discoverFullSchema: jest.fn(),
-    convertToFieldMetadata: jest.fn()
-  }
+    convertToFieldMetadata: jest.fn(),
+  },
 }));
-jest.mock('@/services/graph-field-discovery.service', () => ({
+jest.mock("@/services/graph-field-discovery.service", () => ({
   GraphFieldDiscoveryService: jest.fn().mockImplementation(() => ({
-    discoverFields: jest.fn()
-  }))
+    discoverFields: jest.fn(),
+  })),
 }));
-jest.mock('@/utils/encryption', () => ({
+jest.mock("@/utils/encryption", () => ({
   getCredentialEncryption: jest.fn(() => ({
-    decrypt: jest.fn((_data) => 'decrypted-password'),
-    decryptWithSalt: jest.fn((_data, _salt) => 'decrypted-password-with-salt')
-  }))
+    decrypt: jest.fn((_data) => "decrypted-password"),
+    decryptWithSalt: jest.fn((_data, _salt) => "decrypted-password-with-salt"),
+  })),
 }));
 
-describe('ReportsController - testCustomQuery API Tests', () => {
+describe("ReportsController - testCustomQuery API Tests", () => {
   let reportsController: ReportsController;
   let mockServiceFactory: jest.Mocked<typeof serviceFactory>;
   let mockCreateError: jest.MockedFunction<typeof createError>;
   let mockPreviewService: any;
 
-  const createMockRequest = (overrides: Partial<Request> = {}): Partial<Request> => ({
-    user: { 
-      id: 1, 
-      username: 'testuser', 
-      role: 'user',
-      displayName: 'Test User',
-      email: 'test@example.com',
-      authSource: 'local',
+  const createMockRequest = (
+    overrides: Partial<Request> = {},
+  ): Partial<Request> => ({
+    user: {
+      id: 1,
+      username: "testuser",
+      role: "user",
+      displayName: "Test User",
+      email: "test@example.com",
+      authSource: "local",
       isAdmin: false,
-      isActive: true
+      isActive: true,
     } as any,
     body: {},
     headers: {},
-    ...overrides
+    ...overrides,
   });
 
   const createMockResponse = (): Partial<Response> => {
@@ -115,7 +114,7 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn().mockReturnThis(),
       send: jest.fn().mockReturnThis(),
-      locals: {}
+      locals: {},
     };
     return res;
   };
@@ -123,54 +122,55 @@ describe('ReportsController - testCustomQuery API Tests', () => {
   const mockNext: NextFunction = jest.fn();
 
   const validRequestBody = {
-    source: 'ad',
+    source: "ad",
     query: {
-      source: 'ad',
+      source: "ad",
       fields: [
-        { name: 'sAMAccountName', displayName: 'Username' },
-        { name: 'displayName', displayName: 'Display Name' }
+        { name: "sAMAccountName", displayName: "Username" },
+        { name: "displayName", displayName: "Display Name" },
       ],
-      filters: [
-        { field: 'enabled', operator: 'equals', value: true }
-      ]
+      filters: [{ field: "enabled", operator: "equals", value: true }],
     },
-    parameters: { orgUnit: 'Users' },
-    limit: 10
+    parameters: { orgUnit: "Users" },
+    limit: 10,
   };
 
   const mockPreviewResponse = {
     success: true,
     data: {
-      source: 'ad',
+      source: "ad",
       executionTime: 150,
       testData: [
-        { sAMAccountName: 'jdoe', displayName: 'John Doe' },
-        { sAMAccountName: 'asmith', displayName: 'Alice Smith' }
+        { sAMAccountName: "jdoe", displayName: "John Doe" },
+        { sAMAccountName: "asmith", displayName: "Alice Smith" },
       ],
       rowCount: 2,
-      isTestRun: true
-    }
+      isTestRun: true,
+    },
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
 
     reportsController = new ReportsController();
-    
+
     // Ensure the method is bound correctly
-    if (typeof reportsController.testCustomQuery === 'function') {
-      reportsController.testCustomQuery = reportsController.testCustomQuery.bind(reportsController);
+    if (typeof reportsController.testCustomQuery === "function") {
+      reportsController.testCustomQuery =
+        reportsController.testCustomQuery.bind(reportsController);
     }
-    
+
     mockServiceFactory = serviceFactory as jest.Mocked<typeof serviceFactory>;
     mockCreateError = createError as jest.MockedFunction<typeof createError>;
 
     // Setup PreviewService mock
     mockPreviewService = {
-      executePreview: jest.fn()
+      executePreview: jest.fn(),
     };
 
-    mockServiceFactory.getPreviewService = jest.fn().mockResolvedValue(mockPreviewService);
+    mockServiceFactory.getPreviewService = jest
+      .fn()
+      .mockResolvedValue(mockPreviewService);
 
     // Setup createError mock
     mockCreateError.mockImplementation((message: string, code?: number) => {
@@ -180,30 +180,33 @@ describe('ReportsController - testCustomQuery API Tests', () => {
     });
   });
 
-  describe('POST /api/reports/custom/test - testCustomQuery', () => {
-
-    it('should execute custom query preview successfully', async () => {
+  describe("POST /api/reports/custom/test - testCustomQuery", () => {
+    it("should execute custom query preview successfully", async () => {
       mockPreviewService.executePreview.mockResolvedValue(mockPreviewResponse);
 
       const req = createMockRequest({ body: validRequestBody });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(mockServiceFactory.getPreviewService).toHaveBeenCalledTimes(1);
       expect(mockPreviewService.executePreview).toHaveBeenCalledWith({
-        source: 'ad',
+        source: "ad",
         query: validRequestBody.query,
-        parameters: { orgUnit: 'Users' },
-        limit: 10
+        parameters: { orgUnit: "Users" },
+        limit: 10,
       });
       expect(res.json).toHaveBeenCalledWith(mockPreviewResponse);
     });
 
-    it('should handle missing parameters with default empty object', async () => {
+    it("should handle missing parameters with default empty object", async () => {
       const requestWithoutParams = {
         ...validRequestBody,
-        parameters: undefined
+        parameters: undefined,
       };
 
       mockPreviewService.executePreview.mockResolvedValue(mockPreviewResponse);
@@ -211,21 +214,25 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const req = createMockRequest({ body: requestWithoutParams });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(mockPreviewService.executePreview).toHaveBeenCalledWith({
-        source: 'ad',
+        source: "ad",
         query: validRequestBody.query,
         parameters: {},
-        limit: 10
+        limit: 10,
       });
     });
 
-    it('should handle missing limit with default value', async () => {
+    it("should handle missing limit with default value", async () => {
       const requestWithoutLimit = {
-        source: 'ad',
+        source: "ad",
         query: validRequestBody.query,
-        parameters: { orgUnit: 'Users' }
+        parameters: { orgUnit: "Users" },
         // No limit property
       };
 
@@ -234,20 +241,24 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const req = createMockRequest({ body: requestWithoutLimit });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(mockPreviewService.executePreview).toHaveBeenCalledWith({
-        source: 'ad',
+        source: "ad",
         query: validRequestBody.query,
-        parameters: { orgUnit: 'Users' },
-        limit: 10
+        parameters: { orgUnit: "Users" },
+        limit: 10,
       });
     });
 
-    it('should preserve custom limit values', async () => {
+    it("should preserve custom limit values", async () => {
       const requestWithCustomLimit = {
         ...validRequestBody,
-        limit: 25
+        limit: 25,
       };
 
       mockPreviewService.executePreview.mockResolvedValue(mockPreviewResponse);
@@ -255,33 +266,37 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const req = createMockRequest({ body: requestWithCustomLimit });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(mockPreviewService.executePreview).toHaveBeenCalledWith({
-        source: 'ad',
+        source: "ad",
         query: validRequestBody.query,
-        parameters: { orgUnit: 'Users' },
-        limit: 25
+        parameters: { orgUnit: "Users" },
+        limit: 25,
       });
     });
 
-    it('should handle Azure data source requests', async () => {
+    it("should handle Azure data source requests", async () => {
       const azureRequest = {
-        source: 'azure',
+        source: "azure",
         query: {
-          source: 'azure',
+          source: "azure",
           fields: [
-            { name: 'userPrincipalName', displayName: 'User Principal Name' },
-            { name: 'displayName', displayName: 'Display Name' }
-          ]
+            { name: "userPrincipalName", displayName: "User Principal Name" },
+            { name: "displayName", displayName: "Display Name" },
+          ],
         },
-        parameters: { tenant: 'domain.onmicrosoft.com' },
-        limit: 15
+        parameters: { tenant: "domain.onmicrosoft.com" },
+        limit: 15,
       };
 
       const azureResponse = {
         ...mockPreviewResponse,
-        data: { ...mockPreviewResponse.data, source: 'azure' }
+        data: { ...mockPreviewResponse.data, source: "azure" },
       };
 
       mockPreviewService.executePreview.mockResolvedValue(azureResponse);
@@ -289,29 +304,35 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const req = createMockRequest({ body: azureRequest });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
-      expect(mockPreviewService.executePreview).toHaveBeenCalledWith(azureRequest);
+      expect(mockPreviewService.executePreview).toHaveBeenCalledWith(
+        azureRequest,
+      );
       expect(res.json).toHaveBeenCalledWith(azureResponse);
     });
 
-    it('should handle O365 data source requests', async () => {
+    it("should handle O365 data source requests", async () => {
       const o365Request = {
-        source: 'o365',
+        source: "o365",
         query: {
-          source: 'o365',
+          source: "o365",
           fields: [
-            { name: 'mail', displayName: 'Email Address' },
-            { name: 'displayName', displayName: 'Display Name' }
-          ]
+            { name: "mail", displayName: "Email Address" },
+            { name: "displayName", displayName: "Display Name" },
+          ],
         },
-        parameters: { mailbox: 'All' },
-        limit: 20
+        parameters: { mailbox: "All" },
+        limit: 20,
       };
 
       const o365Response = {
         ...mockPreviewResponse,
-        data: { ...mockPreviewResponse.data, source: 'o365' }
+        data: { ...mockPreviewResponse.data, source: "o365" },
       };
 
       mockPreviewService.executePreview.mockResolvedValue(o365Response);
@@ -319,120 +340,151 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const req = createMockRequest({ body: o365Request });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
-      expect(mockPreviewService.executePreview).toHaveBeenCalledWith(o365Request);
+      expect(mockPreviewService.executePreview).toHaveBeenCalledWith(
+        o365Request,
+      );
       expect(res.json).toHaveBeenCalledWith(o365Response);
     });
 
-    it('should require authentication', async () => {
-      const req = createMockRequest({ 
+    it("should require authentication", async () => {
+      const req = createMockRequest({
         user: undefined, // No authenticated user
-        body: validRequestBody 
+        body: validRequestBody,
       });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
-      expect(mockCreateError).toHaveBeenCalledWith('Authentication required', 401);
+      expect(mockCreateError).toHaveBeenCalledWith(
+        "Authentication required",
+        401,
+      );
       expect(mockNext).toHaveBeenCalled();
       expect(mockPreviewService.executePreview).not.toHaveBeenCalled();
     });
 
-    it('should handle PreviewService errors properly', async () => {
-      const serviceError = new Error('Invalid query structure');
+    it("should handle PreviewService errors properly", async () => {
+      const serviceError = new Error("Invalid query structure");
       mockPreviewService.executePreview.mockRejectedValue(serviceError);
 
       const req = createMockRequest({ body: validRequestBody });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(mockNext).toHaveBeenCalledWith(serviceError);
       expect(res.json).not.toHaveBeenCalled();
     });
 
-    it('should handle service factory initialization errors', async () => {
-      const factoryError = new Error('PreviewService initialization failed');
+    it("should handle service factory initialization errors", async () => {
+      const factoryError = new Error("PreviewService initialization failed");
       mockServiceFactory.getPreviewService.mockRejectedValue(factoryError);
 
       const req = createMockRequest({ body: validRequestBody });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(mockNext).toHaveBeenCalledWith(factoryError);
       expect(res.json).not.toHaveBeenCalled();
     });
 
-    it('should maintain exact response format from PreviewService', async () => {
+    it("should maintain exact response format from PreviewService", async () => {
       const complexPreviewResponse = {
         data: {
           columns: [
-            { name: 'sAMAccountName', displayName: 'Username', type: 'string' },
-            { name: 'displayName', displayName: 'Display Name', type: 'string' },
-            { name: 'department', displayName: 'Department', type: 'string' },
-            { name: 'lastLogon', displayName: 'Last Logon', type: 'datetime' }
+            { name: "sAMAccountName", displayName: "Username", type: "string" },
+            {
+              name: "displayName",
+              displayName: "Display Name",
+              type: "string",
+            },
+            { name: "department", displayName: "Department", type: "string" },
+            { name: "lastLogon", displayName: "Last Logon", type: "datetime" },
           ],
           rows: [
-            { 
-              sAMAccountName: 'jdoe', 
-              displayName: 'John Doe',
-              department: 'IT',
-              lastLogon: '2025-01-15T10:30:00Z'
-            }
+            {
+              sAMAccountName: "jdoe",
+              displayName: "John Doe",
+              department: "IT",
+              lastLogon: "2025-01-15T10:30:00Z",
+            },
           ],
           rowCount: 1,
-          totalCount: 50
+          totalCount: 50,
         },
         metadata: {
-          source: 'ad',
+          source: "ad",
           executionTime: 245,
           cached: true,
           limit: 10,
           cacheHit: true,
-          queryComplexity: 'medium'
+          queryComplexity: "medium",
         },
         success: true,
-        warnings: ['Some fields may not be available in all environments']
+        warnings: ["Some fields may not be available in all environments"],
       };
 
-      mockPreviewService.executePreview.mockResolvedValue(complexPreviewResponse);
+      mockPreviewService.executePreview.mockResolvedValue(
+        complexPreviewResponse,
+      );
 
       const req = createMockRequest({ body: validRequestBody });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       // Should return exactly what PreviewService returns, no modification
       expect(res.json).toHaveBeenCalledWith(complexPreviewResponse);
     });
 
-    it('should pass through complex query structures correctly', async () => {
+    it("should pass through complex query structures correctly", async () => {
       const complexQuery = {
-        source: 'ad',
+        source: "ad",
         query: {
-          source: 'ad',
+          source: "ad",
           fields: [
-            { name: 'sAMAccountName', displayName: 'Username' },
-            { name: 'displayName', displayName: 'Display Name' },
-            { name: 'department', displayName: 'Department' },
-            { name: 'title', displayName: 'Job Title' }
+            { name: "sAMAccountName", displayName: "Username" },
+            { name: "displayName", displayName: "Display Name" },
+            { name: "department", displayName: "Department" },
+            { name: "title", displayName: "Job Title" },
           ],
           filters: [
-            { field: 'enabled', operator: 'equals', value: true },
-            { field: 'department', operator: 'contains', value: 'IT' },
-            { field: 'lastLogon', operator: 'newer_than', value: '30d' }
+            { field: "enabled", operator: "equals", value: true },
+            { field: "department", operator: "contains", value: "IT" },
+            { field: "lastLogon", operator: "newer_than", value: "30d" },
           ],
-          groupBy: 'department',
-          orderBy: { field: 'displayName', direction: 'asc' }
+          groupBy: "department",
+          orderBy: { field: "displayName", direction: "asc" },
         },
-        parameters: { 
+        parameters: {
           includeDisabled: false,
-          orgUnit: 'OU=Users,DC=domain,DC=local',
-          maxResults: 100
+          orgUnit: "OU=Users,DC=domain,DC=local",
+          maxResults: 100,
         },
-        limit: 50
+        limit: 50,
       };
 
       mockPreviewService.executePreview.mockResolvedValue(mockPreviewResponse);
@@ -440,21 +492,27 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const req = createMockRequest({ body: complexQuery });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
-      expect(mockPreviewService.executePreview).toHaveBeenCalledWith(complexQuery);
+      expect(mockPreviewService.executePreview).toHaveBeenCalledWith(
+        complexQuery,
+      );
     });
 
-    it('should handle edge case with empty filters array', async () => {
+    it("should handle edge case with empty filters array", async () => {
       const requestWithEmptyFilters = {
-        source: 'ad',
+        source: "ad",
         query: {
-          source: 'ad',
-          fields: [{ name: 'sAMAccountName', displayName: 'Username' }],
-          filters: [] // Empty filters array
+          source: "ad",
+          fields: [{ name: "sAMAccountName", displayName: "Username" }],
+          filters: [], // Empty filters array
         },
         parameters: {},
-        limit: 5
+        limit: 5,
       };
 
       mockPreviewService.executePreview.mockResolvedValue(mockPreviewResponse);
@@ -462,27 +520,33 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const req = createMockRequest({ body: requestWithEmptyFilters });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
-      expect(mockPreviewService.executePreview).toHaveBeenCalledWith(requestWithEmptyFilters);
+      expect(mockPreviewService.executePreview).toHaveBeenCalledWith(
+        requestWithEmptyFilters,
+      );
     });
 
-    it('should handle responses with different data structures', async () => {
+    it("should handle responses with different data structures", async () => {
       const responseWithNoData = {
         data: {
           columns: [],
           rows: [],
           rowCount: 0,
-          totalCount: 0
+          totalCount: 0,
         },
         metadata: {
-          source: 'ad',
+          source: "ad",
           executionTime: 50,
           cached: false,
-          limit: 10
+          limit: 10,
         },
         success: true,
-        message: 'No data found matching the criteria'
+        message: "No data found matching the criteria",
       };
 
       mockPreviewService.executePreview.mockResolvedValue(responseWithNoData);
@@ -490,49 +554,70 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const req = createMockRequest({ body: validRequestBody });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(res.json).toHaveBeenCalledWith(responseWithNoData);
     });
   });
 
-  describe('Error Handling and Edge Cases', () => {
-    it('should handle malformed request body gracefully', async () => {
+  describe("Error Handling and Edge Cases", () => {
+    it("should handle malformed request body gracefully", async () => {
       const malformedRequest = {
         // Missing required fields
-        invalidField: 'invalid'
+        invalidField: "invalid",
       };
 
       const req = createMockRequest({ body: malformedRequest });
       const res = createMockResponse();
 
       // PreviewService should handle validation
-      const validationError = new Error('Invalid or missing data source');
+      const validationError = new Error("Invalid or missing data source");
       mockPreviewService.executePreview.mockRejectedValue(validationError);
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(mockNext).toHaveBeenCalledWith(validationError);
     });
 
-    it('should handle timeout errors from PreviewService', async () => {
-      const timeoutError = new Error('Query execution timeout');
-      (timeoutError as any).code = 'TIMEOUT';
+    it("should handle timeout errors from PreviewService", async () => {
+      const timeoutError = new Error("Query execution timeout");
+      (timeoutError as any).code = "TIMEOUT";
       mockPreviewService.executePreview.mockRejectedValue(timeoutError);
 
       const req = createMockRequest({ body: validRequestBody });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(mockNext).toHaveBeenCalledWith(timeoutError);
     });
 
-    it('should handle concurrent requests without interference', async () => {
+    it("should handle concurrent requests without interference", async () => {
       const responses = [
-        { ...mockPreviewResponse, data: { ...mockPreviewResponse.data, queryId: 1 } },
-        { ...mockPreviewResponse, data: { ...mockPreviewResponse.data, queryId: 2 } },
-        { ...mockPreviewResponse, data: { ...mockPreviewResponse.data, queryId: 3 } }
+        {
+          ...mockPreviewResponse,
+          data: { ...mockPreviewResponse.data, queryId: 1 },
+        },
+        {
+          ...mockPreviewResponse,
+          data: { ...mockPreviewResponse.data, queryId: 2 },
+        },
+        {
+          ...mockPreviewResponse,
+          data: { ...mockPreviewResponse.data, queryId: 3 },
+        },
       ];
 
       mockPreviewService.executePreview
@@ -543,18 +628,24 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const requests = [
         createMockRequest({ body: { ...validRequestBody, queryId: 1 } }),
         createMockRequest({ body: { ...validRequestBody, queryId: 2 } }),
-        createMockRequest({ body: { ...validRequestBody, queryId: 3 } })
+        createMockRequest({ body: { ...validRequestBody, queryId: 3 } }),
       ];
 
       const responseMocks = [
         createMockResponse(),
         createMockResponse(),
-        createMockResponse()
+        createMockResponse(),
       ];
 
-      await Promise.all(requests.map((req, index) => 
-        reportsController.testCustomQuery(req as Request, responseMocks[index] as Response, mockNext)
-      ));
+      await Promise.all(
+        requests.map((req, index) =>
+          reportsController.testCustomQuery(
+            req as Request,
+            responseMocks[index] as Response,
+            mockNext,
+          ),
+        ),
+      );
 
       responseMocks.forEach((resMock, index) => {
         expect(resMock.json).toHaveBeenCalledWith(responses[index]);
@@ -562,20 +653,24 @@ describe('ReportsController - testCustomQuery API Tests', () => {
     });
   });
 
-  describe('Performance and Compatibility', () => {
-    it('should maintain performance characteristics with new PreviewService', async () => {
+  describe("Performance and Compatibility", () => {
+    it("should maintain performance characteristics with new PreviewService", async () => {
       const startTime = Date.now();
-      
+
       mockPreviewService.executePreview.mockImplementation(async () => {
         // Simulate fast response
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         return mockPreviewResponse;
       });
 
       const req = createMockRequest({ body: validRequestBody });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       const endTime = Date.now();
       const executionTime = endTime - startTime;
@@ -584,71 +679,85 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       expect(res.json).toHaveBeenCalledWith(mockPreviewResponse);
     });
 
-    it('should maintain backward compatibility with existing API contract', async () => {
+    it("should maintain backward compatibility with existing API contract", async () => {
       // Test that the API still works with the exact same interface
       mockPreviewService.executePreview.mockResolvedValue(mockPreviewResponse);
 
       const legacyRequest = {
-        source: 'ad',
+        source: "ad",
         query: {
-          source: 'ad',
-          fields: [{ name: 'sAMAccountName', displayName: 'Username' }]
-        }
+          source: "ad",
+          fields: [{ name: "sAMAccountName", displayName: "Username" }],
+        },
         // No parameters or limit - should use defaults
       };
 
       const req = createMockRequest({ body: legacyRequest });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(mockPreviewService.executePreview).toHaveBeenCalledWith({
-        source: 'ad',
+        source: "ad",
         query: legacyRequest.query,
         parameters: {},
-        limit: 10
+        limit: 10,
       });
       expect(res.json).toHaveBeenCalledWith(mockPreviewResponse);
     });
 
-    it('should handle large responses efficiently', async () => {
+    it("should handle large responses efficiently", async () => {
       const largeResponse = {
         ...mockPreviewResponse,
         data: {
           ...mockPreviewResponse.data,
           rows: Array.from({ length: 50 }, (_, i) => ({
             sAMAccountName: `user${i}`,
-            displayName: `User ${i}`
+            displayName: `User ${i}`,
           })),
-          rowCount: 50
-        }
+          rowCount: 50,
+        },
       };
 
       mockPreviewService.executePreview.mockResolvedValue(largeResponse);
 
-      const req = createMockRequest({ body: { ...validRequestBody, limit: 50 } });
+      const req = createMockRequest({
+        body: { ...validRequestBody, limit: 50 },
+      });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       expect(res.json).toHaveBeenCalledWith(largeResponse);
       expect(mockPreviewService.executePreview).toHaveBeenCalledWith({
-        source: 'ad',
+        source: "ad",
         query: validRequestBody.query,
-        parameters: { orgUnit: 'Users' },
-        limit: 50
+        parameters: { orgUnit: "Users" },
+        limit: 50,
       });
     });
   });
 
-  describe('Service Integration Verification', () => {
-    it('should properly delegate to PreviewService without modification', async () => {
+  describe("Service Integration Verification", () => {
+    it("should properly delegate to PreviewService without modification", async () => {
       mockPreviewService.executePreview.mockResolvedValue(mockPreviewResponse);
 
       const req = createMockRequest({ body: validRequestBody });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       // Verify exact delegation
       expect(mockServiceFactory.getPreviewService).toHaveBeenCalledTimes(1);
@@ -657,19 +766,19 @@ describe('ReportsController - testCustomQuery API Tests', () => {
         source: validRequestBody.source,
         query: validRequestBody.query,
         parameters: validRequestBody.parameters,
-        limit: validRequestBody.limit
+        limit: validRequestBody.limit,
       });
 
       // Verify no transformation of response
       expect(res.json).toHaveBeenCalledWith(mockPreviewResponse);
     });
 
-    it('should not add any additional processing or transformation', async () => {
+    it("should not add any additional processing or transformation", async () => {
       const originalResponse = {
-        data: { test: 'value' },
-        metadata: { custom: 'metadata' },
+        data: { test: "value" },
+        metadata: { custom: "metadata" },
         success: true,
-        customField: 'should be preserved'
+        customField: "should be preserved",
       };
 
       mockPreviewService.executePreview.mockResolvedValue(originalResponse);
@@ -677,7 +786,11 @@ describe('ReportsController - testCustomQuery API Tests', () => {
       const req = createMockRequest({ body: validRequestBody });
       const res = createMockResponse();
 
-      await reportsController.testCustomQuery(req as Request, res as Response, mockNext);
+      await reportsController.testCustomQuery(
+        req as Request,
+        res as Response,
+        mockNext,
+      );
 
       // Response should be exactly what PreviewService returned
       expect(res.json).toHaveBeenCalledWith(originalResponse);

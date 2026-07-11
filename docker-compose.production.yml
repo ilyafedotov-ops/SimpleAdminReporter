@@ -12,10 +12,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 256M
 
   backend:
@@ -48,18 +48,18 @@ services:
       - HELMET_CSP=true
       - CORS_ORIGIN=http://${PRODUCTION_HOST}
     volumes:
-      - production-logs:/app/logs
-      - production-reports:/app/reports
-      - production-uploads:/app/uploads
-      - /backups:/app/backups
+      - production-logs:/app/backend/logs
+      - production-reports:/app/backend/reports
+      - production-uploads:/app/backend/uploads
+      - /backups:/app/backend/backups
     restart: always
     deploy:
       resources:
         limits:
-          cpus: '2'
+          cpus: "2"
           memory: 2G
         reservations:
-          cpus: '1'
+          cpus: "1"
           memory: 1G
 
   nginx:
@@ -76,10 +76,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 512M
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
 
   postgres:
@@ -97,10 +97,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
+          cpus: "2"
           memory: 2G
         reservations:
-          cpus: '1'
+          cpus: "1"
           memory: 1G
     command: >
       postgres
@@ -131,10 +131,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 512M
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
 
   # Monitoring removed - use health service endpoint at /health instead

@@ -38,17 +38,17 @@ services:
       - CREDENTIAL_ENCRYPTION_KEY=${CREDENTIAL_ENCRYPTION_KEY}
       - CREDENTIAL_ENCRYPTION_SALT=${CREDENTIAL_ENCRYPTION_SALT}
     volumes:
-      - staging-logs:/app/logs
-      - staging-reports:/app/reports
-      - staging-uploads:/app/uploads
+      - staging-logs:/app/backend/logs
+      - staging-reports:/app/backend/reports
+      - staging-uploads:/app/backend/uploads
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 1G
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
 
   nginx:
@@ -73,10 +73,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 1G
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
 
   redis:

@@ -1,17 +1,17 @@
 # Production Docker Compose with Enhanced Security
-version: '3.8'
+version: "3.8"
 
 services:
   nginx:
     image: nginx:1.27-alpine
     container_name: reporting-nginx
     ports:
-      - "80:80"   # HTTP redirect only
+      - "80:80" # HTTP redirect only
       - "443:443" # HTTPS secure port
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/ssl/certs:ro  # SSL certificates
-      - ./nginx/logs:/var/log/nginx  # Persistent logs
+      - ./ssl:/etc/ssl/certs:ro # SSL certificates
+      - ./nginx/logs:/var/log/nginx # Persistent logs
     depends_on:
       - frontend
       - backend
@@ -49,8 +49,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       target: production
     container_name: reporting-backend
     environment:
@@ -64,7 +64,7 @@ services:
       - AD_PASSWORD_FILE=/run/secrets/ad_password
       - AZURE_CLIENT_SECRET_FILE=/run/secrets/azure_client_secret
       - CREDENTIAL_ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
-      
+
       # Non-sensitive configuration
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -87,7 +87,7 @@ services:
       - USE_MATERIALIZED_VIEWS=true
       - ENABLE_DB_LOGS=true
       - DB_LOG_LEVEL=warn
-    
+
     secrets:
       - database_url
       - jwt_secret
@@ -96,22 +96,22 @@ services:
       - ad_password
       - azure_client_secret
       - encryption_key
-      
+
     volumes:
-      - ./reports:/app/reports:rw
-      - ./exports:/app/exports:rw
-      - backend-logs:/app/logs
-      
+      - ./reports:/app/backend/reports:rw
+      - ./exports:/app/backend/exports:rw
+      - backend-logs:/app/backend/logs
+
     depends_on:
       - postgres
       - redis
-      
+
     networks:
       - frontend-tier
       - backend-tier
-      
+
     restart: unless-stopped
-    
+
     logging:
       driver: "json-file"
       options:
@@ -127,7 +127,7 @@ services:
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
       # SECURITY: Enable SSL and logging
       - POSTGRES_INITDB_ARGS=--auth-host=md5 --auth-local=trust
-    
+
     command: >
       postgres
       -c ssl=on
@@ -137,22 +137,22 @@ services:
       -c log_min_duration_statement=1000
       -c shared_preload_libraries='pg_stat_statements'
       -c pg_stat_statements.track=all
-    
+
     secrets:
       - postgres_password
-      
+
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - ./ssl/postgres:/etc/ssl:ro  # PostgreSQL SSL certificates
+      - ./ssl/postgres:/etc/ssl:ro # PostgreSQL SSL certificates
       - postgres-logs:/var/log/postgresql
-      
+
     # SECURITY: No external ports exposed
     networks:
       - backend-tier
-      
+
     restart: unless-stopped
-    
+
     logging:
       driver: "json-file"
       options:
@@ -173,20 +173,20 @@ services:
         echo "save 60 10000" >> /etc/redis/redis.conf &&
         redis-server /etc/redis/redis.conf
       '
-    
+
     secrets:
       - redis_password
-      
+
     volumes:
       - redis-data:/data
       - redis-logs:/var/log/redis
-      
+
     # SECURITY: No external ports exposed
     networks:
       - backend-tier
-      
+
     restart: unless-stopped
-    
+
     logging:
       driver: "json-file"
       options:
@@ -233,10 +233,10 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/24
-  
+
   backend-tier:
     driver: bridge
-    internal: true  # SECURITY: No external internet access
+    internal: true # SECURITY: No external internet access
     # Internal only - databases and backend services
     ipam:
       config:

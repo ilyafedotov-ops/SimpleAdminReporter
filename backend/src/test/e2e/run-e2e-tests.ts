@@ -1,16 +1,19 @@
 #!/usr/bin/env ts-node
 /**
  * E2E Test Runner
- * 
+ *
  * Comprehensive test runner for E2E tests with database setup, cleanup, and reporting
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
-import path from 'path';
-import { logger } from '@/utils/logger';
-import { TestDataManager } from './utils/test-data-manager';
-import { initializeTestDatabase, initializeTestRedis } from '@/test/test-helpers';
+import { spawn, ChildProcess } from "child_process";
+import { writeFileSync, existsSync, mkdirSync } from "fs";
+import path from "path";
+import { logger } from "@/utils/logger";
+import { TestDataManager } from "./utils/test-data-manager";
+import {
+  initializeTestDatabase,
+  initializeTestRedis,
+} from "@/test/test-helpers";
 
 // Test configuration
 interface E2ETestConfig {
@@ -22,12 +25,12 @@ interface E2ETestConfig {
   coverage: boolean;
   cleanup: boolean;
   verbose: boolean;
-  reportFormat: 'json' | 'junit' | 'html' | 'console';
+  reportFormat: "json" | "junit" | "html" | "console";
   outputDir: string;
 }
 
 const DEFAULT_CONFIG: E2ETestConfig = {
-  suites: ['auth', 'reports', 'api', 'logs'],
+  suites: ["auth", "reports", "api", "logs"],
   parallel: false,
   timeout: 120000, // 2 minutes per test
   retries: 1,
@@ -35,8 +38,8 @@ const DEFAULT_CONFIG: E2ETestConfig = {
   coverage: false,
   cleanup: true,
   verbose: true,
-  reportFormat: 'console',
-  outputDir: './test-results/e2e'
+  reportFormat: "console",
+  outputDir: "./test-results/e2e",
 };
 
 class E2ETestRunner {
@@ -54,7 +57,7 @@ class E2ETestRunner {
    */
   async run(): Promise<boolean> {
     this.startTime = Date.now();
-    logger.info('Starting E2E Test Suite', this.config);
+    logger.info("Starting E2E Test Suite", this.config);
 
     try {
       // Pre-flight checks
@@ -79,12 +82,12 @@ class E2ETestRunner {
         success,
         totalTests: this.getTotalTests(),
         passed: this.getPassedTests(),
-        failed: this.getFailedTests()
+        failed: this.getFailedTests(),
       });
 
       return success;
     } catch (error) {
-      logger.error('E2E Test Suite failed:', error);
+      logger.error("E2E Test Suite failed:", error);
       return false;
     }
   }
@@ -93,28 +96,26 @@ class E2ETestRunner {
    * Perform pre-flight checks before running tests
    */
   private async preflightChecks(): Promise<void> {
-    logger.info('Performing pre-flight checks...');
+    logger.info("Performing pre-flight checks...");
 
     // Check environment variables
-    const requiredEnvVars = [
-      'DATABASE_URL',
-      'REDIS_URL',
-      'JWT_SECRET'
-    ];
+    const requiredEnvVars = ["DATABASE_URL", "REDIS_URL", "JWT_SECRET"];
 
-    const missingEnvVars = requiredEnvVars.filter(env => !process.env[env]);
+    const missingEnvVars = requiredEnvVars.filter((env) => !process.env[env]);
     if (missingEnvVars.length > 0) {
-      throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+      throw new Error(
+        `Missing required environment variables: ${missingEnvVars.join(", ")}`,
+      );
     }
 
     // Test database connectivity
     try {
       const pool = await initializeTestDatabase();
       const client = await pool.connect();
-      await client.query('SELECT 1');
+      await client.query("SELECT 1");
       client.release();
       await pool.end();
-      logger.info('Database connectivity: OK');
+      logger.info("Database connectivity: OK");
     } catch (error) {
       throw new Error(`Database connectivity check failed: ${error}`);
     }
@@ -124,19 +125,19 @@ class E2ETestRunner {
       const redis = await initializeTestRedis();
       await redis.ping();
       await redis.quit();
-      logger.info('Redis connectivity: OK');
+      logger.info("Redis connectivity: OK");
     } catch (error) {
       throw new Error(`Redis connectivity check failed: ${error}`);
     }
 
-    logger.info('Pre-flight checks completed successfully');
+    logger.info("Pre-flight checks completed successfully");
   }
 
   /**
    * Setup test environment with fresh data
    */
   private async setupTestEnvironment(): Promise<void> {
-    logger.info('Setting up test environment...');
+    logger.info("Setting up test environment...");
 
     try {
       // Initialize database and Redis
@@ -150,10 +151,10 @@ class E2ETestRunner {
       // Verify data integrity
       const integrity = await testDataManager.verifyTestDataIntegrity();
       if (!integrity.isValid) {
-        throw new Error('Test data integrity check failed');
+        throw new Error("Test data integrity check failed");
       }
 
-      logger.info('Test environment setup completed', integrity);
+      logger.info("Test environment setup completed", integrity);
 
       // Cleanup connections
       await redis.quit();
@@ -167,20 +168,20 @@ class E2ETestRunner {
    * Run all configured test suites
    */
   private async runTestSuites(): Promise<boolean> {
-    logger.info('Running test suites:', this.config.suites);
+    logger.info("Running test suites:", this.config.suites);
 
     let overallSuccess = true;
 
     for (const suite of this.config.suites) {
       logger.info(`Running test suite: ${suite}`);
-      
+
       const result = await this.runTestSuite(suite);
       this.testResults.push(result);
 
       if (!result.success) {
         overallSuccess = false;
         if (this.config.bail) {
-          logger.warn('Bailing out due to test failure');
+          logger.warn("Bailing out due to test failure");
           break;
         }
       }
@@ -206,67 +207,74 @@ class E2ETestRunner {
         passed: 0,
         failed: 1,
         skipped: 0,
-        error: `Test file not found: ${testFile}`
+        error: `Test file not found: ${testFile}`,
       };
     }
 
     return new Promise((resolve) => {
       const jestArgs = [
-        '--testPathPattern', testFile,
-        '--testTimeout', this.config.timeout.toString(),
-        '--verbose', this.config.verbose.toString(),
-        '--bail', this.config.bail.toString(),
-        '--maxWorkers', '1', // Run E2E tests serially
-        '--forceExit',
-        '--detectOpenHandles'
+        "--config",
+        "jest.e2e.config.js",
+        "--testPathPatterns",
+        `${suite}.e2e.test.ts`,
+        "--testTimeout",
+        this.config.timeout.toString(),
+        "--verbose",
+        this.config.verbose.toString(),
+        "--bail",
+        this.config.bail.toString(),
+        "--maxWorkers",
+        "1", // Run E2E tests serially
+        "--forceExit",
+        "--detectOpenHandles",
       ];
 
       if (this.config.coverage) {
-        jestArgs.push('--coverage');
+        jestArgs.push("--coverage");
       }
 
-      if (this.config.reportFormat === 'junit') {
-        jestArgs.push(
-          '--reporters', 'default',
-          '--reporters', 'jest-junit'
-        );
+      if (this.config.reportFormat === "junit") {
+        jestArgs.push("--reporters", "default", "--reporters", "jest-junit");
       }
 
       // Set test environment
       const env = {
         ...process.env,
-        TEST_TYPE: 'integration',
-        NODE_ENV: 'test',
+        TEST_TYPE: "e2e",
+        NODE_ENV: "test",
         JEST_JUNIT_OUTPUT_DIR: this.config.outputDir,
-        JEST_JUNIT_OUTPUT_NAME: `${suite}.e2e.xml`
+        JEST_JUNIT_OUTPUT_NAME: `${suite}.e2e.xml`,
       };
 
-      logger.info(`Executing: jest ${jestArgs.join(' ')}`);
+      logger.info(`Executing: jest ${jestArgs.join(" ")}`);
 
-      const jestProcess: ChildProcess = spawn('npx', ['jest', ...jestArgs], {
-        stdio: this.config.verbose ? 'inherit' : 'pipe',
+      const jestProcess: ChildProcess = spawn("npx", ["jest", ...jestArgs], {
+        stdio: this.config.verbose ? "inherit" : "pipe",
         env,
-        cwd: process.cwd()
+        cwd: process.cwd(),
       });
 
-      let stdout = '';
-      let stderr = '';
+      let stdout = "";
+      let stderr = "";
 
       if (jestProcess.stdout && jestProcess.stderr) {
-        jestProcess.stdout.on('data', (data) => {
+        jestProcess.stdout.on("data", (data) => {
           stdout += data.toString();
         });
 
-        jestProcess.stderr.on('data', (data) => {
+        jestProcess.stderr.on("data", (data) => {
           stderr += data.toString();
         });
       }
 
-      jestProcess.on('close', (code) => {
+      jestProcess.on("close", (code) => {
         const duration = Date.now() - startTime;
         const success = code === 0;
 
-        let tests = 0, passed = 0, failed = 0, skipped = 0;
+        let tests = 0,
+          passed = 0,
+          failed = 0,
+          skipped = 0;
 
         // Parse Jest output for test counts
         const testResults = this.parseJestOutput(stdout + stderr);
@@ -287,7 +295,7 @@ class E2ETestRunner {
           skipped,
           stdout: this.config.verbose ? undefined : stdout,
           stderr: this.config.verbose ? undefined : stderr,
-          error: code !== 0 ? `Jest exited with code ${code}` : undefined
+          error: code !== 0 ? `Jest exited with code ${code}` : undefined,
         };
 
         logger.info(`Test suite ${suite} completed`, {
@@ -296,13 +304,13 @@ class E2ETestRunner {
           tests,
           passed,
           failed,
-          skipped
+          skipped,
         });
 
         resolve(result);
       });
 
-      jestProcess.on('error', (error) => {
+      jestProcess.on("error", (error) => {
         logger.error(`Failed to start jest for suite ${suite}:`, error);
         resolve({
           suite,
@@ -312,7 +320,7 @@ class E2ETestRunner {
           passed: 0,
           failed: 1,
           skipped: 0,
-          error: error.message
+          error: error.message,
         });
       });
     });
@@ -321,25 +329,27 @@ class E2ETestRunner {
   /**
    * Parse Jest output to extract test counts
    */
-  private parseJestOutput(output: string): { total: number; passed: number; failed: number; skipped: number } | null {
+  private parseJestOutput(
+    output: string,
+  ): { total: number; passed: number; failed: number; skipped: number } | null {
     // Look for Jest summary patterns
     const patterns = [
       /Tests:\s+(\d+)\s+failed,\s+(\d+)\s+passed,\s+(\d+)\s+total/,
       /Tests:\s+(\d+)\s+passed,\s+(\d+)\s+total/,
       /(\d+)\s+passing/,
-      /(\d+)\s+failing/
+      /(\d+)\s+failing/,
     ];
 
     for (const pattern of patterns) {
       const match = output.match(pattern);
       if (match) {
         // This is a simplified parser - in practice, you'd want more robust parsing
-        const total = parseInt(match[match.length - 1] || '0');
+        const total = parseInt(match[match.length - 1] || "0");
         return {
           total,
-          passed: output.includes('passed') ? total : 0,
-          failed: output.includes('failed') ? total : 0,
-          skipped: output.includes('skipped') ? total : 0
+          passed: output.includes("passed") ? total : 0,
+          failed: output.includes("failed") ? total : 0,
+          skipped: output.includes("skipped") ? total : 0,
         };
       }
     }
@@ -351,7 +361,7 @@ class E2ETestRunner {
    * Generate test reports in various formats
    */
   private async generateReports(): Promise<void> {
-    logger.info('Generating test reports...');
+    logger.info("Generating test reports...");
 
     const report: TestReport = {
       timestamp: new Date().toISOString(),
@@ -363,26 +373,29 @@ class E2ETestRunner {
         passed: this.getPassedTests(),
         failed: this.getFailedTests(),
         skipped: this.getSkippedTests(),
-        success: this.testResults.every(r => r.success)
-      }
+        success: this.testResults.every((r) => r.success),
+      },
     };
 
     // JSON Report
-    if (this.config.reportFormat === 'json' || this.config.reportFormat === 'console') {
-      const jsonReport = path.join(this.config.outputDir, 'e2e-report.json');
+    if (
+      this.config.reportFormat === "json" ||
+      this.config.reportFormat === "console"
+    ) {
+      const jsonReport = path.join(this.config.outputDir, "e2e-report.json");
       writeFileSync(jsonReport, JSON.stringify(report, null, 2));
       logger.info(`JSON report written to: ${jsonReport}`);
     }
 
     // Console Report
-    if (this.config.reportFormat === 'console') {
+    if (this.config.reportFormat === "console") {
       this.printConsoleReport(report);
     }
 
     // HTML Report (basic)
-    if (this.config.reportFormat === 'html') {
+    if (this.config.reportFormat === "html") {
       const htmlReport = this.generateHTMLReport(report);
-      const htmlPath = path.join(this.config.outputDir, 'e2e-report.html');
+      const htmlPath = path.join(this.config.outputDir, "e2e-report.html");
       writeFileSync(htmlPath, htmlReport);
       logger.info(`HTML report written to: ${htmlPath}`);
     }
@@ -393,29 +406,31 @@ class E2ETestRunner {
    */
   private printConsoleReport(report: TestReport): void {
     /* eslint-disable no-console */
-    console.log('\n' + '='.repeat(80));
-    console.log('E2E TEST REPORT');
-    console.log('='.repeat(80));
+    console.log("\n" + "=".repeat(80));
+    console.log("E2E TEST REPORT");
+    console.log("=".repeat(80));
     console.log(`Duration: ${(report.duration / 1000).toFixed(2)}s`);
     console.log(`Total Tests: ${report.summary.total}`);
     console.log(`Passed: ${report.summary.passed}`);
     console.log(`Failed: ${report.summary.failed}`);
     console.log(`Skipped: ${report.summary.skipped}`);
-    console.log(`Overall Success: ${report.summary.success ? 'YES' : 'NO'}`);
-    console.log('\nSuite Results:');
-    console.log('-'.repeat(80));
+    console.log(`Overall Success: ${report.summary.success ? "YES" : "NO"}`);
+    console.log("\nSuite Results:");
+    console.log("-".repeat(80));
 
     for (const result of report.results) {
-      const status = result.success ? '✅ PASS' : '❌ FAIL';
+      const status = result.success ? "✅ PASS" : "❌ FAIL";
       const duration = (result.duration / 1000).toFixed(2);
-      console.log(`${status} ${result.suite.padEnd(20)} ${duration}s (${result.passed}/${result.tests} passed)`);
-      
+      console.log(
+        `${status} ${result.suite.padEnd(20)} ${duration}s (${result.passed}/${result.tests} passed)`,
+      );
+
       if (result.error) {
         console.log(`      Error: ${result.error}`);
       }
     }
-    
-    console.log('='.repeat(80) + '\n');
+
+    console.log("=".repeat(80) + "\n");
     /* eslint-enable no-console */
   }
 
@@ -423,8 +438,8 @@ class E2ETestRunner {
    * Generate basic HTML report
    */
   private generateHTMLReport(report: TestReport): string {
-    const successClass = report.summary.success ? 'success' : 'failure';
-    
+    const successClass = report.summary.success ? "success" : "failure";
+
     return `
 <!DOCTYPE html>
 <html>
@@ -452,7 +467,7 @@ class E2ETestRunner {
     
     <div class="summary">
         <h2>Summary</h2>
-        <p class="${successClass}">Overall Result: ${report.summary.success ? 'PASSED' : 'FAILED'}</p>
+        <p class="${successClass}">Overall Result: ${report.summary.success ? "PASSED" : "FAILED"}</p>
         <table>
             <tr><th>Metric</th><th>Count</th></tr>
             <tr><td>Total Tests</td><td>${report.summary.total}</td></tr>
@@ -464,14 +479,18 @@ class E2ETestRunner {
     
     <div class="suites">
         <h2>Test Suites</h2>
-        ${report.results.map(result => `
-            <div class="suite ${result.success ? 'pass' : 'fail'}">
-                <h3>${result.suite} ${result.success ? '✅' : '❌'}</h3>
+        ${report.results
+          .map(
+            (result) => `
+            <div class="suite ${result.success ? "pass" : "fail"}">
+                <h3>${result.suite} ${result.success ? "✅" : "❌"}</h3>
                 <p>Duration: ${(result.duration / 1000).toFixed(2)}s</p>
                 <p>Tests: ${result.passed}/${result.tests} passed</p>
-                ${result.error ? `<p class="failure">Error: ${result.error}</p>` : ''}
+                ${result.error ? `<p class="failure">Error: ${result.error}</p>` : ""}
             </div>
-        `).join('')}
+        `,
+          )
+          .join("")}
     </div>
 </body>
 </html>
@@ -482,22 +501,22 @@ class E2ETestRunner {
    * Cleanup test environment
    */
   private async cleanup(): Promise<void> {
-    logger.info('Cleaning up test environment...');
+    logger.info("Cleaning up test environment...");
 
     try {
       // Initialize connections for cleanup
       const pool = await initializeTestDatabase();
       const testDataManager = new TestDataManager(pool);
-      
+
       // Clean up test data
       await testDataManager.cleanupTestDataset();
-      
+
       // Close connections
       await pool.end();
-      
-      logger.info('Test environment cleanup completed');
+
+      logger.info("Test environment cleanup completed");
     } catch (error) {
-      logger.error('Test environment cleanup failed:', error);
+      logger.error("Test environment cleanup failed:", error);
       // Don't throw on cleanup failure
     }
   }
@@ -582,52 +601,52 @@ async function main() {
     const nextArg = args[i + 1];
 
     switch (arg) {
-      case '--suites':
+      case "--suites":
         if (nextArg) {
-          config.suites = nextArg.split(',');
+          config.suites = nextArg.split(",");
           i++;
         }
         break;
-      case '--timeout':
+      case "--timeout":
         if (nextArg) {
           config.timeout = parseInt(nextArg);
           i++;
         }
         break;
-      case '--parallel':
+      case "--parallel":
         config.parallel = true;
         break;
-      case '--no-cleanup':
+      case "--no-cleanup":
         config.cleanup = false;
         break;
-      case '--coverage':
+      case "--coverage":
         config.coverage = true;
         break;
-      case '--bail':
+      case "--bail":
         config.bail = true;
         break;
-      case '--no-bail':
+      case "--no-bail":
         config.bail = false;
         break;
-      case '--verbose':
+      case "--verbose":
         config.verbose = true;
         break;
-      case '--quiet':
+      case "--quiet":
         config.verbose = false;
         break;
-      case '--format':
-        if (nextArg && ['json', 'junit', 'html', 'console'].includes(nextArg)) {
+      case "--format":
+        if (nextArg && ["json", "junit", "html", "console"].includes(nextArg)) {
           config.reportFormat = nextArg as any;
           i++;
         }
         break;
-      case '--output':
+      case "--output":
         if (nextArg) {
           config.outputDir = nextArg;
           i++;
         }
         break;
-      case '--help':
+      case "--help":
         // eslint-disable-next-line no-console
         console.log(`
 Usage: npm run test:e2e [options]
@@ -660,7 +679,7 @@ Examples:
   // Run E2E tests
   const runner = new E2ETestRunner(config);
   const success = await runner.run();
-  
+
   process.exit(success ? 0 : 1);
 }
 
@@ -668,7 +687,7 @@ Examples:
 if (require.main === module) {
   main().catch((error) => {
     // eslint-disable-next-line no-console
-    console.error('E2E Test Runner failed:', error);
+    console.error("E2E Test Runner failed:", error);
     process.exit(1);
   });
 }

@@ -1,18 +1,24 @@
-import { Request, Response, NextFunction } from 'express';
-import { logger } from '@/utils/logger';
-import { createError } from '@/middleware/error.middleware';
-import { csrfService } from '@/services/csrf.service';
-import { unifiedAuthService } from '../services/unified-auth.service';
-import { AuthStrategyFactory } from '../strategies';
-import { AuthOptions, AuthMode } from '../types';
+import { Request, Response, NextFunction } from "express";
+import { logger } from "@/utils/logger";
+import { createError } from "@/middleware/error.middleware";
+import { csrfService } from "@/services/csrf.service";
+import { unifiedAuthService } from "../services/unified-auth.service";
+import { AuthStrategyFactory } from "../strategies";
+import { AuthOptions, AuthMode } from "../types";
 
 /**
  * Unified authentication middleware that supports both JWT and cookie strategies
  */
 export const authenticate = (options: AuthOptions = { required: true }) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    logger.info(`Authentication middleware called for ${req.method} ${req.path}`);
-    
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    logger.debug(
+      `Authentication middleware called for ${req.method} ${req.path}`,
+    );
+
     try {
       // Determine auth mode from request
       const authMode = unifiedAuthService.getAuthMode(req);
@@ -23,13 +29,20 @@ export const authenticate = (options: AuthOptions = { required: true }) => {
 
       // Extract token using strategy
       const token = strategy.extractToken(req);
-      logger.info(`Token extracted: ${token ? 'yes' : 'no'} for ${req.path}`);
+      logger.debug(`Token extracted: ${token ? "yes" : "no"} for ${req.path}`);
 
       // Handle missing token
       if (!token) {
         if (options.required) {
-          logger.warn(`Authentication required but no token provided for ${req.path}`);
-          return next(createError('Access token required. Please login to continue.', 401));
+          logger.warn(
+            `Authentication required but no token provided for ${req.path}`,
+          );
+          return next(
+            createError(
+              "Access token required. Please login to continue.",
+              401,
+            ),
+          );
         } else {
           // Optional authentication - continue without user
           return next();
@@ -38,56 +51,70 @@ export const authenticate = (options: AuthOptions = { required: true }) => {
 
       try {
         // For cookie mode, validate CSRF token for state-changing requests
-        if (authMode === AuthMode.COOKIE && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+        if (
+          authMode === AuthMode.COOKIE &&
+          !["GET", "HEAD", "OPTIONS"].includes(req.method)
+        ) {
           const isValidCSRF = csrfService.validateCSRFToken(req);
           if (!isValidCSRF) {
             logger.warn(`CSRF validation failed for ${req.path}`);
-            return next(createError('CSRF validation failed', 403));
+            return next(createError("CSRF validation failed", 403));
           }
         }
 
         // Verify token and get user
         // Skip blacklist check for cookie mode for better performance
         const user = await unifiedAuthService.verifyAccessToken(token, {
-          skipBlacklistCheck: authMode === AuthMode.COOKIE
+          skipBlacklistCheck: authMode === AuthMode.COOKIE,
         });
 
         // Check if user is active
         if (!user.isActive) {
           logger.warn(`Inactive user attempted access: ${user.username}`);
-          return next(createError('Account is inactive', 403));
+          return next(createError("Account is inactive", 403));
         }
 
         // Check admin requirement
         if (options.adminOnly && !user.isAdmin) {
-          logger.warn(`Non-admin user attempted admin access: ${user.username}`);
-          return next(createError('Administrator access required', 403));
+          logger.warn(
+            `Non-admin user attempted admin access: ${user.username}`,
+          );
+          return next(createError("Administrator access required", 403));
         }
 
         // Check allowed authentication sources
-        if (options.allowedSources && !options.allowedSources.includes(user.authSource)) {
-          logger.warn(`User with unauthorized auth source attempted access: ${user.username} (${user.authSource})`);
-          return next(createError('Authentication source not allowed', 403));
+        if (
+          options.allowedSources &&
+          !options.allowedSources.includes(user.authSource)
+        ) {
+          logger.warn(
+            `User with unauthorized auth source attempted access: ${user.username} (${user.authSource})`,
+          );
+          return next(createError("Authentication source not allowed", 403));
         }
 
         // Attach user to request
         req.user = user;
 
         // Extract session ID from token
-        const tokenPayload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        const tokenPayload = JSON.parse(
+          Buffer.from(token.split(".")[1], "base64").toString(),
+        );
         req.sessionId = tokenPayload.sessionId;
 
-        logger.debug(`Authenticated user: ${user.username} (${user.authSource}) via ${authMode}`);
+        logger.debug(
+          `Authenticated user: ${user.username} (${user.authSource}) via ${authMode}`,
+        );
         next();
-
       } catch (tokenError) {
-        logger.warn(`Token verification failed: ${(tokenError as Error).message}`);
-        return next(createError('Invalid or expired token', 401));
+        logger.warn(
+          `Token verification failed: ${(tokenError as Error).message}`,
+        );
+        return next(createError("Invalid or expired token", 401));
       }
-
     } catch (error) {
-      logger.error('Authentication middleware error:', error);
-      next(createError('Authentication failed', 500));
+      logger.error("Authentication middleware error:", error);
+      next(createError("Authentication failed", 500));
     }
   };
 };
@@ -110,16 +137,22 @@ export const optionalAuth = authenticate({ required: false });
 /**
  * Middleware to require specific authentication sources
  */
-export const requireAuthSource = (sources: ('ad' | 'azure' | 'o365' | 'local')[]) => {
+export const requireAuthSource = (
+  sources: ("ad" | "azure" | "o365" | "local")[],
+) => {
   return authenticate({ required: true, allowedSources: sources });
 };
 
 /**
  * CSRF protection middleware for cookie-based auth
  */
-export const requireCSRF = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const requireCSRF = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   // Skip for non-state-changing methods
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
     return next();
   }
 
@@ -131,7 +164,7 @@ export const requireCSRF = async (req: Request, res: Response, next: NextFunctio
   const isValid = csrfService.validateCSRFToken(req);
   if (!isValid) {
     logger.warn(`CSRF validation failed for ${req.path}`);
-    return next(createError('CSRF validation failed', 403));
+    return next(createError("CSRF validation failed", 403));
   }
 
   next();
@@ -141,18 +174,32 @@ export const requireCSRF = async (req: Request, res: Response, next: NextFunctio
  * Role-based access control middleware
  */
 export const requireRole = (roles: string[]) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     if (!req.user) {
-      return next(createError('Authentication required', 401));
+      return next(createError("Authentication required", 401));
     }
 
-    // Check if user has required role
-    const userRoles = (req.user as any).roles || [];
-    const hasRole = roles.some(role => userRoles.includes(role));
+    const userRoles = new Set<string>((req.user as any).roles || []);
+
+    if (req.user.isAdmin) {
+      userRoles.add("admin");
+    }
+
+    if (req.user.role) {
+      userRoles.add(req.user.role);
+    }
+
+    const hasRole = roles.some((role) => userRoles.has(role));
 
     if (!hasRole) {
-      logger.warn(`Access denied for user ${req.user.id} - missing required roles: ${roles.join(', ')}`);
-      return next(createError('Insufficient permissions', 403));
+      logger.warn(
+        `Access denied for user ${req.user.id} - missing required roles: ${roles.join(", ")}`,
+      );
+      return next(createError("Insufficient permissions", 403));
     }
 
     next();
@@ -162,22 +209,28 @@ export const requireRole = (roles: string[]) => {
 /**
  * Resource access control middleware
  */
-export const requireResourceAccess = (checker: (req: Request) => Promise<boolean> | boolean) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const requireResourceAccess = (
+  checker: (req: Request) => Promise<boolean> | boolean,
+) => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     if (!req.user) {
-      return next(createError('Authentication required', 401));
+      return next(createError("Authentication required", 401));
     }
 
     try {
       const hasAccess = await checker(req);
       if (!hasAccess) {
         logger.warn(`Resource access denied for user ${req.user.id}`);
-        return next(createError('Access denied to this resource', 403));
+        return next(createError("Access denied to this resource", 403));
       }
       next();
     } catch (error) {
-      logger.error('Error checking resource access:', error);
-      return next(createError('Error checking resource access', 500));
+      logger.error("Error checking resource access:", error);
+      return next(createError("Error checking resource access", 500));
     }
   };
 };
@@ -186,7 +239,11 @@ export const requireResourceAccess = (checker: (req: Request) => Promise<boolean
  * Audit action middleware
  */
 export const auditAction = (action: string, resourceType: string) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     // Store audit info in request for later logging
     (req as any).auditInfo = {
       action,
@@ -194,23 +251,23 @@ export const auditAction = (action: string, resourceType: string) => {
       userId: req.user?.id,
       timestamp: new Date(),
       ip: req.ip,
-      userAgent: req.get('user-agent')
+      userAgent: req.get("user-agent"),
     };
 
     // Log after response is sent
-    res.on('finish', async () => {
+    res.on("finish", async () => {
       try {
-        const { auditLogger } = await import('@/services/audit-logger.service');
+        const { auditLogger } = await import("@/services/audit-logger.service");
         await auditLogger.logAccess(
-          'api_access',
+          "api_access",
           { request: req, user: req.user },
           resourceType,
           undefined, // resourceId
           { action, statusCode: res.statusCode },
-          res.statusCode < 400
+          res.statusCode < 400,
         );
       } catch (error) {
-        logger.error('Failed to log audit action:', error);
+        logger.error("Failed to log audit action:", error);
       }
     });
 
@@ -221,10 +278,17 @@ export const auditAction = (action: string, resourceType: string) => {
 /**
  * User-specific rate limiting middleware
  */
-export const userRateLimit = (maxRequests: number, windowMinutes: number = 1) => {
+export const userRateLimit = (
+  maxRequests: number,
+  windowMinutes: number = 1,
+) => {
   const requests = new Map<string, { count: number; resetTime: number }>();
 
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     if (!req.user) {
       return next(); // Skip rate limiting for unauthenticated requests
     }
@@ -234,7 +298,7 @@ export const userRateLimit = (maxRequests: number, windowMinutes: number = 1) =>
     const windowMs = windowMinutes * 60 * 1000;
 
     let userData = requests.get(key);
-    
+
     if (!userData || userData.resetTime < now) {
       userData = { count: 1, resetTime: now + windowMs };
       requests.set(key, userData);
@@ -244,8 +308,13 @@ export const userRateLimit = (maxRequests: number, windowMinutes: number = 1) =>
 
     if (userData.count > maxRequests) {
       const retryAfter = Math.ceil((userData.resetTime - now) / 1000);
-      res.set('Retry-After', retryAfter.toString());
-      return next(createError(`Rate limit exceeded. Try again in ${retryAfter} seconds`, 429));
+      res.set("Retry-After", retryAfter.toString());
+      return next(
+        createError(
+          `Rate limit exceeded. Try again in ${retryAfter} seconds`,
+          429,
+        ),
+      );
     }
 
     next();
@@ -256,7 +325,11 @@ export const userRateLimit = (maxRequests: number, windowMinutes: number = 1) =>
  * Auto refresh token middleware (for cookie mode)
  */
 export const autoRefreshToken = () => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     // Auto refresh not needed for JWT mode
     return next();
 
@@ -267,9 +340,9 @@ export const autoRefreshToken = () => {
     }
 
     try {
-      const jwt = require('jsonwebtoken');
+      const jwt = require("jsonwebtoken");
       const decoded = jwt.decode(accessToken) as any;
-      
+
       if (!decoded || !decoded.exp) {
         return next();
       }
@@ -280,30 +353,34 @@ export const autoRefreshToken = () => {
         const refreshToken = req.cookies?.refresh_token;
         if (refreshToken) {
           try {
-            const { unifiedAuthService } = await import('../services/unified-auth.service');
-            const response = await unifiedAuthService.refreshAccessToken(refreshToken, req);
-            
+            const { unifiedAuthService } =
+              await import("../services/unified-auth.service");
+            const response = await unifiedAuthService.refreshAccessToken(
+              refreshToken,
+              req,
+            );
+
             // Set new cookies
-            res.cookie('access_token', response.accessToken, {
+            res.cookie("access_token", response.accessToken, {
               httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'strict',
-              maxAge: 60 * 60 * 1000 // 1 hour
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "strict",
+              maxAge: 60 * 60 * 1000, // 1 hour
             });
-            
-            res.cookie('refresh_token', response.refreshToken, {
+
+            res.cookie("refresh_token", response.refreshToken, {
               httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'strict',
-              maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "strict",
+              maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
             });
           } catch (error) {
-            logger.debug('Auto refresh failed:', error);
+            logger.debug("Auto refresh failed:", error);
           }
         }
       }
     } catch (error) {
-      logger.debug('Error checking token expiry:', error);
+      logger.debug("Error checking token expiry:", error);
     }
 
     next();
@@ -321,8 +398,8 @@ export const roleCheckers = {
   },
   hasAnyRole: (roles: string[]) => (req: Request) => {
     const userRoles = (req.user as any)?.roles || [];
-    return roles.some(role => userRoles.includes(role));
-  }
+    return roles.some((role) => userRoles.includes(role));
+  },
 };
 
 /**
@@ -336,32 +413,36 @@ export const resourceCheckers = {
   customReport: async (req: Request) => {
     const reportId = req.params.reportId;
     if (!reportId) {
-      logger.warn('No reportId provided for custom report access check');
+      logger.warn("No reportId provided for custom report access check");
       return false;
     }
-    
+
     try {
-      const { db } = await import('@/config/database');
+      const { db } = await import("@/config/database");
       const result = await db.query(
-        'SELECT user_id, created_by FROM custom_report_templates WHERE id = $1',
-        [reportId]
+        "SELECT user_id, created_by FROM custom_report_templates WHERE id = $1",
+        [reportId],
       );
-      
+
       if (result.rows.length === 0) {
-        logger.warn(`Custom report ${reportId} not found in database during access check`);
+        logger.warn(
+          `Custom report ${reportId} not found in database during access check`,
+        );
         return false;
       }
-      
+
       const report = result.rows[0];
       const ownerId = report.user_id || report.created_by;
-      const hasAccess = ownerId === req.user?.id;
-      
-      logger.debug(`Custom report access check for ${reportId}: Owner=${ownerId}, User=${req.user?.id}, HasAccess=${hasAccess}`);
-      
+      const hasAccess = Number(ownerId) === Number(req.user?.id);
+
+      logger.debug(
+        `Custom report access check for ${reportId}: Owner=${ownerId}, User=${req.user?.id}, HasAccess=${hasAccess}`,
+      );
+
       return hasAccess;
     } catch (error) {
-      logger.error('Error checking custom report ownership:', error);
+      logger.error("Error checking custom report ownership:", error);
       return false;
     }
-  }
+  },
 };

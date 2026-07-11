@@ -1,11 +1,16 @@
-import { Router } from 'express';
-import { 
-  credentialsController, 
-  createCredentialValidation, 
+import { Router } from "express";
+import {
+  credentialsController,
+  createCredentialValidation,
   updateCredentialValidation,
-  credentialIdValidation 
-} from '@/controllers/credentials.controller';
-import { requireAuth, auditAction, userRateLimit } from '@/middleware/auth-wrapper';
+  credentialIdValidation,
+} from "@/controllers/credentials.controller";
+import {
+  requireAuth,
+  auditAction,
+  userRateLimit,
+} from "@/middleware/auth-wrapper";
+import { handleValidationErrors } from "@/middleware/validation.middleware";
 
 const router = Router();
 
@@ -24,9 +29,10 @@ router.use(requireAuth);
  * @access  Private
  * @query   serviceType - Optional filter by service type (ad, azure, o365)
  */
-router.get('/',
-  auditAction('list_credentials', 'credentials'),
-  credentialsController.getCredentials
+router.get(
+  "/",
+  auditAction("list_credentials", "credentials"),
+  credentialsController.getCredentials,
 );
 
 /**
@@ -34,9 +40,10 @@ router.get('/',
  * @desc    Get default credentials for all service types
  * @access  Private
  */
-router.get('/defaults',
-  auditAction('list_default_credentials', 'credentials'),
-  credentialsController.getDefaultCredentials
+router.get(
+  "/defaults",
+  auditAction("list_default_credentials", "credentials"),
+  credentialsController.getDefaultCredentials,
 );
 
 /**
@@ -44,10 +51,11 @@ router.get('/defaults',
  * @desc    Get a specific credential
  * @access  Private
  */
-router.get('/:id',
+router.get(
+  "/:id",
   credentialIdValidation,
-  auditAction('view_credential', 'credentials'),
-  credentialsController.getCredential
+  auditAction("view_credential", "credentials"),
+  credentialsController.getCredential,
 );
 
 /**
@@ -56,11 +64,13 @@ router.get('/:id',
  * @access  Private
  * @body    { serviceType, credentialName, username?, password?, tenantId?, clientId?, clientSecret?, isDefault? }
  */
-router.post('/',
+router.post(
+  "/",
   userRateLimit(20), // 20 credential creations per minute
   createCredentialValidation,
-  auditAction('create_credential', 'credentials'),
-  credentialsController.createCredential
+  handleValidationErrors,
+  auditAction("create_credential", "credentials"),
+  credentialsController.createCredential,
 );
 
 /**
@@ -69,10 +79,11 @@ router.post('/',
  * @access  Private
  * @body    { credentialName?, username?, password?, tenantId?, clientId?, clientSecret?, isDefault?, isActive? }
  */
-router.put('/:id',
+router.put(
+  "/:id",
   updateCredentialValidation,
-  auditAction('update_credential', 'credentials'),
-  credentialsController.updateCredential
+  auditAction("update_credential", "credentials"),
+  credentialsController.updateCredential,
 );
 
 /**
@@ -80,10 +91,11 @@ router.put('/:id',
  * @desc    Delete a credential
  * @access  Private
  */
-router.delete('/:id',
+router.delete(
+  "/:id",
   credentialIdValidation,
-  auditAction('delete_credential', 'credentials'),
-  credentialsController.deleteCredential
+  auditAction("delete_credential", "credentials"),
+  credentialsController.deleteCredential,
 );
 
 /**
@@ -91,11 +103,12 @@ router.delete('/:id',
  * @desc    Test a credential connection
  * @access  Private
  */
-router.post('/:id/test',
+router.post(
+  "/:id/test",
   userRateLimit(30), // 30 tests per minute
   credentialIdValidation,
-  auditAction('test_credential', 'credentials'),
-  credentialsController.testCredential
+  auditAction("test_credential", "credentials"),
+  credentialsController.testCredential,
 );
 
 /**
@@ -103,10 +116,11 @@ router.post('/:id/test',
  * @desc    Set a credential as default for its service type
  * @access  Private
  */
-router.put('/:id/set-default',
+router.put(
+  "/:id/set-default",
   credentialIdValidation,
-  auditAction('set_default_credential', 'credentials'),
-  credentialsController.setDefaultCredential
+  auditAction("set_default_credential", "credentials"),
+  credentialsController.setDefaultCredential,
 );
 
 export default router;
