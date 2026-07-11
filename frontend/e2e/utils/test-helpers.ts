@@ -9,6 +9,17 @@ import { TEST_USERS, TEST_CONFIG, TestUser } from "../fixtures/test-data";
 /**
  * Authentication helper
  */
+const createMockJwt = (expiresInSeconds = 3600): string => {
+  const encode = (value: unknown) =>
+    Buffer.from(JSON.stringify(value)).toString("base64url");
+
+  return [
+    encode({ alg: "HS256", typ: "JWT" }),
+    encode({ exp: Math.floor(Date.now() / 1000) + expiresInSeconds }),
+    "e2e-signature",
+  ].join(".");
+};
+
 export class AuthHelper {
   private static async selectAuthSource(
     page: Page,
@@ -389,6 +400,8 @@ export class ApiHelper {
   static async mockAuthEndpoints(page: Page, user: TestUser): Promise<void> {
     // Setup common endpoints first
     await this.mockAllCommonEndpoints(page);
+    const accessToken = createMockJwt();
+    const refreshToken = createMockJwt(7200);
 
     // Mock login success
     await page.route("**/api/auth/login", (route) => {
@@ -408,8 +421,8 @@ export class ApiHelper {
               permissions: user.permissions,
               isActive: true,
             },
-            accessToken: "mock-jwt-token",
-            refreshToken: "mock-refresh-token",
+            accessToken,
+            refreshToken,
             csrfToken: "mock-csrf-token",
           },
         }),

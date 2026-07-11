@@ -95,6 +95,7 @@ export class CookieAuthService {
         // Store CSRF token for future requests
         this.csrfToken = authData.csrfToken;
         this.user = authData.user;
+        localStorage.removeItem("auth:logout");
         localStorage.removeItem("sessionId");
 
         // Store user in sessionStorage for page refreshes
@@ -338,7 +339,7 @@ export class CookieAuthService {
     };
 
     window.addEventListener("storage", (event) => {
-      if (event.key === "auth:logout") {
+      if (event.key === "auth:logout" && event.newValue) {
         redirectToLogin();
       }
     });
