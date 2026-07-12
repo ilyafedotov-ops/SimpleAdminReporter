@@ -84,6 +84,7 @@ describe('useLogsData', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(logsService.getLogs).mockReset();
   });
 
   afterEach(() => {
@@ -438,7 +439,9 @@ describe('useLogsData', () => {
       };
 
       vi.spyOn(global, 'AbortController').mockImplementation(
-        () => mockAbortController as unknown
+        function MockAbortController() {
+          return mockAbortController as unknown as AbortController;
+        } as unknown as typeof AbortController
       );
 
       // Use a promise that we control to ensure request is in progress
@@ -450,8 +453,10 @@ describe('useLogsData', () => {
 
       const { unmount } = renderHook(() => useLogsData(defaultFilters));
 
-      // Give time for request to start
-      await new Promise(resolve => setTimeout(resolve, 400));
+      // Wait for the debounced request to start before unmounting.
+      await waitFor(() => {
+        expect(logsService.getLogs).toHaveBeenCalledTimes(1);
+      }, { timeout: 2000 });
 
       unmount();
 
