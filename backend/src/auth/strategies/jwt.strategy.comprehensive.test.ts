@@ -52,20 +52,25 @@ describe('JWTStrategy - Comprehensive Tests', () => {
     describe('Happy Path Scenarios', () => {
       test('should extract token from valid Bearer authorization header', () => {
         // Arrange
+        const fixtureToken = ['fixture-header', 'fixture-payload', 'fixture-signature'].join('.');
         mockRequest.headers = {
-          authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.valid.token'
+          authorization: `Bearer ${fixtureToken}`
         };
 
         // Act
         const token = strategy.extractToken(mockRequest as Request);
 
         // Assert
-        expect(token).toBe('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.valid.token');
+        expect(token).toBe(fixtureToken);
       });
 
       test('should extract JWT token with special characters', () => {
         // Arrange
-        const tokenWithSpecialChars = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.Twc7-e4v0-KOVfDQz3LLcPNwKEm5K1Jrx6V7FD_Z-M-_dWq';
+        const tokenWithSpecialChars = [
+          'fixture-header',
+          'fixture_payload-with-special_chars',
+          'fixture-signature_with-special-chars'
+        ].join('.');
         mockRequest.headers = {
           authorization: `Bearer ${tokenWithSpecialChars}`
         };
@@ -254,7 +259,7 @@ describe('JWTStrategy - Comprehensive Tests', () => {
     describe('Token Format Variations', () => {
       test('should extract standard JWT format', () => {
         // Arrange
-        const standardJWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+        const standardJWT = ['fixture-header', 'fixture-payload', 'fixture-signature'].join('.');
         mockRequest.headers = {
           authorization: `Bearer ${standardJWT}`
         };

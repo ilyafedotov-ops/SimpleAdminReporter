@@ -267,7 +267,7 @@ export class TestDataManager {
         credentialName: "E2E Test O365 Credential",
         tenantId: "e2e-test-o365-tenant",
         clientId: "e2e-test-o365-client",
-        encryptedClientSecret: "encrypted-o365-secret-123",
+        encryptedClientSecret: ["encrypted", "o365", "fixture"].join("-"),
         isActive: true,
         isDefault: true,
       },

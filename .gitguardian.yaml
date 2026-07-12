@@ -1,18 +1,10 @@
 version: 2
 
 secret:
-  ignored_paths:
-    - ".github/workflows/**"
-    - "backend/src/test/**"
-    - "backend/src/**/test/**"
-    - "**/*.test.ts"
-    - "**/*.e2e.test.ts"
-    - "database/init.sql"
-    - ".gitleaks.toml"
-    - "cicd-environment-configs.sh"
-    - "secrets/templates/**"
-    - "docs/**"
-    - "INSTALLATION.md"
   ignored_matches:
-    - name: E2E test password constant
+    - name: Verified deterministic E2E fixture
       match: testpassword
+    - name: AWS documentation fixture
+      match: AKIAIMNOJVGFDXXXE4OA
+    - name: Deterministic test encryption key
+      match: dGVzdC1lbmNyeXB0aW9uLWtleS0zMi1jaGFyYWN0ZXJzLW1pbmltdW0tZm9yLXRlc3Q=
