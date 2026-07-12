@@ -109,7 +109,11 @@ describe('CookieStrategy - Comprehensive Tests', () => {
 
       test('should extract JWT token with special characters from cookie', () => {
         // Arrange
-        const specialToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.Twc7-e4v0-KOVfDQz3LLcPNwKEm5K1Jrx6V7FD_Z-M-_dWq';
+        const specialToken = [
+          'fixture-header',
+          'fixture_payload-with-special_chars',
+          'fixture-signature_with-special-chars'
+        ].join('.');
         mockRequest.cookies = {
           access_token: specialToken
         };

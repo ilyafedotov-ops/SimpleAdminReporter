@@ -29,7 +29,7 @@ services:
       - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${DB_NAME:-reporting}
       - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD}}
+      - DB_PASSWORD=${DB_PASSWORD}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - REDIS_URL=${REDIS_URL}
       - REDIS_HOST=${REDIS_HOST:-redis}

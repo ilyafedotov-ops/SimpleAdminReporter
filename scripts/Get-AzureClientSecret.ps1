@@ -260,7 +260,7 @@ function Show-ManualInstructions {
     Write-Host "9. IMMEDIATELY copy the Value (not the Secret ID)" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "The secret value will look something like:" -ForegroundColor Gray
-    Write-Host "8Q~8Q~iKlmnOPQRsTuVwXyZ.aBcDeFgHiJkLmN" -ForegroundColor Gray
+    Write-Host "<generated-client-secret>" -ForegroundColor Gray
     Write-Host ""
 }
 

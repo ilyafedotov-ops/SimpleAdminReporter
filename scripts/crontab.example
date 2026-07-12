@@ -27,7 +27,7 @@ DB_USER=postgres
 0 4 1 * * /app/scripts/backup-report.sh
 
 # Clean up old exports every day at 1:00 AM
-0 1 * * * curl -X POST http://localhost:5000/api/export/cleanup -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -H "Content-Type: application/json" -d '{"daysOld": 7}'
+0 1 * * * curl -X POST http://localhost:5000/api/export/cleanup -H "Authorization: Bearer ${ADMIN_TOKEN}" -H "Content-Type: application/json" -d '{"daysOld": 7}'
 
 # Optional: Backup to remote storage (daily at 3:30 AM)
 # 30 3 * * * /app/scripts/backup-to-s3.sh

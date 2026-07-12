@@ -21,12 +21,12 @@ services:
       - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${DB_NAME:-reporting_staging}
       - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD}}
+      - DB_PASSWORD=${DB_PASSWORD}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - REDIS_URL=${REDIS_URL}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_staging}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - AD_SERVER=${AD_SERVER}
       - AD_BASE_DN=${AD_BASE_DN}
@@ -81,7 +81,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_staging}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - staging-redis-data:/data
     restart: unless-stopped

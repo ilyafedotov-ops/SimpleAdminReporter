@@ -142,7 +142,7 @@ npm test -- --testPathPattern="security" --coverage
 **Test Case: Invalid Token Access**
 ```bash
 # Test with malformed token
-curl -H "Authorization: Bearer invalid.token.here" \
+curl -H "Authorization: Bearer ${TEST_JWT_TOKEN}" \
      http://localhost/api/admin/security/audit-logs
 
 # Test with no authorization header

@@ -1957,13 +1957,13 @@ curl -X POST http://localhost/api/auth/login \
 #### Get Reports with Authentication
 ```bash
 curl -X GET http://localhost/api/reports/templates \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+  -H "Authorization: Bearer ${JWT_TOKEN}"
 ```
 
 #### Execute Report
 ```bash
 curl -X POST http://localhost/api/reports/execute/template-uuid \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
     "parameters": {"days": 90}

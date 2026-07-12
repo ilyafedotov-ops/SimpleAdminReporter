@@ -323,7 +323,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0 # Full history for secret scanning
 
@@ -342,10 +342,14 @@ jobs:
           npm audit --audit-level=moderate
 
       - name: Run Gitleaks secret scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0; invokes --redact
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_SUMMARY: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
 
   # E2E Tests (Optional - can be resource intensive)
   e2e-tests:
