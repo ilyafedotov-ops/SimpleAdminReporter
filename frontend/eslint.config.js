@@ -92,6 +92,23 @@ export default [
       
       // React hooks rules
       ...reactHooks.configs.recommended.rules,
+      // eslint-plugin-react-hooks v7 adds React Compiler rules to the
+      // recommended config. Keep the existing hooks baseline for this project
+      // while opting out of compiler migration rules until the codebase is
+      // intentionally refactored for them.
+      'react-hooks/static-components': 'off',
+      'react-hooks/use-memo': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/globals': 'off',
+      'react-hooks/refs': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/error-boundaries': 'off',
+      'react-hooks/purity': 'off',
+      'react-hooks/set-state-in-render': 'off',
+      'react-hooks/unsupported-syntax': 'off',
+      'react-hooks/config': 'off',
+      'react-hooks/gating': 'off',
       
       // React refresh rules
       'react-refresh/only-export-components': [
@@ -107,6 +124,8 @@ export default [
       'no-useless-escape': 'warn',
       'no-loss-of-precision': 'warn',
       'no-constant-condition': 'warn',
+      'no-useless-assignment': 'off',
+      'preserve-caught-error': 'off',
     },
   },
   
