@@ -34,7 +34,9 @@ export class MsalAuthService {
 
     this.initPromise = this.msalInstance.initialize().then(() => {
       // Handle redirect promise
-      return this.msalInstance.handleRedirectPromise().then((response) => {
+      return this.msalInstance.handleRedirectPromise({
+        navigateToLoginRequestUrl: false,
+      }).then((response) => {
         if (response) {
           this.account = response.account;
         } else {
