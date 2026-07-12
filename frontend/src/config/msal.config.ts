@@ -10,11 +10,9 @@ export const msalConfig: Configuration = {
     authority: `https://login.microsoftonline.com/${import.meta.env.VITE_AZURE_TENANT_ID || 'common'}`,
     redirectUri: window.location.origin + '/auth/azure/callback',
     postLogoutRedirectUri: window.location.origin,
-    navigateToLoginRequestUrl: false,
   },
   cache: {
     cacheLocation: BrowserCacheLocation.SessionStorage, // More secure than localStorage
-    storeAuthStateInCookie: false, // Set to true for IE11 support
   },
   system: {
     loggerOptions: {
