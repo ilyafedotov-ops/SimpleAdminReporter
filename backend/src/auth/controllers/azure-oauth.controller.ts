@@ -19,6 +19,12 @@ const escapeHtml = (input: string): string => {
   return input.replace(/[&<>"']/g, (char) => replacements[char]);
 };
 
+const serializeForInlineScript = (input: string): string =>
+  JSON.stringify(input).replace(/[<>&\u2028\u2029]/g, (char) => {
+    const codePoint = char.charCodeAt(0).toString(16).padStart(4, "0");
+    return `\\u${codePoint}`;
+  });
+
 /**
  * Azure OAuth Controller
  * Handles OAuth authentication flow for Azure AD
@@ -298,6 +304,7 @@ class AzureOAuthController {
           ? (error as any)?.message || String(error)
           : "Unknown error";
       const escapedErrorMessage = escapeHtml(rawErrorMessage);
+      const serializedErrorMessage = serializeForInlineScript(rawErrorMessage);
       const requiresUserAuthentication = rawErrorMessage.includes(
         "User authentication required",
       );
@@ -359,7 +366,7 @@ class AzureOAuthController {
               if (window.opener) {
                 window.opener.postMessage({ 
                   type: 'azure-auth-error',
-                  error: '${error instanceof Error ? (error as any)?.message || String(error) : "Unknown error"}'
+                  error: ${serializedErrorMessage}
                 }, window.location.origin);
               }
             </script>
