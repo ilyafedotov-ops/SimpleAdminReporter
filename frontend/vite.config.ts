@@ -3,6 +3,14 @@ import react from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import path from 'path'
 
+const chunkGroups: Record<string, string[]> = {
+  vendor: ['react', 'react-dom', 'react-router-dom'],
+  antd: ['antd', '@ant-design/icons'],
+  redux: ['@reduxjs/toolkit', 'react-redux'],
+  charts: ['recharts', '@ant-design/plots'],
+  utils: ['axios', 'dayjs', 'react-dnd', 'react-dnd-html5-backend'],
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -44,13 +52,17 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          antd: ['antd', '@ant-design/icons'],
-          redux: ['@reduxjs/toolkit', 'react-redux'],
-          charts: ['recharts', '@ant-design/plots'],
-          utils: ['axios', 'dayjs', 'react-dnd', 'react-dnd-html5-backend'],
-        }
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return;
+          }
+
+          for (const [chunkName, packages] of Object.entries(chunkGroups)) {
+            if (packages.some(packageName => id.includes(`/node_modules/${packageName}/`))) {
+              return chunkName;
+            }
+          }
+        },
       }
     }
   },
