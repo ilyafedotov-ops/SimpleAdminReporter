@@ -80,7 +80,7 @@
     "rate-limit-redis": "^4.3.1",
     "redis": "^6.1.0",
     "socket.io": "^4.8.3",
-    "tsc-alias": "^1.9.0",
+    "tsc-alias": "^1.9.1",
     "tsconfig-paths": "^4.2.0",
     "winston": "^3.19.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
