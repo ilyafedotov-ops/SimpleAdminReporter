@@ -103,7 +103,7 @@
     "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.2.0",
-    "@typescript-eslint/eslint-plugin": "^8.63.0",
+    "@typescript-eslint/eslint-plugin": "^8.64.0",
     "@typescript-eslint/parser": "^8.63.0",
     "axios-cookiejar-support": "^7.0.0",
     "eslint": "^10.7.0",
