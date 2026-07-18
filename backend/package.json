@@ -108,7 +108,7 @@
     "axios-cookiejar-support": "^7.0.0",
     "eslint": "^10.7.0",
     "jest": "^30.4.2",
-    "jest-extended": "^6.0.0",
+    "jest-extended": "^7.0.0",
     "jest-junit": "^16.0.0",
     "nodemon": "^3.1.14",
     "rimraf": "^6.1.3",
